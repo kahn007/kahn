@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brayne AI — Intelligent SMS Lead Conversion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav id="navbar">
+    <div class="nav-inner">
+      <a href="#" class="logo">
+        <span class="logo-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <circle cx="14" cy="14" r="13" stroke="url(#logoGrad)" stroke-width="2"/>
+            <path d="M8 14 Q14 8 20 14 Q14 20 8 14Z" fill="url(#logoGrad)"/>
+            <defs>
+              <linearGradient id="logoGrad" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#6C63FF"/>
+                <stop offset="100%" stop-color="#00D4FF"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </span>
+        Brayne<span class="logo-accent">AI</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#how-it-works">How It Works</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#use-cases">Use Cases</a></li>
+        <li><a href="#results">Results</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+      </ul>
+      <a href="#contact" class="btn btn-nav">Book a Demo</a>
+      <button class="hamburger" id="hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="mobile-menu" id="mobileMenu">
+      <a href="#how-it-works">How It Works</a>
+      <a href="#features">Features</a>
+      <a href="#use-cases">Use Cases</a>
+      <a href="#results">Results</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#contact" class="btn btn-primary">Book a Demo</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section id="hero">
+    <div class="hero-bg">
+      <div class="grid-overlay"></div>
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+    <div class="hero-content">
+      <div class="hero-badge fade-up">
+        <span class="pulse-dot"></span>
+        AI-Powered SMS Automation
+      </div>
+      <h1 class="hero-title fade-up delay-1">
+        Turn Every Lead Into a<br/>
+        <span class="gradient-text">Booked Appointment</span><br/>
+        — Automatically.
+      </h1>
+      <p class="hero-sub fade-up delay-2">
+        Brayne AI deploys intelligent SMS agents that engage your leads 24/7, qualify prospects, and book appointments directly into your calendar — whether from your existing database or cold outreach.
+      </p>
+      <div class="hero-actions fade-up delay-3">
+        <a href="#contact" class="btn btn-primary btn-lg">
+          <span>Get Started Free</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <a href="#how-it-works" class="btn btn-ghost btn-lg">
+          See How It Works
+        </a>
+      </div>
+      <div class="hero-stats fade-up delay-4">
+        <div class="stat">
+          <span class="stat-num counter" data-target="340">0</span><span class="stat-num">%</span>
+          <span class="stat-label">More Appointments Booked</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-num counter" data-target="92">0</span><span class="stat-num">%</span>
+          <span class="stat-label">Lead Response Rate</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-num">24</span><span class="stat-num">/7</span>
+          <span class="stat-label">AI Always On</span>
+        </div>
+      </div>
+    </div>
+    <!-- SMS Chat Mockup -->
+    <div class="hero-mockup fade-left delay-2">
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="chat-header">
+            <div class="chat-avatar">
+              <div class="avatar-pulse"></div>
+              <span>B</span>
+            </div>
+            <div>
+              <div class="chat-name">Brayne AI Agent</div>
+              <div class="chat-status"><span class="online-dot"></span> Active now</div>
+            </div>
+          </div>
+          <div class="chat-messages" id="chatMessages">
+            <div class="msg msg-ai" data-delay="0">
+              Hi John! This is Alex from Brayne AI. I see you expressed interest in our services. Are you available for a quick 15-min call this week? 👋
+            </div>
+            <div class="msg msg-user" data-delay="1500">
+              Hey! Yeah sure, what times work?
+            </div>
+            <div class="msg msg-ai" data-delay="3000">
+              Great! I have Tuesday at 2PM or Thursday at 10AM available. Which works best for you?
+            </div>
+            <div class="msg msg-user" data-delay="4500">
+              Thursday 10AM sounds good!
+            </div>
+            <div class="msg msg-ai" data-delay="6000">
+              Perfect! ✅ You're booked for Thursday at 10AM. I'll send a calendar invite to john@email.com. Looking forward to speaking with you!
+            </div>
+            <div class="msg msg-system" data-delay="7000">
+              📅 Appointment Booked — Added to CRM
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SOCIAL PROOF TICKER -->
+  <div class="ticker-wrap">
+    <div class="ticker">
+      <span>Real Estate Agencies</span>
+      <span class="ticker-sep">✦</span>
+      <span>Insurance Brokers</span>
+      <span class="ticker-sep">✦</span>
+      <span>Solar Companies</span>
+      <span class="ticker-sep">✦</span>
+      <span>Medical Practices</span>
+      <span class="ticker-sep">✦</span>
+      <span>Financial Advisors</span>
+      <span class="ticker-sep">✦</span>
+      <span>Auto Dealerships</span>
+      <span class="ticker-sep">✦</span>
+      <span>Law Firms</span>
+      <span class="ticker-sep">✦</span>
+      <span>Fitness Studios</span>
+      <span class="ticker-sep">✦</span>
+      <span>Mortgage Brokers</span>
+      <span class="ticker-sep">✦</span>
+      <span>Home Services</span>
+      <span class="ticker-sep">✦</span>
+      <!-- duplicate for infinite scroll -->
+      <span>Real Estate Agencies</span>
+      <span class="ticker-sep">✦</span>
+      <span>Insurance Brokers</span>
+      <span class="ticker-sep">✦</span>
+      <span>Solar Companies</span>
+      <span class="ticker-sep">✦</span>
+      <span>Medical Practices</span>
+      <span class="ticker-sep">✦</span>
+      <span>Financial Advisors</span>
+      <span class="ticker-sep">✦</span>
+      <span>Auto Dealerships</span>
+      <span class="ticker-sep">✦</span>
+      <span>Law Firms</span>
+      <span class="ticker-sep">✦</span>
+      <span>Fitness Studios</span>
+      <span class="ticker-sep">✦</span>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <section id="how-it-works" class="section">
+    <div class="container">
+      <div class="section-header fade-up">
+        <div class="section-badge">Simple Process</div>
+        <h2>From Lead to Appointment<br/><span class="gradient-text">in Minutes, Not Days</span></h2>
+        <p>Our AI SMS agent handles the entire outreach and booking process so your team focuses on closing deals.</p>
+      </div>
+      <div class="steps">
+        <div class="step fade-up delay-1">
+          <div class="step-num">01</div>
+          <div class="step-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <h3>Connect Your Leads</h3>
+          <p>Plug in your CRM, database, or upload a CSV. Brayne AI syncs with your existing lead sources instantly — or we launch cold outreach campaigns from scratch.</p>
+        </div>
+        <div class="step-arrow fade-up delay-2">
+          <svg width="40" height="16" viewBox="0 0 40 16" fill="none">
+            <path d="M0 8 H36 M30 2 L38 8 L30 14" stroke="url(#arrowGrad)" stroke-width="2" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="arrowGrad" x1="0" y1="0" x2="40" y2="0">
+                <stop offset="0%" stop-color="#6C63FF"/>
+                <stop offset="100%" stop-color="#00D4FF"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="step fade-up delay-2">
+          <div class="step-num">02</div>
+          <div class="step-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <h3>AI Engages & Qualifies</h3>
+          <p>Our intelligent SMS agent initiates personalized conversations, handles objections, qualifies intent, and moves prospects through your pipeline — all on autopilot.</p>
+        </div>
+        <div class="step-arrow fade-up delay-3">
+          <svg width="40" height="16" viewBox="0 0 40 16" fill="none">
+            <path d="M0 8 H36 M30 2 L38 8 L30 14" stroke="url(#arrowGrad2)" stroke-width="2" stroke-linecap="round"/>
+            <defs>
+              <linearGradient id="arrowGrad2" x1="0" y1="0" x2="40" y2="0">
+                <stop offset="0%" stop-color="#6C63FF"/>
+                <stop offset="100%" stop-color="#00D4FF"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="step fade-up delay-3">
+          <div class="step-num">03</div>
+          <div class="step-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+              <path d="M8 14h.01M12 14h.01M16 14h.01"/>
+            </svg>
+          </div>
+          <h3>Appointments Booked</h3>
+          <p>Hot leads are automatically scheduled into your calendar. You receive real-time notifications and a full conversation summary — walk into every call prepared.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features" class="section section-dark">
+    <div class="container">
+      <div class="section-header fade-up">
+        <div class="section-badge">Core Features</div>
+        <h2>Everything You Need to<br/><span class="gradient-text">Dominate Your Pipeline</span></h2>
+        <p>Purpose-built for high-volume lead conversion — no fluff, just results.</p>
+      </div>
+      <div class="features-grid">
+
+        <div class="feature-card fade-up delay-1">
+          <div class="feature-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+              <path d="M2 17l10 5 10-5"/>
+              <path d="M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <h3>AI-Powered Personalization</h3>
+          <p>Every message is dynamically crafted based on lead data, behavior, and context — feeling 100% human and relevant, never robotic.</p>
+          <div class="feature-glow"></div>
+        </div>
+
+        <div class="feature-card fade-up delay-2">
+          <div class="feature-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <h3>24/7 Instant Response</h3>
+          <p>Strike while leads are hot. Brayne AI responds within seconds at any hour — dramatically increasing contact and conversion rates.</p>
+          <div class="feature-glow"></div>
+        </div>
+
+        <div class="feature-card fade-up delay-3">
+          <div class="feature-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.09h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </div>
+          <h3>Smart Lead Qualification</h3>
+          <p>The AI identifies high-intent prospects through multi-turn conversations, scoring and routing only the hottest leads to your sales team.</p>
+          <div class="feature-glow"></div>
+        </div>
+
+        <div class="feature-card fade-up delay-1">
+          <div class="feature-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </div>
+          <h3>Automatic Scheduling</h3>
+          <p>Integrates with Google Calendar, Calendly, HubSpot, and more. Leads self-book from available slots — zero manual work required.</p>
+          <div class="feature-glow"></div>
+        </div>
+
+        <div class="feature-card fade-up delay-2">
+          <div class="feature-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <line x1="18" y1="20" x2="18" y2="10"/>
+              <line x1="12" y1="20" x2="12" y2="4"/>
+              <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+          </div>
+          <h3>Full Analytics Dashboard</h3>
+          <p>Track every conversation, conversion rate, and ROI in real time. Know exactly which campaigns are generating the most booked appointments.</p>
+          <div class="feature-glow"></div>
+        </div>
+
+        <div class="feature-card fade-up delay-3">
+          <div class="feature-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <h3>TCPA Compliant</h3>
+          <p>Built-in compliance management handles opt-outs, consent tracking, and quiet hours automatically — protecting your business at every step.</p>
+          <div class="feature-glow"></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- USE CASES -->
+  <section id="use-cases" class="section">
+    <div class="container">
+      <div class="section-header fade-up">
+        <div class="section-badge">Use Cases</div>
+        <h2>Built for Businesses That<br/><span class="gradient-text">Run on Leads</span></h2>
+        <p>Whether you're nurturing warm leads or launching cold campaigns, Brayne AI delivers results.</p>
+      </div>
+      <div class="use-cases-grid">
+
+        <div class="use-case-card fade-up delay-1">
+          <div class="use-case-tag">Database Reactivation</div>
+          <h3>Wake Up Cold Leads</h3>
+          <p>Thousands of dead contacts in your CRM? Brayne AI re-engages your old database with personalized SMS sequences — turning forgotten leads into booked appointments.</p>
+          <ul>
+            <li>Automatically contact dormant leads</li>
+            <li>Personalized re-engagement messages</li>
+            <li>Instant booking on positive response</li>
+          </ul>
+        </div>
+
+        <div class="use-case-card fade-up delay-2">
+          <div class="use-case-tag">Inbound Lead Followup</div>
+          <h3>Never Miss a Hot Lead</h3>
+          <p>New inbound lead comes in? Brayne AI reaches out within seconds, qualifies their need, and locks in a meeting before your competitor can even pick up the phone.</p>
+          <ul>
+            <li>Sub-60 second response time</li>
+            <li>Qualification and intent scoring</li>
+            <li>Seamless CRM integration</li>
+          </ul>
+        </div>
+
+        <div class="use-case-card fade-up delay-3">
+          <div class="use-case-tag">Cold Outreach</div>
+          <h3>Scale Cold Prospecting</h3>
+          <p>Launch hyper-targeted cold SMS campaigns to prospect lists. Our AI engages thousands simultaneously, identifies interested buyers, and books calls — at scale.</p>
+          <ul>
+            <li>High-volume outreach campaigns</li>
+            <li>AI-optimized messaging sequences</li>
+            <li>Warm handoff to your sales team</li>
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS / TESTIMONIALS -->
+  <section id="results" class="section section-dark">
+    <div class="container">
+      <div class="section-header fade-up">
+        <div class="section-badge">Real Results</div>
+        <h2>Numbers That Speak<br/><span class="gradient-text">For Themselves</span></h2>
+      </div>
+
+      <div class="metrics-row fade-up delay-1">
+        <div class="metric-card">
+          <div class="metric-value"><span class="counter" data-target="340">0</span>%</div>
+          <div class="metric-label">Increase in booked appointments</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value"><span class="counter" data-target="92">0</span>%</div>
+          <div class="metric-label">Average lead response rate</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value"><span class="counter" data-target="68">0</span>%</div>
+          <div class="metric-label">Reduction in no-shows</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value">4<span style="font-size:1.5rem">x</span></div>
+          <div class="metric-label">Average ROI in first 30 days</div>
+        </div>
+      </div>
+
+      <div class="testimonials fade-up delay-2">
+        <div class="testimonial-card">
+          <div class="stars">★★★★★</div>
+          <p>"Brayne AI reactivated our dead lead database and booked 47 appointments in the first week. Our sales team couldn't believe it."</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">MR</div>
+            <div>
+              <strong>Marcus R.</strong>
+              <span>CEO, Solar Edge Group</span>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="stars">★★★★★</div>
+          <p>"We went from manually calling leads for hours a day to having 20+ qualified appointments automatically booked every single week."</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">JL</div>
+            <div>
+              <strong>Jessica L.</strong>
+              <span>Director of Sales, Premier Realty</span>
+            </div>
+          </div>
+        </div>
+        <div class="testimonial-card">
+          <div class="stars">★★★★★</div>
+          <p>"The ROI was immediate. Within 2 weeks Brayne AI had paid for itself 6 times over. It's like having a team of closers working around the clock."</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">DK</div>
+            <div>
+              <strong>Derek K.</strong>
+              <span>Owner, Pinnacle Insurance</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section id="pricing" class="section">
+    <div class="container">
+      <div class="section-header fade-up">
+        <div class="section-badge">Pricing</div>
+        <h2>Simple, Transparent<br/><span class="gradient-text">Performance-Focused Pricing</span></h2>
+        <p>No hidden fees. No long-term contracts. Cancel anytime.</p>
+      </div>
+      <div class="pricing-grid">
+
+        <div class="pricing-card fade-up delay-1">
+          <div class="pricing-tier">Starter</div>
+          <div class="pricing-price">$497<span>/mo</span></div>
+          <div class="pricing-desc">Perfect for small teams getting started with AI-powered lead conversion.</div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span> Up to 500 contacts/month</li>
+            <li><span class="check">✓</span> AI SMS agent</li>
+            <li><span class="check">✓</span> Automatic appointment booking</li>
+            <li><span class="check">✓</span> Calendar integrations</li>
+            <li><span class="check">✓</span> Email notifications</li>
+            <li><span class="check">✓</span> Basic analytics</li>
+          </ul>
+          <a href="#contact" class="btn btn-outline btn-block">Get Started</a>
+        </div>
+
+        <div class="pricing-card pricing-featured fade-up delay-2">
+          <div class="pricing-popular">Most Popular</div>
+          <div class="pricing-tier">Growth</div>
+          <div class="pricing-price">$997<span>/mo</span></div>
+          <div class="pricing-desc">For growing businesses ready to scale their appointment pipeline aggressively.</div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span> Up to 2,500 contacts/month</li>
+            <li><span class="check">✓</span> AI SMS + cold outreach</li>
+            <li><span class="check">✓</span> Advanced lead qualification</li>
+            <li><span class="check">✓</span> Full CRM integration</li>
+            <li><span class="check">✓</span> Priority support</li>
+            <li><span class="check">✓</span> Full analytics + reporting</li>
+            <li><span class="check">✓</span> A/B message testing</li>
+          </ul>
+          <a href="#contact" class="btn btn-primary btn-block">Get Started</a>
+        </div>
+
+        <div class="pricing-card fade-up delay-3">
+          <div class="pricing-tier">Enterprise</div>
+          <div class="pricing-price">Custom<span></span></div>
+          <div class="pricing-desc">For high-volume operations that need unlimited scale and dedicated support.</div>
+          <ul class="pricing-features">
+            <li><span class="check">✓</span> Unlimited contacts</li>
+            <li><span class="check">✓</span> White-label option</li>
+            <li><span class="check">✓</span> Custom AI personality/tone</li>
+            <li><span class="check">✓</span> Dedicated account manager</li>
+            <li><span class="check">✓</span> Custom integrations</li>
+            <li><span class="check">✓</span> SLA guarantee</li>
+            <li><span class="check">✓</span> Onboarding & training</li>
+          </ul>
+          <a href="#contact" class="btn btn-outline btn-block">Contact Us</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA / CONTACT -->
+  <section id="contact" class="section section-cta">
+    <div class="cta-bg">
+      <div class="orb orb-cta-1"></div>
+      <div class="orb orb-cta-2"></div>
+    </div>
+    <div class="container">
+      <div class="cta-inner fade-up">
+        <div class="section-badge">Get Started Today</div>
+        <h2>Ready to Fill Your Calendar<br/><span class="gradient-text">on Autopilot?</span></h2>
+        <p>Book a free strategy call. We'll show you exactly how Brayne AI will work for your business — no commitment required.</p>
+        <form class="contact-form" id="contactForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Full Name</label>
+              <input type="text" placeholder="John Smith" required />
+            </div>
+            <div class="form-group">
+              <label>Business Email</label>
+              <input type="email" placeholder="john@company.com" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Phone Number</label>
+              <input type="tel" placeholder="+1 (555) 000-0000" />
+            </div>
+            <div class="form-group">
+              <label>Industry</label>
+              <select>
+                <option value="">Select your industry</option>
+                <option>Real Estate</option>
+                <option>Insurance</option>
+                <option>Solar / Home Services</option>
+                <option>Medical / Healthcare</option>
+                <option>Financial Services</option>
+                <option>Auto Sales</option>
+                <option>Legal Services</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Monthly Lead Volume</label>
+            <select>
+              <option value="">How many leads do you receive per month?</option>
+              <option>Under 100</option>
+              <option>100 – 500</option>
+              <option>500 – 2,000</option>
+              <option>2,000 – 10,000</option>
+              <option>10,000+</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg btn-block">
+            <span>Book My Free Strategy Call</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+          <p class="form-note">No spam. No commitment. Just results.</p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <a href="#" class="logo">
+            <span class="logo-icon">
+              <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
+                <circle cx="14" cy="14" r="13" stroke="url(#fLogoGrad)" stroke-width="2"/>
+                <path d="M8 14 Q14 8 20 14 Q14 20 8 14Z" fill="url(#fLogoGrad)"/>
+                <defs>
+                  <linearGradient id="fLogoGrad" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#6C63FF"/>
+                    <stop offset="100%" stop-color="#00D4FF"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </span>
+            Brayne<span class="logo-accent">AI</span>
+          </a>
+          <p>Intelligent SMS automation that books appointments and delivers hot leads — 24/7, on autopilot.</p>
+        </div>
+        <div class="footer-links">
+          <div class="footer-col">
+            <h4>Product</h4>
+            <a href="#how-it-works">How It Works</a>
+            <a href="#features">Features</a>
+            <a href="#pricing">Pricing</a>
+          </div>
+          <div class="footer-col">
+            <h4>Use Cases</h4>
+            <a href="#use-cases">Lead Reactivation</a>
+            <a href="#use-cases">Inbound Followup</a>
+            <a href="#use-cases">Cold Outreach</a>
+          </div>
+          <div class="footer-col">
+            <h4>Company</h4>
+            <a href="#contact">Contact</a>
+            <a href="#">Privacy Policy</a>
+            <a href="#">Terms of Service</a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2025 Brayne AI. All rights reserved.</span>
+        <span>Built for businesses that demand results.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
