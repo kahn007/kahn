@@ -254,7 +254,7 @@ const ANGLE_FALLBACK = {
 }
 
 // Build creative prompt via Claude (or fallback)
-async function buildCreativePrompt(variation, brandContext, format, type) {
+async function buildCreativePrompt(variation, brandContext, format, type, durationSeconds) {
   const anthropicKey = getKey('anthropic')
   const angle = variation.angle || 'general'
   const audience = variation.targetSegment || brandContext.targetAudience || 'business owner'
@@ -266,6 +266,14 @@ async function buildCreativePrompt(variation, brandContext, format, type) {
 
   const formatLabel = format === 'story' ? '9:16 vertical portrait' : format === 'square' ? '1:1 square' : '16:9 landscape widescreen'
   const isVideo = type === 'video'
+  const dur = parseInt(durationSeconds) || 5
+
+  // Scale scene complexity to duration
+  const videoStructure = dur <= 5
+    ? `ONE single beat — one person, one emotion, one camera movement. The entire scene is a single sustained moment. No cuts, no transitions, no story arc. Just the purest possible expression of the emotion in ${dur} seconds.
+Example structure: "[Subject doing X] — [static/slow push-in/slow pan], holding on [emotion] for full duration"`
+    : `A mini story with a beginning, development and payoff across ${dur} seconds. Two beats max — setup (${Math.round(dur * 0.4)}s) then emotional resolution (${Math.round(dur * 0.6)}s). One location, simple camera movement.
+Example structure: "[Subject doing X showing tension] — [camera slowly pushes in] — [subject reacts to Y, emotion shifts to Z]"`
 
   const prompt = `You are a top direct-response creative director at a performance marketing agency. You write AI generation prompts that produce scroll-stopping Facebook ad visuals rated 9/10 or higher by creative directors.
 
@@ -275,10 +283,10 @@ THE AD:
 - Headline: "${variation.headline}"
 - Copy snippet: "${variation.primaryText?.substring(0, 200)}"
 - Emotional angle: ${angle} — ${ANGLE_CREATIVE_DIRECTION[angle] || ANGLE_CREATIVE_DIRECTION.general}
-- Format: ${formatLabel}${isVideo ? ', 5-second video' : ', still image'}
+- Format: ${formatLabel}${isVideo ? `, ${dur}-second video` : ', still image'}
 
 YOUR TASK:
-Write ONE generation prompt for ${isVideo ? 'Kling AI video generation' : 'Flux Pro image generation'} that will make the target audience STOP SCROLLING because they feel seen.
+Write ONE generation prompt for ${isVideo ? 'AI video generation' : 'Flux Pro image generation'} that will make the target audience STOP SCROLLING because they feel seen.
 
 The scene must:
 1. Feature a real person who LOOKS EXACTLY LIKE the target audience (infer their age, style, environment from "${audience}")
@@ -286,15 +294,16 @@ The scene must:
 3. Use the physical environment that audience lives in (a real estate agent = open-plan office with property flyers; a contractor = job site or truck; a solar rep = suburban driveway with panels visible in background)
 4. Show ONE ultra-specific facial expression + body language that encodes the exact emotion
 5. Use cinematic lighting that amplifies the emotion (harsh tungsten for pain/exhaustion, warm golden for wins, bright clean studio for authority/trust)
-${isVideo ? `6. Describe motion as: [SUBJECT ACTION] + [CAMERA MOVEMENT] — keep it simple (e.g. "slow push-in as she exhales and smiles at her phone screen") — ONE scene, ONE beat, 5 seconds total` : '6. Sharp subject on rule-of-thirds, background slightly blurred (f/2 depth of field), environment adds context without distracting'}
+${isVideo ? `6. Scene structure for ${dur}s:\n${videoStructure}` : '6. Sharp subject on rule-of-thirds, background slightly blurred (f/2 depth of field), environment adds context without distracting'}
 
 HARD RULES:
 - Zero text, words, signs, digits, logos, UI overlays — none
 - Photorealistic only — no illustration, 3D render, painting
 - Camera: ${isVideo ? 'cinema lens, ARRI ALEXA quality' : 'Sony A7R IV, 85mm f/1.8, editorial photography quality'}
 - No stock photo look — candid, authentic, raw emotion
+- ${isVideo ? `CRITICAL: The entire prompt must describe ONLY what fits in ${dur} seconds. Do NOT describe more story than the duration allows.` : 'Single decisive moment, not a composite'}
 
-Return ONLY the prompt. No explanation. Max 150 words.`
+Return ONLY the prompt. No explanation. Max 160 words.`
 
   const raw = await callClaude(anthropicKey, prompt)
   return raw.trim()
@@ -338,7 +347,7 @@ export async function generateAdVideo({ variation, brandContext, format = 'feed'
   const model = VIDEO_MODELS[videoModelId] || VIDEO_MODELS.kling3
   const ratio = AD_ASPECT_RATIOS[format] || '16:9'
   const dur = videoDuration || model.durations[0].value
-  const creativePrompt = await buildCreativePrompt(variation, brandContext, format, 'video')
+  const creativePrompt = await buildCreativePrompt(variation, brandContext, format, 'video', dur)
 
   // 1. Submit to queue
   let submitData

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { LayoutGrid, List, Trash2, CheckSquare, Square, Edit3, Copy, ChevronRight, ImagePlus, Loader, Sparkles, Video, Image, Minus, Plus, ChevronDown } from 'lucide-react'
+import { LayoutGrid, List, Trash2, CheckSquare, Square, Edit3, Copy, ChevronRight, ImagePlus, Loader, Sparkles, Video, Image, Minus, Plus, ChevronDown, Type } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAdStore } from '../store/adStore'
 import { generateAdImage, generateAdVideo, VIDEO_MODELS } from '../lib/api'
@@ -481,9 +481,38 @@ export default function VariationManager() {
   )
 }
 
+// ── Copy overlay — headline + CTA on top of image/video ───────
+function CopyOverlay({ variation }) {
+  return (
+    <div className="absolute inset-0 flex flex-col justify-end pointer-events-none rounded-xl overflow-hidden">
+      {/* Dark gradient from bottom */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      {/* Text content */}
+      <div className="relative z-10 p-3 space-y-2">
+        <p className="text-white font-bold text-sm leading-tight drop-shadow-lg line-clamp-2">
+          {variation.headline}
+        </p>
+        {variation.description && (
+          <p className="text-white/80 text-xs leading-snug line-clamp-1 drop-shadow">
+            {variation.description}
+          </p>
+        )}
+        <div className="flex items-center justify-between">
+          <span className="text-white/60 text-[10px]">{variation.primaryText?.substring(0, 45)}…</span>
+          <span className="bg-white text-gray-900 text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-lg whitespace-nowrap flex-shrink-0">
+            {variation.cta || 'Learn More'}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function VariationCard({ variation, brandContext, selected, cardStatus, onToggle, onDelete, onDuplicate, onEdit, onPreview, onGenImage, onGenVideo, editing, onSave, onCancelEdit }) {
   const [draft, setDraft] = useState({ ...variation })
+  const [showOverlay, setShowOverlay] = useState(false)
   const isLoading = !!cardStatus
+  const hasCreative = !!(variation.imageUrl || variation.videoUrl)
 
   if (editing) {
     return (
@@ -528,6 +557,7 @@ function VariationCard({ variation, brandContext, selected, cardStatus, onToggle
               <Video size={10} className="text-teal-400" />
               <span className="text-teal-300 text-[10px] font-semibold">VIDEO</span>
             </div>
+            {showOverlay && <CopyOverlay variation={variation} />}
           </div>
         ) : variation.imageUrl ? (
           <div className="aspect-[1.91/1] rounded-xl overflow-hidden relative group">
@@ -535,6 +565,7 @@ function VariationCard({ variation, brandContext, selected, cardStatus, onToggle
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-xl flex items-center justify-center">
               <span className="opacity-0 group-hover:opacity-100 text-white text-xs font-medium bg-black/50 px-2 py-1 rounded-lg">Preview</span>
             </div>
+            {showOverlay && <CopyOverlay variation={variation} />}
           </div>
         ) : (
           <AdPreview variation={variation} brandContext={brandContext} format={variation.format} compact />
@@ -562,6 +593,15 @@ function VariationCard({ variation, brandContext, selected, cardStatus, onToggle
           <button className={`p-1.5 rounded-lg transition-colors ${variation.videoUrl ? 'text-teal-500 hover:text-teal-400' : 'text-gray-500 hover:text-teal-400'} hover:bg-teal-900/20`} onClick={onGenVideo} disabled={isLoading} title="Generate video">
             {cardStatus?.type === 'video' ? <Loader size={13} className="animate-spin" /> : <Video size={13} />}
           </button>
+          {hasCreative && (
+            <button
+              className={`p-1.5 rounded-lg transition-colors ${showOverlay ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40' : 'text-gray-500 hover:text-yellow-400 hover:bg-yellow-900/20'}`}
+              onClick={(e) => { e.stopPropagation(); setShowOverlay((s) => !s) }}
+              title="Toggle copy overlay"
+            >
+              <Type size={13} />
+            </button>
+          )}
           <button className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-500 hover:text-gray-300" onClick={onEdit} title="Edit"><Edit3 size={13} /></button>
           <button className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-500 hover:text-gray-300" onClick={onDuplicate} title="Duplicate"><Copy size={13} /></button>
           <button className="p-1.5 rounded-lg hover:bg-red-900/30 text-gray-500 hover:text-red-400" onClick={onDelete} title="Delete"><Trash2 size={13} /></button>
