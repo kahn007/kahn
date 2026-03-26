@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
-import { LayoutGrid, List, Trash2, CheckSquare, Square, Edit3, Copy, ChevronRight, ImagePlus, Loader, Sparkles, Video, Image, Minus, Plus, ChevronDown, Type } from 'lucide-react'
+import { LayoutGrid, List, Trash2, CheckSquare, Square, Edit3, Copy, ChevronRight, ImagePlus, Loader, Sparkles, Video, Image, Minus, Plus, ChevronDown, Type, Zap, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
+import JSZip from 'jszip'
 import { useAdStore } from '../store/adStore'
-import { generateAdImage, generateAdVideo, VIDEO_MODELS } from '../lib/api'
+import { generateAdImage, generateAdVideo, animateAdImage, VIDEO_MODELS } from '../lib/api'
 import AdPreview from './AdPreview'
 
 const ANGLE_COLORS = {
@@ -220,6 +221,55 @@ export default function VariationManager() {
     finally { clearCard(v.id) }
   }
 
+  // Animate image → video
+  const handleAnimate = async (v) => {
+    setCard(v.id, { type: 'animate', label: 'Queued…' })
+    try {
+      const result = await animateAdImage({
+        variation: v, brandContext, format: v.format || 'feed',
+        videoDuration,
+        onProgress: (label) => setCard(v.id, { type: 'animate', label }),
+      })
+      updateVariation(v.id, { videoUrl: result.videoUrl })
+      toast.success('Animation ready!')
+    } catch (err) { toast.error(err.message) }
+    finally { clearCard(v.id) }
+  }
+
+  // Bulk ZIP download
+  const handleZipDownload = async () => {
+    const withCreative = variations.filter((v) => v.imageUrl || v.videoUrl)
+    if (!withCreative.length) { toast.error('No images or videos to download'); return }
+
+    const toastId = toast.loading(`Packaging ${withCreative.length} files…`)
+    try {
+      const zip = new JSZip()
+      const folder = zip.folder('brayne-ai-ads')
+      for (const v of withCreative) {
+        const url = v.videoUrl || v.imageUrl
+        const ext = v.videoUrl ? 'mp4' : 'jpg'
+        const filename = `ad-${v.index || v.id.substring(0, 6)}-${(v.headline || 'ad').replace(/[^a-z0-9]/gi, '-').substring(0, 30)}.${ext}`
+        try {
+          const res = await fetch(url)
+          const blob = await res.blob()
+          folder.file(filename, blob)
+        } catch {
+          // skip unreachable file
+        }
+      }
+      const content = await zip.generateAsync({ type: 'blob' })
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(content)
+      a.download = 'brayne-ai-ads.zip'
+      a.click()
+      toast.dismiss(toastId)
+      toast.success(`Downloaded ${withCreative.length} creatives as ZIP!`)
+    } catch (err) {
+      toast.dismiss(toastId)
+      toast.error(err.message)
+    }
+  }
+
   // Single card video
   const handleGenVideo = async (v) => {
     setCard(v.id, { type: 'video', label: 'Queued…' })
@@ -403,6 +453,12 @@ export default function VariationManager() {
               {clampedImages > 0 && clampedVideos > 0 ? ' + ' : ''}
               {clampedVideos > 0 ? `${clampedVideos} video${clampedVideos !== 1 ? 's' : ''}` : ''}
             </button>
+            {variations.filter((v) => v.imageUrl || v.videoUrl).length > 0 && (
+              <button className="btn-secondary text-sm" onClick={handleZipDownload} title="Download all creatives as ZIP">
+                <Download size={14} />
+                ZIP Download
+              </button>
+            )}
             {selectedVariations.length > 0 && (
               <button className="btn-primary text-sm" onClick={() => setActiveTab('upload')}>
                 Push {selectedVariations.length} to Facebook <ChevronRight size={14} />
@@ -429,6 +485,7 @@ export default function VariationManager() {
               onPreview={() => setPreviewId(v.id)}
               onGenImage={() => handleGenImage(v)}
               onGenVideo={() => handleGenVideo(v)}
+              onAnimate={() => handleAnimate(v)}
               editing={editingId === v.id}
               onSave={(updates) => { updateVariation(v.id, updates); setEditingId(null) }}
               onCancelEdit={() => setEditingId(null)}
@@ -508,7 +565,7 @@ function CopyOverlay({ variation }) {
   )
 }
 
-function VariationCard({ variation, brandContext, selected, cardStatus, onToggle, onDelete, onDuplicate, onEdit, onPreview, onGenImage, onGenVideo, editing, onSave, onCancelEdit }) {
+function VariationCard({ variation, brandContext, selected, cardStatus, onToggle, onDelete, onDuplicate, onEdit, onPreview, onGenImage, onGenVideo, onAnimate, editing, onSave, onCancelEdit }) {
   const [draft, setDraft] = useState({ ...variation })
   const [showOverlay, setShowOverlay] = useState(false)
   const isLoading = !!cardStatus
@@ -593,6 +650,16 @@ function VariationCard({ variation, brandContext, selected, cardStatus, onToggle
           <button className={`p-1.5 rounded-lg transition-colors ${variation.videoUrl ? 'text-teal-500 hover:text-teal-400' : 'text-gray-500 hover:text-teal-400'} hover:bg-teal-900/20`} onClick={onGenVideo} disabled={isLoading} title="Generate video">
             {cardStatus?.type === 'video' ? <Loader size={13} className="animate-spin" /> : <Video size={13} />}
           </button>
+          {variation.imageUrl && !variation.videoUrl && (
+            <button
+              className="p-1.5 rounded-lg transition-colors text-gray-500 hover:text-purple-400 hover:bg-purple-900/20"
+              onClick={onAnimate}
+              disabled={isLoading}
+              title="Animate image → video (Kling)"
+            >
+              {cardStatus?.type === 'animate' ? <Loader size={13} className="animate-spin text-purple-400" /> : <Zap size={13} />}
+            </button>
+          )}
           {hasCreative && (
             <button
               className={`p-1.5 rounded-lg transition-colors ${showOverlay ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40' : 'text-gray-500 hover:text-yellow-400 hover:bg-yellow-900/20'}`}

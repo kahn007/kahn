@@ -1,5 +1,5 @@
 import React from 'react'
-import { Zap, Search, Wand2, LayoutGrid, Upload, BarChart3, Settings } from 'lucide-react'
+import { Zap, Search, Wand2, LayoutGrid, Upload, BarChart3, Settings, Globe } from 'lucide-react'
 import { useAdStore } from './store/adStore'
 import ResearchPanel from './components/ResearchPanel'
 import CopyGenerator from './components/CopyGenerator'
@@ -7,6 +7,7 @@ import VariationManager from './components/VariationManager'
 import FacebookUploader from './components/FacebookUploader'
 import TrackingDashboard from './components/TrackingDashboard'
 import CampaignSettings from './components/CampaignSettings'
+import LandingPageGenerator from './components/LandingPageGenerator'
 
 const TABS = [
   { id: 'research',   label: 'Research',    icon: Search },
@@ -14,6 +15,7 @@ const TABS = [
   { id: 'variations', label: 'Variations',  icon: LayoutGrid },
   { id: 'upload',     label: 'Push to FB',  icon: Upload },
   { id: 'dashboard',  label: 'Dashboard',   icon: BarChart3 },
+  { id: 'landing',    label: 'Landing Pages', icon: Globe },
   { id: 'settings',   label: 'Settings',    icon: Settings },
 ]
 
@@ -73,6 +75,7 @@ export default function App() {
         {activeTab === 'variations' && <VariationManager />}
         {activeTab === 'upload'     && <FacebookUploader />}
         {activeTab === 'dashboard'  && <TrackingDashboard />}
+        {activeTab === 'landing'    && <LandingPageGenerator />}
         {activeTab === 'settings'   && <CampaignSettings />}
       </main>
     </div>

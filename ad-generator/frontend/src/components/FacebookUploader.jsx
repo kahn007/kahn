@@ -12,6 +12,20 @@ function fbErrorMessage(msg) {
   return msg
 }
 
+function appendUtm(url, utmConfig) {
+  if (!url) return url
+  try {
+    const u = new URL(url)
+    if (utmConfig.source)   u.searchParams.set('utm_source', utmConfig.source)
+    if (utmConfig.medium)   u.searchParams.set('utm_medium', utmConfig.medium)
+    if (utmConfig.campaign) u.searchParams.set('utm_campaign', utmConfig.campaign)
+    if (utmConfig.content)  u.searchParams.set('utm_content', utmConfig.content)
+    return u.toString()
+  } catch {
+    return url
+  }
+}
+
 export default function FacebookUploader() {
   const {
     campaign, setCampaign,
@@ -20,6 +34,7 @@ export default function FacebookUploader() {
     uploadResults, setUploadResults,
     isUploading, setIsUploading,
     setActiveTab,
+    utmConfig,
   } = useAdStore()
 
   const [adSets, setAdSets]         = useState([])
@@ -64,11 +79,12 @@ export default function FacebookUploader() {
 
       for (let i = 0; i < toUpload.length; i += batchSize) {
         const batch = toUpload.slice(i, i + batchSize)
+        const utmLandingUrl = appendUtm(brandContext.landingPageUrl, utmConfig)
         const data = await pushAdsDraft({
           adAccountId: campaign.adAccountId || undefined,
           adSetId:     campaign.adSetId     || undefined,
           pageId:      campaign.pageId      || undefined,
-          variations:  batch.map((v) => ({ ...v, landingPageUrl: brandContext.landingPageUrl })),
+          variations:  batch.map((v) => ({ ...v, landingPageUrl: utmLandingUrl })),
         })
         allResults.push(...(data.results || []))
         setProgress({ done: Math.min(i + batchSize, toUpload.length), total: toUpload.length })
@@ -187,6 +203,14 @@ export default function FacebookUploader() {
                 <span className="text-gray-400">Status</span>
                 <span className="text-yellow-400">Will upload as PAUSED</span>
               </div>
+              {brandContext.landingPageUrl && (utmConfig.source || utmConfig.medium || utmConfig.campaign) && (
+                <div className="pt-2 border-t border-gray-800">
+                  <p className="text-gray-500 text-xs mb-1">Landing URL (with UTM)</p>
+                  <p className="text-gray-400 text-xs font-mono break-all leading-relaxed">
+                    {appendUtm(brandContext.landingPageUrl, utmConfig)}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

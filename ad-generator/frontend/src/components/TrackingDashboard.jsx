@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { BarChart3, TrendingUp, DollarSign, MousePointer, RefreshCw, Trophy, Target, Zap } from 'lucide-react'
+import { BarChart3, TrendingUp, DollarSign, MousePointer, RefreshCw, Trophy, Target, Zap, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAdStore } from '../store/adStore'
 import { getAnalytics } from '../lib/api'
@@ -38,8 +38,10 @@ function StatCard({ icon: Icon, label, value, sub, color = 'text-brand-400', cha
 
 export default function TrackingDashboard() {
   const { campaign, analytics, setAnalytics, isLoadingAnalytics, setIsLoadingAnalytics } = useAdStore()
-  const [dateRange, setDateRange] = useState('last_7d')
-  const [sortBy, setSortBy]       = useState('ctr')
+  const [dateRange, setDateRange]     = useState('last_7d')
+  const [customFrom, setCustomFrom]   = useState('')
+  const [customTo, setCustomTo]       = useState('')
+  const [sortBy, setSortBy]           = useState('ctr')
   const [emptyReason, setEmptyReason] = useState(null)
 
   const loadAnalytics = async () => {
@@ -47,9 +49,12 @@ export default function TrackingDashboard() {
     setEmptyReason(null)
     try {
       const ranges = {
-        last_7d:  { since: nDaysAgo(7),  until: today() },
-        last_14d: { since: nDaysAgo(14), until: today() },
-        last_30d: { since: nDaysAgo(30), until: today() },
+        last_7d:   { since: nDaysAgo(7),   until: today() },
+        last_14d:  { since: nDaysAgo(14),  until: today() },
+        last_30d:  { since: nDaysAgo(30),  until: today() },
+        last_90d:  { since: nDaysAgo(90),  until: today() },
+        last_365d: { since: nDaysAgo(365), until: today() },
+        custom:    { since: customFrom || nDaysAgo(30), until: customTo || today() },
       }
       const data = await getAnalytics(
         campaign.adAccountId || 'act_demo',
@@ -65,7 +70,9 @@ export default function TrackingDashboard() {
     }
   }
 
-  useEffect(() => { loadAnalytics() }, [dateRange])
+  useEffect(() => {
+    if (dateRange !== 'custom' || (customFrom && customTo)) loadAnalytics()
+  }, [dateRange, customFrom, customTo])
 
   const sorted = [...analytics].sort((a, b) => {
     const ai = a.insights || {}
@@ -94,15 +101,27 @@ export default function TrackingDashboard() {
           <p className="text-gray-400 text-sm mt-0.5">Track which ad variations are winning</p>
         </div>
         <div className="flex items-center gap-2">
-          <select
-            className="input w-auto"
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-          >
-            <option value="last_7d">Last 7 days</option>
-            <option value="last_14d">Last 14 days</option>
-            <option value="last_30d">Last 30 days</option>
-          </select>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              className="input w-auto"
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
+            >
+              <option value="last_7d">Last 7 days</option>
+              <option value="last_14d">Last 14 days</option>
+              <option value="last_30d">Last 30 days</option>
+              <option value="last_90d">Last 3 months</option>
+              <option value="last_365d">Last year</option>
+              <option value="custom">Custom range</option>
+            </select>
+            {dateRange === 'custom' && (
+              <>
+                <input type="date" className="input w-auto text-sm" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} />
+                <span className="text-gray-500 text-sm">to</span>
+                <input type="date" className="input w-auto text-sm" value={customTo} onChange={(e) => setCustomTo(e.target.value)} />
+              </>
+            )}
+          </div>
           <button className="btn-secondary" onClick={loadAnalytics} disabled={isLoadingAnalytics}>
             <RefreshCw size={14} className={isLoadingAnalytics ? 'animate-spin' : ''} />
             Refresh
@@ -139,6 +158,9 @@ export default function TrackingDashboard() {
           </div>
         </div>
       )}
+
+      {/* Winning Angle Tracker */}
+      {analytics.length > 0 && <AngleTracker analytics={analytics} />}
 
       {/* Table */}
       <div className="card p-0 overflow-hidden">
@@ -246,6 +268,54 @@ export default function TrackingDashboard() {
             )}
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+function AngleTracker({ analytics }) {
+  // Group analytics by angle, compute avg CTR per angle
+  const angleMap = {}
+  for (const ad of analytics) {
+    const angle = ad.angle || 'general'
+    const ctr = parseFloat(ad.insights?.ctr || 0)
+    if (!angleMap[angle]) angleMap[angle] = { total: 0, count: 0 }
+    angleMap[angle].total += ctr
+    angleMap[angle].count += 1
+  }
+  const angles = Object.entries(angleMap)
+    .map(([angle, { total, count }]) => ({ angle, avgCtr: total / count, count }))
+    .sort((a, b) => b.avgCtr - a.avgCtr)
+
+  const maxCtr = angles[0]?.avgCtr || 1
+
+  return (
+    <div className="card">
+      <h3 className="font-semibold text-white text-sm mb-4 flex items-center gap-2">
+        <Zap size={14} className="text-brand-500" />
+        Winning Angle Tracker
+        <span className="text-xs text-gray-500 font-normal">avg CTR by copy angle</span>
+      </h3>
+      <div className="space-y-3">
+        {angles.map(({ angle, avgCtr, count }, i) => (
+          <div key={angle} className="flex items-center gap-3">
+            <div className="w-24 flex-shrink-0 flex items-center gap-1.5">
+              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${ANGLE_COLORS[angle]?.split(' ')[0] || 'bg-gray-500'}`} />
+              <span className="text-gray-300 text-xs capitalize truncate">{angle.replace('_', ' ')}</span>
+            </div>
+            <div className="flex-1 bg-gray-800 rounded-full h-2 relative overflow-hidden">
+              <div
+                className={`h-2 rounded-full transition-all duration-500 ${ANGLE_COLORS[angle]?.split(' ')[0] || 'bg-gray-500'}`}
+                style={{ width: `${(avgCtr / maxCtr) * 100}%` }}
+              />
+            </div>
+            <div className="w-20 flex-shrink-0 flex items-center justify-end gap-2">
+              <span className="text-xs font-bold text-white">{avgCtr.toFixed(2)}%</span>
+              <span className="text-xs text-gray-600">({count})</span>
+              {i === 0 && <span className="text-yellow-400 text-xs">🏆</span>}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )

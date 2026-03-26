@@ -435,6 +435,212 @@ export async function generateAdVideo({ variation, brandContext, format = 'feed'
   throw new Error(`${model.label} timed out after 3 minutes — try again`)
 }
 
+// ── Kling image-to-video (animate) ───────────────────────────
+export async function animateAdImage({ variation, brandContext, format = 'feed', videoDuration = '5', onProgress }) {
+  const falKey = getKey('falai')
+  if (!falKey) throw new Error('Add your fal.ai key in Settings to animate images')
+  if (!variation.imageUrl) throw new Error('No image to animate — generate an image first')
+
+  const ratio = AD_ASPECT_RATIOS[format] || '16:9'
+  const endpoint = 'fal-ai/kling-video/v3/pro/image-to-video'
+  const prompt = `${variation.headline}. Subtle cinematic motion, photorealistic, professional brand ad. ${variation.primaryText?.substring(0, 80)}`
+
+  const submitRes = await fetch(`${FAL_QUEUE}/${endpoint}`, {
+    method: 'POST',
+    headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image_url: variation.imageUrl, prompt, duration: videoDuration, aspect_ratio: ratio, cfg_scale: 0.5 }),
+  })
+  const submitData = await submitRes.json()
+  if (!submitRes.ok) throw new Error(submitData?.detail || submitData?.message || `fal.ai status ${submitRes.status}`)
+
+  const { request_id, status_url, response_url } = submitData
+  const statusUrl = status_url || `${FAL_QUEUE}/${endpoint}/requests/${request_id}/status`
+  const resultUrl = response_url || `${FAL_QUEUE}/${endpoint}/requests/${request_id}`
+  onProgress?.(`Queued (id: ${String(request_id).substring(0, 8)}…)`)
+
+  for (let attempt = 0; attempt < 60; attempt++) {
+    await sleep(3000)
+    const statusRes = await fetch(`${statusUrl}?logs=1`, { headers: { Authorization: `Key ${falKey}` } })
+    const status = await statusRes.json()
+    if (status.status === 'COMPLETED') {
+      onProgress?.('Fetching video…')
+      const resultRes = await fetch(resultUrl, { headers: { Authorization: `Key ${falKey}` } })
+      const result = await resultRes.json()
+      const videoUrl = result.video?.url || result.output?.video?.url || result.videos?.[0]?.url || status.output?.video?.url
+      if (!videoUrl) throw new Error('Video URL missing in animate response')
+      onProgress?.('Done!')
+      return { videoUrl }
+    }
+    if (status.status === 'FAILED') throw new Error(`Animation failed: ${status.error || 'unknown'}`)
+    onProgress?.(`Animating… ${Math.min(Math.round((attempt / 40) * 100), 95)}% (${attempt * 3}s)`)
+  }
+  throw new Error('Animation timed out after 3 minutes')
+}
+
+// ── Perplexity — competitor spy ───────────────────────────────
+export async function spyCompetitorAds({ product, targetAudience, competitors = '' }) {
+  const key = getKey('perplexity')
+  if (!key) return { ads: getMockCompetitorAds(product), mock: true }
+
+  const competitorNote = competitors
+    ? `Focus on these specific brands: ${competitors}.`
+    : `Find the top 4-5 direct competitors for "${product}" targeting "${targetAudience}".`
+
+  const res = await fetch('https://api.perplexity.ai/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'sonar-pro',
+      messages: [
+        { role: 'system', content: 'You are a competitive intelligence analyst. Return valid JSON only, no markdown fences.' },
+        { role: 'user', content: `Research Facebook ads being run by competitors in the "${product}" space for "${targetAudience}". ${competitorNote}
+
+Search the Facebook Ad Library and recent marketing content.
+
+Return JSON:
+{
+  "competitors": [{"name":"","angle":"pain_point|outcome|social_proof|curiosity|authority|fomo","headline":"","hooks":["",""],"themes":["",""],"weaknesses":""}],
+  "winningAngles": ["",""],
+  "gapOpportunities": ["",""],
+  "suggestedDifferentiators": [""]
+}
+
+Find 3-5 competitors with 2-3 hooks each.` }
+      ],
+      max_tokens: 2000, temperature: 0.2,
+      search_domain_filter: ['facebook.com', 'adspy.com'],
+      search_recency_filter: 'month',
+    }),
+  })
+  if (!res.ok) throw new Error(`Perplexity: ${res.status} ${await res.text()}`)
+  const data = await res.json()
+  try {
+    return { ads: JSON.parse(data.choices[0].message.content) }
+  } catch {
+    return { ads: getMockCompetitorAds(product), mock: true }
+  }
+}
+
+// ── Claude — score copy variations ───────────────────────────
+export async function scoreCopyVariations(variations, brandContext) {
+  const key = getKey('anthropic')
+  if (!key) {
+    return variations.map((v) => ({ id: v.id, score: Math.floor(Math.random() * 3) + 6, rationale: 'Add Anthropic key for AI scoring' }))
+  }
+  const varList = variations.map((v, i) =>
+    `${i + 1}. Headline: "${v.headline}" | Angle: ${v.angle} | Copy: "${v.primaryText?.substring(0, 100)}"`
+  ).join('\n')
+
+  const prompt = `Rate each Facebook ad 1-10 on: hook strength, specificity, clarity, emotion, CTA alignment.
+Brand: ${brandContext.brandName} | Product: ${brandContext.product} | Audience: ${brandContext.targetAudience}
+
+Variations:
+${varList}
+
+Return ONLY JSON: [{"id_index":1,"score":8,"rationale":"max 12 words"}, ...]`
+
+  const raw = await callClaude(key, prompt)
+  try {
+    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    const scores = JSON.parse(cleaned)
+    return variations.map((v, i) => {
+      const s = scores.find((x) => x.id_index === i + 1) || { score: 7, rationale: '' }
+      return { id: v.id, score: s.score, rationale: s.rationale }
+    })
+  } catch {
+    return variations.map((v) => ({ id: v.id, score: 7, rationale: '' }))
+  }
+}
+
+// ── Claude — retargeting variants ────────────────────────────
+export async function generateRetargetingVariations(variations, brandContext) {
+  const key = getKey('anthropic')
+  const total = Math.min(variations.length, 10)
+
+  if (!key) {
+    return variations.slice(0, total).map((v, i) => buildVariationObject({
+      headline: 'Still thinking it over?',
+      primaryText: `You already know about ${brandContext.product}. Here is what most people realize just before they finally take action: the window closes. Others are moving forward right now.`,
+      description: 'Last chance',
+      cta: brandContext.cta || 'Learn More',
+      angle: 'fomo',
+      targetSegment: `retargeting — ${v.targetSegment || brandContext.targetAudience}`,
+    }, brandContext, v.format || 'feed', 1000 + i))
+  }
+
+  const varSummaries = variations.slice(0, total).map((v, i) =>
+    `${i + 1}. "${v.headline}" | angle: ${v.angle} | audience: ${v.targetSegment || brandContext.targetAudience}`
+  ).join('\n')
+
+  const prompt = `Rewrite these cold-traffic Facebook ads as RETARGETING ads for warm audiences who saw the brand but did not convert.
+
+Original ads:
+${varSummaries}
+
+Brand: ${brandContext.brandName} | Product: ${brandContext.product}
+
+Rules:
+- Open with acknowledgement they already saw this ("Still thinking about it?", "You left before the best part…")
+- Use urgency, scarcity, stronger social proof, or address the #1 objection
+- NEVER use em dashes (—) or en dashes (–)
+
+Return ONLY a JSON array with exactly ${total} objects:
+[{"headline":"max 40 chars","primaryText":"90-150 words retargeting copy","description":"max 25 chars","cta":"${brandContext.cta || 'Learn More'}","angle":"fomo|social_proof|authority|outcome","targetSegment":"retargeting — [audience]"}]`
+
+  const raw = await callClaude(key, prompt)
+  try {
+    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+    let parsed = JSON.parse(cleaned)
+    if (!Array.isArray(parsed)) parsed = parsed.variations || []
+    return parsed.map((item, i) => buildVariationObject(item, brandContext, variations[i]?.format || 'feed', 1000 + i))
+  } catch {
+    throw new Error('Failed to parse retargeting variations — try again')
+  }
+}
+
+// ── Claude — landing page generator ──────────────────────────
+export async function generateLandingPage({ variation, brandContext, insights }) {
+  const key = getKey('anthropic')
+  if (!key) throw new Error('Add your Anthropic key in Settings to generate landing pages')
+
+  const insightsSummary = insights ? `
+Pain points: ${insights.painPoints?.slice(0, 3).map((p) => p.text).join('; ')}
+Desired outcomes: ${insights.desiredOutcomes?.slice(0, 2).map((o) => o.text).join('; ')}
+Objections to address: ${insights.objections?.slice(0, 2).join('; ')}` : ''
+
+  const prompt = `You are a world-class CRO expert. Write a complete self-contained HTML landing page matching this Facebook ad exactly (message match is critical).
+
+AD:
+- Brand: ${brandContext.brandName}
+- Product: ${brandContext.product}
+- Target: ${variation.targetSegment || brandContext.targetAudience}
+- Headline: "${variation.headline}"
+- Copy: "${variation.primaryText}"
+- CTA: "${variation.cta || 'Get Started'}"
+- URL: ${brandContext.landingPageUrl || 'https://brayneai.com'}
+${insightsSummary}
+
+Page structure:
+1. Hero: mirror the ad headline + sub-headline + CTA button above fold
+2. Problem section: 3 bullet pain points
+3. Solution section: 3 benefit bullet points with icons
+4. Social proof: 3 realistic testimonials with name + role
+5. FAQ: 3 objection-busting questions
+6. Bottom CTA: strong close + button
+
+Requirements:
+- Pure HTML + inline CSS only, no external deps
+- Dark theme: bg #0f172a, accent #6366f1, text white
+- Mobile-first, single column, max-width 640px centered
+- CTA buttons link to: ${brandContext.landingPageUrl || '#'}
+- Large bold headlines, generous padding
+
+Return ONLY the HTML starting with <!DOCTYPE html>`
+
+  const raw = await callClaude(key, prompt)
+  return raw.trim()
+}
+
 // ── Claude helper ─────────────────────────────────────────────
 async function callClaude(key, prompt) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -570,6 +776,19 @@ function getMockAdSets() {
     { id: 'adset_001', name: 'Brayne AI — Cold Traffic', status: 'ACTIVE', daily_budget: '5000' },
     { id: 'adset_002', name: 'Brayne AI — Retargeting', status: 'ACTIVE', daily_budget: '2000' },
   ]
+}
+
+function getMockCompetitorAds(product) {
+  return {
+    competitors: [
+      { name: 'CompetitorA', angle: 'pain_point', headline: `Tired of ${product} that falls short?`, hooks: ['Get results in 24h', 'No contracts'], themes: ['Speed', 'Simplicity'], weaknesses: 'No social proof, generic copy targeting everyone' },
+      { name: 'CompetitorB', angle: 'social_proof', headline: '10,000+ businesses trust us', hooks: ['Join 10K+ users', 'As seen on Forbes'], themes: ['Scale', 'Authority'], weaknesses: 'Ignores specific audience pain points, no niche targeting' },
+      { name: 'CompetitorC', angle: 'outcome', headline: '3x your ROI guaranteed', hooks: ['ROI guarantee', '30-day free trial'], themes: ['ROI', 'Risk-free offer'], weaknesses: 'Vague promise with no specificity about how results are achieved' },
+    ],
+    winningAngles: ['social_proof', 'outcome'],
+    gapOpportunities: ['No competitor targets specific niches directly', 'Nobody shows before/after comparisons', 'No competitor addresses the time-savings angle'],
+    suggestedDifferentiators: [`Be hyper-specific about ${product} outcomes`, 'Target one niche at a time with personalized copy', 'Lead with speed — how fast results happen'],
+  }
 }
 
 function getMockAnalytics() {

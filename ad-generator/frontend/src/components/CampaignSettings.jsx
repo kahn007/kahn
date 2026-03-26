@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Key, Eye, EyeOff, CheckCircle, XCircle, Loader, ExternalLink, Settings, User, Globe, Zap, Shield } from 'lucide-react'
+import { Key, Eye, EyeOff, CheckCircle, XCircle, Loader, ExternalLink, Settings, User, Globe, Zap, Shield, Link } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAdStore } from '../store/adStore'
 import { getKeys, saveKeys, getSettings, saveSettings } from '../lib/keys'
@@ -94,7 +94,7 @@ const API_CONFIGS = [
 ]
 
 export default function CampaignSettings() {
-  const { brandContext, setBrandContext, campaign, setCampaign } = useAdStore()
+  const { brandContext, setBrandContext, campaign, setCampaign, utmConfig, setUtmConfig } = useAdStore()
 
   // Keys state
   const [keys, setKeys] = useState(() => getKeys())
@@ -287,6 +287,56 @@ export default function CampaignSettings() {
           </div>
         </div>
       </div>
+
+      {/* UTM Builder */}
+      <div className="card space-y-4">
+        <div className="flex items-start justify-between">
+          <h3 className="font-semibold text-white flex items-center gap-2 text-sm">
+            <Link size={14} className="text-brand-500" />
+            UTM Parameters
+          </h3>
+          <p className="text-xs text-gray-500">Auto-appended to landing URLs when pushing to Facebook</p>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs text-gray-400 mb-1.5 block">utm_source</label>
+            <input className="input" placeholder="facebook" value={utmConfig.source} onChange={(e) => setUtmConfig({ source: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 mb-1.5 block">utm_medium</label>
+            <input className="input" placeholder="paid_social" value={utmConfig.medium} onChange={(e) => setUtmConfig({ medium: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 mb-1.5 block">utm_campaign</label>
+            <input className="input" placeholder="summer_2025" value={utmConfig.campaign} onChange={(e) => setUtmConfig({ campaign: e.target.value })} />
+          </div>
+          <div>
+            <label className="text-xs text-gray-400 mb-1.5 block">utm_content</label>
+            <input className="input" placeholder="ad_variation" value={utmConfig.content} onChange={(e) => setUtmConfig({ content: e.target.value })} />
+          </div>
+        </div>
+        {brandContext.landingPageUrl && (
+          <div className="bg-gray-800/50 rounded-xl p-3">
+            <p className="text-xs text-gray-500 mb-1">Preview URL</p>
+            <p className="text-xs text-gray-300 font-mono break-all">
+              {buildUtmPreview(brandContext.landingPageUrl, utmConfig)}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
+}
+
+function buildUtmPreview(url, utmConfig) {
+  try {
+    const u = new URL(url)
+    if (utmConfig.source)   u.searchParams.set('utm_source', utmConfig.source)
+    if (utmConfig.medium)   u.searchParams.set('utm_medium', utmConfig.medium)
+    if (utmConfig.campaign) u.searchParams.set('utm_campaign', utmConfig.campaign)
+    if (utmConfig.content)  u.searchParams.set('utm_content', utmConfig.content)
+    return u.toString()
+  } catch {
+    return url
+  }
 }

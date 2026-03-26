@@ -43,6 +43,16 @@ export const useAdStore = create(
       analytics: [],
       isLoadingAnalytics: false,
 
+      // ── Hook library ──────────────────────────────────────────────
+      // Each hook: { id, text, angle, createdAt }
+      hookLibrary: [],
+
+      // ── UTM config ────────────────────────────────────────────────
+      utmConfig: { source: 'facebook', medium: 'paid_social', campaign: '', content: '' },
+
+      // ── Competitor swipe file ─────────────────────────────────────
+      competitorSwipeFile: null,
+
       // ── Active tab ────────────────────────────────────────────────
       activeTab: 'research',
 
@@ -119,18 +129,31 @@ export const useAdStore = create(
       setAnalytics: (analytics) => set({ analytics }),
       setIsLoadingAnalytics: (v) => set({ isLoadingAnalytics: v }),
 
+      // Hook library actions
+      addHook: (hook) => set((s) => ({ hookLibrary: [hook, ...s.hookLibrary] })),
+      removeHook: (id) => set((s) => ({ hookLibrary: s.hookLibrary.filter((h) => h.id !== id) })),
+
+      // UTM config
+      setUtmConfig: (updates) => set((s) => ({ utmConfig: { ...s.utmConfig, ...updates } })),
+
+      // Competitor swipe file
+      saveSwipeFile: (data) => set({ competitorSwipeFile: data }),
+
       setActiveTab: (tab) => set({ activeTab: tab }),
     }),
     {
       name: 'brayne-ai-store',
       partialize: (s) => ({
-        campaign:          s.campaign,
-        brandContext:      s.brandContext,
-        researchSessions:  s.researchSessions,
-        activeResearchId:  s.activeResearchId,
-        variations:        s.variations,
-        uploadResults:     s.uploadResults,
-        activeTab:         s.activeTab,
+        campaign:             s.campaign,
+        brandContext:         s.brandContext,
+        researchSessions:     s.researchSessions,
+        activeResearchId:     s.activeResearchId,
+        variations:           s.variations,
+        uploadResults:        s.uploadResults,
+        activeTab:            s.activeTab,
+        hookLibrary:          s.hookLibrary,
+        utmConfig:            s.utmConfig,
+        competitorSwipeFile:  s.competitorSwipeFile,
       }),
     }
   )
