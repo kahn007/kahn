@@ -194,36 +194,40 @@ const AD_ASPECT_RATIOS = {
 // ── Video model registry ──────────────────────────────────────
 export const VIDEO_MODELS = {
   kling3: {
-    id:       'kling3',
-    label:    'Kling 3.0',
-    sublabel: 'Best quality · ~90s',
-    endpoint: 'fal-ai/kling-video/v3/standard/text-to-video',
-    buildBody: (prompt, ratio) => ({ prompt, aspect_ratio: ratio, cfg_scale: 0.5, generate_audio: false }),
-    getUrl:   (r) => r.video?.url,
+    id:        'kling3',
+    label:     'Kling 3.0',
+    sublabel:  'Best quality',
+    durations: [{ value: '5', label: '5s' }, { value: '10', label: '10s' }],
+    endpoint:  'fal-ai/kling-video/v3/standard/text-to-video',
+    buildBody: (prompt, ratio, dur) => ({ prompt, aspect_ratio: ratio, duration: dur || '5', cfg_scale: 0.5, generate_audio: false }),
+    getUrl:    (r) => r.video?.url,
   },
   luma: {
-    id:       'luma',
-    label:    'Luma Ray 2',
-    sublabel: 'Cinematic · ~60s',
-    endpoint: 'fal-ai/luma-dream-machine/ray-2',
-    buildBody: (prompt, ratio) => ({ prompt, aspect_ratio: ratio, duration: '5s' }),
-    getUrl:   (r) => r.video?.url,
+    id:        'luma',
+    label:     'Luma Ray 2',
+    sublabel:  'Cinematic',
+    durations: [{ value: '5s', label: '5s' }, { value: '9s', label: '9s' }],
+    endpoint:  'fal-ai/luma-dream-machine/ray-2',
+    buildBody: (prompt, ratio, dur) => ({ prompt, aspect_ratio: ratio, duration: dur || '5s' }),
+    getUrl:    (r) => r.video?.url,
   },
   hailuo: {
-    id:       'hailuo',
-    label:    'Hailuo-02 Pro',
-    sublabel: '1080p · 6s · fastest',
-    endpoint: 'fal-ai/minimax/hailuo-02/pro/text-to-video',
-    buildBody: (prompt, ratio) => ({ prompt, aspect_ratio: ratio, duration: '6', prompt_optimizer: true }),
-    getUrl:   (r) => r.video?.url,
+    id:        'hailuo',
+    label:     'Hailuo-02 Pro',
+    sublabel:  '1080p · fastest',
+    durations: [{ value: '6', label: '6s' }, { value: '10', label: '10s' }],
+    endpoint:  'fal-ai/minimax/hailuo-02/pro/text-to-video',
+    buildBody: (prompt, ratio, dur) => ({ prompt, aspect_ratio: ratio, duration: dur || '6', prompt_optimizer: true }),
+    getUrl:    (r) => r.video?.url,
   },
   kling16: {
-    id:       'kling16',
-    label:    'Kling 1.6',
-    sublabel: 'Legacy fallback',
-    endpoint: 'fal-ai/kling-video/v1.6/standard/text-to-video',
-    buildBody: (prompt, ratio) => ({ prompt, duration: '5', aspect_ratio: ratio }),
-    getUrl:   (r) => r.video?.url,
+    id:        'kling16',
+    label:     'Kling 1.6',
+    sublabel:  'Legacy',
+    durations: [{ value: '5', label: '5s' }, { value: '10', label: '10s' }],
+    endpoint:  'fal-ai/kling-video/v1.6/standard/text-to-video',
+    buildBody: (prompt, ratio, dur) => ({ prompt, duration: dur || '5', aspect_ratio: ratio }),
+    getUrl:    (r) => r.video?.url,
   },
 }
 
@@ -327,12 +331,13 @@ export async function generateAdImage({ variation, brandContext, format = 'feed'
 }
 
 // ── Video generation — async queue (any model) ───────────────
-export async function generateAdVideo({ variation, brandContext, format = 'feed', onProgress, videoModelId = 'kling3' }) {
+export async function generateAdVideo({ variation, brandContext, format = 'feed', onProgress, videoModelId = 'kling3', videoDuration }) {
   const falKey = getKey('falai')
   if (!falKey) throw new Error('Add your fal.ai key in Settings to generate videos')
 
   const model = VIDEO_MODELS[videoModelId] || VIDEO_MODELS.kling3
   const ratio = AD_ASPECT_RATIOS[format] || '16:9'
+  const dur = videoDuration || model.durations[0].value
   const creativePrompt = await buildCreativePrompt(variation, brandContext, format, 'video')
 
   // 1. Submit to queue
@@ -341,7 +346,7 @@ export async function generateAdVideo({ variation, brandContext, format = 'feed'
     const submitRes = await fetch(`${FAL_QUEUE}/${model.endpoint}`, {
       method: 'POST',
       headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(model.buildBody(creativePrompt, ratio)),
+      body: JSON.stringify(model.buildBody(creativePrompt, ratio, dur)),
     })
     submitData = await submitRes.json()
     if (!submitRes.ok) {

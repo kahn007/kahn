@@ -16,7 +16,7 @@ const ANGLE_COLORS = {
 }
 
 // ── Creative Mix selector ─────────────────────────────────────
-function CreativeMix({ total, imageCount, videoCount, videoModelId, onChange, onModelChange }) {
+function CreativeMix({ total, imageCount, videoCount, videoModelId, videoDuration, onChange, onModelChange, onDurationChange }) {
   const PRESETS = [
     { label: 'All Images',  images: total, videos: 0 },
     { label: `${total - 1}+1`,        images: Math.max(total - 1, 0), videos: Math.min(1, total) },
@@ -115,7 +115,7 @@ function CreativeMix({ total, imageCount, videoCount, videoModelId, onChange, on
           <div className="relative">
             <select
               value={videoModelId}
-              onChange={(e) => onModelChange(e.target.value)}
+              onChange={(e) => { onModelChange(e.target.value); onDurationChange(VIDEO_MODELS[e.target.value]?.durations[0]?.value) }}
               className="w-full appearance-none bg-gray-700 border border-gray-600 text-white text-xs rounded-lg px-2.5 py-1.5 pr-6 cursor-pointer focus:outline-none focus:border-teal-500"
             >
               {Object.values(VIDEO_MODELS).map((m) => (
@@ -123,6 +123,22 @@ function CreativeMix({ total, imageCount, videoCount, videoModelId, onChange, on
               ))}
             </select>
             <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </div>
+          {/* Duration picker */}
+          <div className="flex gap-1.5">
+            {(VIDEO_MODELS[videoModelId] || VIDEO_MODELS.kling3).durations.map((d) => (
+              <button
+                key={d.value}
+                onClick={() => onDurationChange(d.value)}
+                className={`flex-1 py-1 rounded-lg text-xs font-semibold transition-all border ${
+                  videoDuration === d.value
+                    ? 'bg-teal-500/20 border-teal-500/50 text-teal-300'
+                    : 'bg-gray-700 border-gray-600 text-gray-400 hover:text-white'
+                }`}
+              >
+                {d.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -165,8 +181,9 @@ export default function VariationManager() {
   const [bulkLog, setBulkLog]         = useState([])
   const [bulkDone, setBulkDone]       = useState(0)
   const [bulkTotal, setBulkTotal]     = useState(0)
-  const [showMixer, setShowMixer]     = useState(false)
+  const [showMixer, setShowMixer]       = useState(false)
   const [videoModelId, setVideoModelId] = useState('kling3')
+  const [videoDuration, setVideoDuration] = useState('5')
 
   // Creative mix
   const targets = selectedVariations.length > 0
@@ -209,7 +226,7 @@ export default function VariationManager() {
     try {
       const result = await generateAdVideo({
         variation: v, brandContext, format: v.format || 'feed',
-        videoModelId,
+        videoModelId, videoDuration,
         onProgress: (label) => setCard(v.id, { type: 'video', label }),
       })
       updateVariation(v.id, { videoUrl: result.videoUrl, imageUrl: null, creativePrompt: result.creativePrompt })
@@ -260,7 +277,7 @@ export default function VariationManager() {
       try {
         const result = await generateAdVideo({
           variation: v, brandContext, format: v.format || 'feed',
-          videoModelId,
+          videoModelId, videoDuration,
           onProgress: (label) => log(`   ${label}`),
         })
         updateVariation(v.id, { videoUrl: result.videoUrl, imageUrl: null, creativePrompt: result.creativePrompt })
@@ -350,8 +367,10 @@ export default function VariationManager() {
             imageCount={clampedImages}
             videoCount={clampedVideos}
             videoModelId={videoModelId}
+            videoDuration={videoDuration}
             onChange={(m) => setMix(m)}
             onModelChange={setVideoModelId}
+            onDurationChange={setVideoDuration}
           />
         )}
 
