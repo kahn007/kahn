@@ -52,7 +52,7 @@ export default function TrackingDashboard() {
     last_30d:  'last_30d',
     last_90d:  'last_90d',
     last_365d: 'last_year',
-    alltime:   'lifetime',
+    alltime:   'maximum',
   }
 
   // Build a map: facebookAdId → variation angle (from local uploadResults + variations)
