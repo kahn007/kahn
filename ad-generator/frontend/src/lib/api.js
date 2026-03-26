@@ -157,7 +157,9 @@ export async function getFacebookAdSets(adAccountId) {
 }
 
 // ── Facebook — analytics ──────────────────────────────────────
-export async function getAnalytics(adAccountId, { since, until } = {}) {
+// datePreset: Facebook date_preset value (last_7d, last_14d, last_30d, last_90d, last_year, lifetime)
+// since/until: YYYY-MM-DD strings for custom ranges
+export async function getAnalytics(adAccountId, { since, until, datePreset } = {}) {
   const token = getKey('facebook')
   if (!token) return { data: getMockAnalytics(), mock: true }
 
@@ -167,31 +169,47 @@ export async function getAnalytics(adAccountId, { since, until } = {}) {
   try {
     // 1. Fetch all ads (names + statuses) — no date filter so we always see every ad
     const adsRes = await fetch(
-      `${FB}/${accountId}/ads?fields=id,name,status&limit=200&access_token=${token}`
+      `${FB}/${accountId}/ads?fields=id,name,status&limit=500&access_token=${token}`
     )
     const adsData = await adsRes.json()
 
     if (adsData.error) {
-      if (adsData.error.code === 100 || adsData.error.code === 200) {
-        return { data: [], empty: true, errorMessage: adsData.error.message }
-      }
-      throw new Error(adsData.error.message)
+      // Permissions / token errors → surface clearly
+      throw new Error(`Facebook Ads error (${adsData.error.code}): ${adsData.error.message}`)
     }
 
     const ads = adsData.data || []
     if (ads.length === 0) return { data: [], empty: true }
 
-    // 2. Fetch metrics via the /insights endpoint at ad level (correct approach)
-    //    time_range filters which period's metrics to show, but all ads are still listed above
-    const insightsParams = new URLSearchParams({
+    // 2. Fetch metrics via the /insights endpoint at ad level
+    //    Prefer date_preset (more reliable) over time_range JSON for standard periods
+    const insightsQuery = new URLSearchParams({
       level: 'ad',
       fields: 'ad_id,ad_name,impressions,clicks,spend,ctr,cpc,reach',
-      time_range: JSON.stringify({ since, until }),
-      limit: 200,
+      limit: 500,
       access_token: token,
     })
-    const insightsRes = await fetch(`${FB}/${accountId}/insights?${insightsParams}`)
+    if (datePreset) {
+      insightsQuery.set('date_preset', datePreset)
+    } else if (since && until) {
+      // Build time_range manually to avoid double-encoding issues with URLSearchParams
+      insightsQuery.set('time_range', `{"since":"${since}","until":"${until}"}`)
+    } else {
+      insightsQuery.set('date_preset', 'last_30d')
+    }
+
+    const insightsRes = await fetch(`${FB}/${accountId}/insights?${insightsQuery}`)
     const insightsData = await insightsRes.json()
+
+    if (insightsData.error) {
+      // Insights error — still return the ad list with 0 metrics but surface the reason
+      console.error('Facebook Insights error:', insightsData.error)
+      const merged = ads.map((ad) => ({
+        id: ad.id, name: ad.name, status: ad.status, angle: 'general',
+        insights: { impressions: '0', clicks: '0', spend: '0', ctr: '0', cpc: '0', reach: '0' },
+      }))
+      return { data: merged, insightsError: insightsData.error.message }
+    }
 
     // Build a quick-lookup map by ad_id
     const insightsMap = {}

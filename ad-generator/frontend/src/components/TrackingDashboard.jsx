@@ -43,6 +43,17 @@ export default function TrackingDashboard() {
   const [customTo, setCustomTo]       = useState('')
   const [sortBy, setSortBy]           = useState('spend')
   const [emptyReason, setEmptyReason] = useState(null)
+  const [insightsError, setInsightsError] = useState(null)
+
+  // Map our date range keys → Facebook date_preset values (more reliable than time_range JSON)
+  const FB_PRESET_MAP = {
+    last_7d:   'last_7d',
+    last_14d:  'last_14d',
+    last_30d:  'last_30d',
+    last_90d:  'last_90d',
+    last_365d: 'last_year',
+    alltime:   'lifetime',
+  }
 
   // Build a map: facebookAdId → variation angle (from local uploadResults + variations)
   const angleByFbId = useMemo(() => {
@@ -58,20 +69,20 @@ export default function TrackingDashboard() {
   const loadAnalytics = async () => {
     setIsLoadingAnalytics(true)
     setEmptyReason(null)
+    setInsightsError(null)
     try {
-      const ranges = {
-        last_7d:   { since: nDaysAgo(7),   until: today() },
-        last_14d:  { since: nDaysAgo(14),  until: today() },
-        last_30d:  { since: nDaysAgo(30),  until: today() },
-        last_90d:  { since: nDaysAgo(90),  until: today() },
-        last_365d: { since: nDaysAgo(365), until: today() },
-        alltime:   { since: '2020-01-01',  until: today() },
-        custom:    { since: customFrom || nDaysAgo(30), until: customTo || today() },
-      }
+      // Use Facebook date_preset for standard ranges (most reliable)
+      // Fall back to since/until for custom ranges
+      const datePreset = FB_PRESET_MAP[dateRange]
+      const customRange = dateRange === 'custom'
+        ? { since: customFrom || nDaysAgo(30), until: customTo || today() }
+        : {}
+
       const data = await getAnalytics(
         campaign.adAccountId || 'act_demo',
-        ranges[dateRange]
+        { datePreset, ...customRange }
       )
+
       // Enrich each ad with angle from local store (where we have it)
       const enriched = (data.data || []).map((ad) => ({
         ...ad,
@@ -80,6 +91,7 @@ export default function TrackingDashboard() {
       setAnalytics(enriched)
       if (data.mock)  setEmptyReason('no_token')
       if (data.empty) setEmptyReason('no_ads')
+      if (data.insightsError) setInsightsError(data.insightsError)
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -151,6 +163,17 @@ export default function TrackingDashboard() {
           </button>
         </div>
       </div>
+
+      {/* Insights permission warning */}
+      {insightsError && (
+        <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-xl p-4 text-sm">
+          <p className="text-yellow-300 font-semibold mb-1">⚠️ Metrics unavailable</p>
+          <p className="text-yellow-400/80 text-xs">{insightsError}</p>
+          <p className="text-yellow-400/60 text-xs mt-1">
+            Make sure your Facebook token has <strong>ads_read</strong> permission and the token hasn't expired.
+          </p>
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -44,7 +44,7 @@ export default function CopyGenerator() {
   const [isRetargeting, setIsRetargeting] = useState(false)
   const [newHook, setNewHook]         = useState('')
   const [injectHook, setInjectHook]   = useState(null)
-  const [useCompetitorIntel, setUseCompetitorIntel] = useState(!!competitorSwipeFile)
+  const [useCompetitorIntel, setUseCompetitorIntel] = useState(true)
 
   const toggleFormat = (id) => {
     setFormats((f) => f.includes(id) ? (f.length > 1 ? f.filter((x) => x !== id) : f) : [...f, id])
@@ -283,27 +283,40 @@ export default function CopyGenerator() {
               </div>
             )}
 
-            {/* Competitor intel toggle */}
-            {competitorSwipeFile && (
-              <div
-                className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                  useCompetitorIntel
-                    ? 'bg-red-900/10 border-red-800/50'
-                    : 'bg-gray-800/40 border-gray-700 opacity-60'
-                }`}
-                onClick={() => setUseCompetitorIntel((v) => !v)}
-              >
-                <div className={`w-4 h-4 rounded flex-shrink-0 mt-0.5 flex items-center justify-center border transition-colors ${useCompetitorIntel ? 'bg-red-500 border-red-500' : 'border-gray-600'}`}>
-                  {useCompetitorIntel && <span className="text-white text-[10px] font-bold">✓</span>}
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">Use competitor intelligence</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    Claude will exploit {competitorSwipeFile.gapOpportunities?.length || 0} market gaps and bias toward winning angles ({competitorSwipeFile.winningAngles?.join(', ')})
-                  </p>
-                </div>
+            {/* Competitor intel toggle — always shown, greyed when no swipe file */}
+            <div
+              className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${
+                competitorSwipeFile
+                  ? useCompetitorIntel
+                    ? 'bg-orange-900/15 border-orange-700/60 cursor-pointer'
+                    : 'bg-gray-800/40 border-gray-700 opacity-60 cursor-pointer'
+                  : 'bg-gray-800/20 border-gray-800 opacity-50 cursor-default'
+              }`}
+              onClick={() => competitorSwipeFile && setUseCompetitorIntel((v) => !v)}
+            >
+              <div className={`w-4 h-4 rounded flex-shrink-0 mt-0.5 flex items-center justify-center border transition-colors ${
+                competitorSwipeFile && useCompetitorIntel ? 'bg-orange-500 border-orange-500' : 'border-gray-600'
+              }`}>
+                {competitorSwipeFile && useCompetitorIntel && <span className="text-white text-[10px] font-bold">✓</span>}
               </div>
-            )}
+              <div>
+                <p className="text-sm font-semibold text-white flex items-center gap-2">
+                  Competitor intelligence
+                  {competitorSwipeFile && useCompetitorIntel && (
+                    <span className="text-[10px] bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded px-1.5 py-0.5 font-medium">ON</span>
+                  )}
+                </p>
+                {competitorSwipeFile ? (
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Exploiting {competitorSwipeFile.gapOpportunities?.length || 0} market gaps · Winning angles: {competitorSwipeFile.winningAngles?.slice(0,3).join(', ')}
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Run Competitor Spy in Research first to unlock this
+                  </p>
+                )}
+              </div>
+            </div>
 
             {/* Generate button */}
             {isGenerating ? (
