@@ -610,50 +610,221 @@ Return ONLY a JSON array with exactly ${total} objects:
 }
 
 // ── Claude — landing page generator ──────────────────────────
-export async function generateLandingPage({ variation, brandContext, insights }) {
+export async function generateLandingPage({ variation, brandContext, insights, competitorIntel }) {
   const key = getKey('anthropic')
   if (!key) throw new Error('Add your Anthropic key in Settings to generate landing pages')
 
-  const insightsSummary = insights ? `
-Pain points: ${insights.painPoints?.slice(0, 3).map((p) => p.text).join('; ')}
-Desired outcomes: ${insights.desiredOutcomes?.slice(0, 2).map((o) => o.text).join('; ')}
-Objections to address: ${insights.objections?.slice(0, 2).join('; ')}` : ''
+  const painPoints = insights?.painPoints?.slice(0, 4).map((p) => p.text) || [
+    `Wasting hours on ${brandContext.product} with no results`,
+    `No idea which approach actually converts`,
+    `Spending money without knowing what works`,
+    `Falling behind while competitors scale`,
+  ]
+  const outcomes = insights?.desiredOutcomes?.slice(0, 3).map((o) => o.text) || [
+    `Get measurable results fast`,
+    `Know exactly what works before spending big`,
+    `Scale confidently`,
+  ]
+  const objections = insights?.objections?.slice(0, 3) || [
+    `Is this right for my situation?`,
+    `How long does it take to see results?`,
+    `What if it doesn't work for me?`,
+  ]
+  const triggers = insights?.triggerPhrases?.slice(0, 4) || []
 
-  const prompt = `You are a world-class CRO expert. Write a complete self-contained HTML landing page matching this Facebook ad exactly (message match is critical).
+  const competitorEdge = competitorIntel ? `
+COMPETITOR INTELLIGENCE — use to position us as the superior choice:
+- Market gaps our page should exploit: ${competitorIntel.gapOpportunities?.join('; ')}
+- Our differentiators to highlight prominently: ${competitorIntel.suggestedDifferentiators?.join('; ')}
+- Competitor weaknesses to contrast against: ${competitorIntel.competitors?.map((c) => c.weaknesses).filter(Boolean).join('; ')}` : ''
 
-AD:
-- Brand: ${brandContext.brandName}
-- Product: ${brandContext.product}
-- Target: ${variation.targetSegment || brandContext.targetAudience}
-- Headline: "${variation.headline}"
-- Copy: "${variation.primaryText}"
-- CTA: "${variation.cta || 'Get Started'}"
-- URL: ${brandContext.landingPageUrl || 'https://brayneai.com'}
-${insightsSummary}
+  const ctaUrl = brandContext.landingPageUrl || '#'
+  const brand = brandContext.brandName || 'Our Solution'
+  const audience = variation.targetSegment || brandContext.targetAudience || 'professionals'
 
-Page structure:
-1. Hero: mirror the ad headline + sub-headline + CTA button above fold
-2. Problem section: 3 bullet pain points
-3. Solution section: 3 benefit bullet points with icons
-4. Social proof: 3 realistic testimonials with name + role
-5. FAQ: 3 objection-busting questions
-6. Bottom CTA: strong close + button
+  const prompt = `You are a senior conversion-rate optimization expert and award-winning web designer. Your landing pages generate 8-15% conversion rates. You are about to build a complete, pixel-perfect, professional HTML landing page.
 
-Requirements:
-- Pure HTML + inline CSS only, no external deps
-- Dark theme: bg #0f172a, accent #6366f1, text white
-- Mobile-first, single column, max-width 640px centered
-- CTA buttons link to: ${brandContext.landingPageUrl || '#'}
-- Large bold headlines, generous padding
+═══════════════════════════════════════════════════════
+AD TO MATCH (message-match is the #1 conversion factor)
+═══════════════════════════════════════════════════════
+Brand: ${brand}
+Website: ${brandContext.website || ctaUrl}
+Product: ${brandContext.product}
+Target audience: ${audience}
+Ad headline: "${variation.headline}"
+Ad copy: "${variation.primaryText}"
+CTA button text: "${variation.cta || 'Get Started'}"
+CTA URL: ${ctaUrl}
+Ad angle: ${variation.angle || 'general'}
 
-Return ONLY the HTML starting with <!DOCTYPE html>`
+AUDIENCE INTELLIGENCE:
+Pain points: ${painPoints.join(' | ')}
+Desired outcomes: ${outcomes.join(' | ')}
+Objections to handle: ${objections.join(' | ')}
+${triggers.length ? `Trigger phrases that resonate: ${triggers.join(', ')}` : ''}
+${competitorEdge}
 
-  const raw = await callClaude(key, prompt)
-  return raw.trim()
+═══════════════════════════════════════
+MANDATORY DESIGN SYSTEM (follow exactly)
+═══════════════════════════════════════
+Typography: Load Inter from Google Fonts (weights 400, 500, 600, 700, 800, 900)
+Root CSS variables:
+  --bg: #080c14
+  --bg2: #0d1422
+  --bg3: #131929
+  --border: rgba(255,255,255,0.07)
+  --accent: #6c63ff
+  --accent2: #8b5cf6
+  --accent-glow: rgba(108,99,255,0.25)
+  --text: #f1f5f9
+  --muted: #94a3b8
+  --success: #10b981
+  --radius: 16px
+  --radius-sm: 10px
+
+Max page width: 1100px, centered with auto margins
+Section vertical padding: 100px top/bottom (60px mobile)
+All body copy: font-size 17px, line-height 1.7, color var(--muted)
+All primary headings: font-weight 800, color var(--text), letter-spacing -0.02em
+
+═══════════════════════════════════════════════════════
+SECTIONS — BUILD ALL OF THESE IN ORDER
+═══════════════════════════════════════════════════════
+
+1. STICKY NAVBAR
+   - Fixed top, backdrop-filter blur(20px), bg rgba(8,12,20,0.85)
+   - Left: logo mark (colored div) + brand name in white font-weight 700
+   - Right: one ghost link "Features" + one solid accent CTA button "${variation.cta || 'Get Started'}"
+   - No border bottom, subtle box-shadow
+
+2. HERO SECTION (above-the-fold, full viewport height optional)
+   - Announcement pill badge at top: small rounded pill, gradient border, text like "New · [short benefit]"
+   - H1 headline: MUST mirror the ad headline closely. 52px desktop / 36px mobile. Font-weight 900. White.
+   - Support headline: expand on the ad's promise in 1 sentence, 22px, --muted color
+   - Short 2-line paragraph reinforcing the specific pain point from the ad copy
+   - TWO buttons side by side: primary solid accent + secondary ghost (e.g. "See how it works →")
+   - Social proof micro-line below buttons: avatar stack (5 colored circles with initials) + "2,400+ ${audience} already using this"
+   - Decorative: large blurred radial gradient glow behind the headline (accent color, opacity 0.15)
+
+3. TRUST BAR (full-width strip)
+   - Subtle bg var(--bg2), border top + bottom var(--border)
+   - "Trusted by teams at" label in --muted, then 5 company names in muted white, font-weight 600
+   - Use plausible company names relevant to ${audience}
+
+4. PAIN / PROBLEM SECTION
+   - Section label: small uppercase tracking-widest text in accent color: "THE PROBLEM"
+   - H2: "You already know the struggle." — make it feel personal to ${audience}
+   - 4 pain point cards in a 2×2 grid (1-col on mobile):
+     Each card: rounded-2xl, bg var(--bg3), border var(--border), padding 28px
+     Icon: large emoji relevant to the pain (❌, 😤, 💸, ⏰ etc.)
+     Bold title (1 line) + supporting sentence
+     Use the pain points: ${painPoints.slice(0, 4).join(' | ')}
+
+5. SOLUTION / FEATURES SECTION
+   - Section label: "THE SOLUTION"
+   - H2: Position ${brand} as the answer — bold and specific
+   - Subheadline: one sentence promise
+   - 3 feature cards in a row (stack on mobile), each with:
+     Icon block: 52px square, rounded-xl, gradient accent bg, white emoji or symbol inside
+     Feature title: font-weight 700, 18px
+     Feature body: 2-3 sentences, specific benefit, --muted color
+     Small "Learn more →" link in accent color
+   - Use the desired outcomes: ${outcomes.join(' | ')}
+
+6. HOW IT WORKS (numbered steps)
+   - H2: "Up and running in minutes"
+   - 3 horizontal steps on desktop (vertical on mobile), connected by dashed line
+   - Each step: large number (80px, very light opacity, accent color), bold step title, 1-sentence description
+   - Steps should reflect the actual product workflow
+
+7. SOCIAL PROOF — TESTIMONIALS
+   - Section label: "WHAT THEY'RE SAYING"
+   - H2: Results from real ${audience}
+   - 3 testimonial cards in a row (stack on mobile):
+     Card bg: var(--bg3), border var(--border), rounded-2xl, padding 32px
+     Top: 5 gold stars (★★★★★) in gold color (#f59e0b)
+     Quote: italic, 16px, --text color, specific and credible (mention product outcomes with numbers)
+     Bottom: avatar circle (48px, gradient bg, white initials) + Name (bold) + Role, Company
+   - FABRICATE realistic names, roles, and specific outcome-driven quotes relevant to ${audience}
+   - One quote must mention a specific number (e.g. "3x", "47%", "$12k", "saved 8 hours")
+
+8. COMPARISON TABLE
+   - H2: "Why ${brand} vs the alternatives"
+   - Table with 4 rows of comparison criteria
+   - Columns: Feature | ${brand} (checkmark ✓ in green) | Typical Alternatives (✗ in muted red)
+   - Make the differentiators specific and meaningful to ${audience}
+   - Accent the ${brand} column header with a "Recommended" badge
+
+9. FAQ SECTION
+   - H2: "Frequently Asked Questions"
+   - 4 FAQ items with smooth JavaScript accordion (click to expand/collapse)
+   - Each item: border-bottom separator, question in white font-weight 600, answer in --muted
+   - Animated chevron rotation on open
+   - Cover the objections: ${objections.join(' | ')}
+   - Plus one more common question
+
+10. FINAL CTA SECTION
+    - Full-width section with radial gradient background (accent color glow)
+    - H2: Urgent, specific call to action (not generic — tie it to the ad's promise)
+    - Short paragraph: what happens after they click
+    - Large primary CTA button (min-width 260px, height 56px) + ghost secondary
+    - Small trust line below: "No credit card required · Cancel anytime" or similar
+    - Subtle decorative elements (blurred circles in background)
+
+11. FOOTER
+    - bg var(--bg2), border-top var(--border), padding 48px 0
+    - Left: logo + brand name + tagline (1 line, --muted)
+    - Center: 3-4 nav links (Features, Pricing, About, Contact) in --muted
+    - Right: copyright "© 2025 ${brand}. All rights reserved."
+
+═══════════════════════════════════════
+JAVASCRIPT REQUIREMENTS
+═══════════════════════════════════════
+1. FAQ accordion: click expands/collapses answer, chevron rotates 180deg, smooth max-height transition
+2. Scroll animations: use IntersectionObserver — add class 'visible' to elements with class 'reveal' when they enter viewport. CSS: .reveal { opacity:0; transform:translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease } .reveal.visible { opacity:1; transform:none }
+3. Smooth scroll: html { scroll-behavior: smooth }
+4. Sticky nav shadow: add box-shadow on scroll past 60px
+
+═══════════════════════════════════════
+CSS REQUIREMENTS
+═══════════════════════════════════════
+- Full reset: *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+- body: font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased
+- Primary button: gradient accent bg, white text, font-weight 600, padding 14px 32px, border-radius 12px, no border, cursor pointer, transition all 0.2s, hover: brightness(1.1) translateY(-1px), box-shadow accent glow
+- Ghost button: transparent bg, 1.5px solid rgba(255,255,255,0.2), white text, same padding/radius, hover: border-color white
+- All section headings: add 'reveal' class for animation
+- All cards: add 'reveal' class for animation
+- Grid layouts use CSS Grid (not flexbox for multi-column)
+- Responsive: single breakpoint @media(max-width: 768px) collapses all grids to 1 column
+
+CRITICAL RULES:
+- Return ONLY the complete HTML. Start immediately with <!DOCTYPE html>. Zero explanation, zero markdown.
+- The page must look like it was built by a $50,000/month agency. Every detail matters.
+- CTA URL for ALL buttons and links: ${ctaUrl}
+- The hero headline MUST closely mirror: "${variation.headline}"
+- The tone MUST match the ad angle (${variation.angle}) throughout
+- Include Google Fonts link tag in <head>
+- All CSS in one <style> tag in <head>
+- All JS in one <script> tag before </body>
+- No external resources except Google Fonts`
+
+  // Use higher token limit for landing pages
+  const raw = await callClaudeLarge(key, prompt)
+  const cleaned = raw.replace(/^```html\n?/i, '').replace(/\n?```$/i, '').trim()
+  return cleaned
 }
 
-// ── Claude helper ─────────────────────────────────────────────
+// ── Claude helpers ────────────────────────────────────────────
 async function callClaude(key, prompt) {
+  return _claudeCall(key, prompt, 4096)
+}
+
+// Higher token limit for landing page generation
+async function callClaudeLarge(key, prompt) {
+  return _claudeCall(key, prompt, 16000)
+}
+
+async function _claudeCall(key, prompt, maxTokens) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -664,7 +835,7 @@ async function callClaude(key, prompt) {
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
+      max_tokens: maxTokens,
       messages: [{ role: 'user', content: prompt }],
     }),
   })

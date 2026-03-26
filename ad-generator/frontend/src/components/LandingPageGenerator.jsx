@@ -4,14 +4,26 @@ import toast from 'react-hot-toast'
 import { useAdStore } from '../store/adStore'
 import { generateLandingPage } from '../lib/api'
 
+const LOADING_MESSAGES = [
+  'Writing hero section…',
+  'Crafting pain point section…',
+  'Building feature grid…',
+  'Writing testimonials…',
+  'Building FAQ accordion…',
+  'Polishing final CTA…',
+  'Adding animations and CSS…',
+  'Almost there…',
+]
+
 export default function LandingPageGenerator() {
-  const { variations, brandContext, researchSessions, activeResearchId } = useAdStore()
+  const { variations, brandContext, researchSessions, activeResearchId, competitorSwipeFile } = useAdStore()
   const activeSession = researchSessions.find((r) => r.id === activeResearchId)
   const insights = activeSession?.insights || null
 
   const [selectedId, setSelectedId] = useState(variations[0]?.id || '')
   const [html, setHtml] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [loadingMsg, setLoadingMsg] = useState('')
   const [previewMode, setPreviewMode] = useState('preview') // 'preview' | 'code'
 
   const selectedVariation = variations.find((v) => v.id === selectedId)
@@ -20,14 +32,30 @@ export default function LandingPageGenerator() {
     if (!selectedVariation) { toast.error('Select an ad variation first'); return }
     setIsGenerating(true)
     setHtml('')
+    setLoadingMsg(LOADING_MESSAGES[0])
+
+    // Cycle through loading messages while generating
+    let msgIdx = 0
+    const msgInterval = setInterval(() => {
+      msgIdx = Math.min(msgIdx + 1, LOADING_MESSAGES.length - 1)
+      setLoadingMsg(LOADING_MESSAGES[msgIdx])
+    }, 5000)
+
     try {
-      const result = await generateLandingPage({ variation: selectedVariation, brandContext, insights })
+      const result = await generateLandingPage({
+        variation: selectedVariation,
+        brandContext,
+        insights,
+        competitorIntel: competitorSwipeFile || null,
+      })
       setHtml(result)
       toast.success('Landing page generated!')
     } catch (err) {
       toast.error(err.message)
     } finally {
+      clearInterval(msgInterval)
       setIsGenerating(false)
+      setLoadingMsg('')
     }
   }
 
@@ -119,7 +147,20 @@ export default function LandingPageGenerator() {
             </button>
 
             {isGenerating && (
-              <p className="text-xs text-gray-500 text-center">Claude is writing your landing page… ~30s</p>
+              <div className="space-y-2">
+                <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
+                  <div className="h-1.5 bg-brand-500 rounded-full animate-pulse" style={{ width: '60%' }} />
+                </div>
+                <p className="text-xs text-gray-500 text-center">{loadingMsg}</p>
+                <p className="text-xs text-gray-600 text-center">Building full page with 11 sections… ~45s</p>
+              </div>
+            )}
+
+            {competitorSwipeFile && (
+              <p className="text-xs text-green-400 flex items-center gap-1.5">
+                <span>✓</span>
+                Competitor intel will be used to position against alternatives
+              </p>
             )}
           </div>
 
@@ -136,16 +177,20 @@ export default function LandingPageGenerator() {
           )}
 
           <div className="card space-y-2">
-            <h3 className="font-semibold text-white text-sm">What you get</h3>
+            <h3 className="font-semibold text-white text-sm">11 sections included</h3>
             <ul className="space-y-1.5 text-xs text-gray-400">
               {[
-                'Hero section matching your ad exactly',
-                'Pain points + solution benefits',
-                '3 social proof testimonials',
-                'FAQ section (handles objections)',
-                'Strong bottom CTA',
-                'Self-contained HTML — no dependencies',
-                'Dark theme with your brand colors',
+                'Sticky navbar with CTA',
+                'Hero with social proof micro-line',
+                'Trust bar (company logos)',
+                'Pain/problem 2×2 card grid',
+                'Solution feature grid (3 cards)',
+                'How it works (numbered steps)',
+                '3 testimonials with star ratings',
+                'Competitor comparison table',
+                'FAQ with JS accordion',
+                'Final CTA with gradient section',
+                'Footer',
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-1.5">
                   <span className="text-brand-400 mt-0.5">✓</span>
