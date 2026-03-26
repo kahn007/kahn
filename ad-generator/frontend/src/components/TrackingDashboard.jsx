@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { BarChart3, TrendingUp, DollarSign, MousePointer, RefreshCw, Trophy, Target, Zap, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAdStore } from '../store/adStore'
@@ -37,12 +37,23 @@ function StatCard({ icon: Icon, label, value, sub, color = 'text-brand-400', cha
 }
 
 export default function TrackingDashboard() {
-  const { campaign, analytics, setAnalytics, isLoadingAnalytics, setIsLoadingAnalytics } = useAdStore()
-  const [dateRange, setDateRange]     = useState('last_7d')
+  const { campaign, analytics, setAnalytics, isLoadingAnalytics, setIsLoadingAnalytics, uploadResults, variations } = useAdStore()
+  const [dateRange, setDateRange]     = useState('last_30d')
   const [customFrom, setCustomFrom]   = useState('')
   const [customTo, setCustomTo]       = useState('')
-  const [sortBy, setSortBy]           = useState('ctr')
+  const [sortBy, setSortBy]           = useState('spend')
   const [emptyReason, setEmptyReason] = useState(null)
+
+  // Build a map: facebookAdId → variation angle (from local uploadResults + variations)
+  const angleByFbId = useMemo(() => {
+    const map = {}
+    for (const r of uploadResults || []) {
+      if (!r.facebookAdId) continue
+      const variation = (variations || []).find((v) => v.id === r.variationId)
+      if (variation?.angle) map[r.facebookAdId] = variation.angle
+    }
+    return map
+  }, [uploadResults, variations])
 
   const loadAnalytics = async () => {
     setIsLoadingAnalytics(true)
@@ -54,13 +65,19 @@ export default function TrackingDashboard() {
         last_30d:  { since: nDaysAgo(30),  until: today() },
         last_90d:  { since: nDaysAgo(90),  until: today() },
         last_365d: { since: nDaysAgo(365), until: today() },
+        alltime:   { since: '2020-01-01',  until: today() },
         custom:    { since: customFrom || nDaysAgo(30), until: customTo || today() },
       }
       const data = await getAnalytics(
         campaign.adAccountId || 'act_demo',
         ranges[dateRange]
       )
-      setAnalytics(data.data || [])
+      // Enrich each ad with angle from local store (where we have it)
+      const enriched = (data.data || []).map((ad) => ({
+        ...ad,
+        angle: angleByFbId[ad.id] || ad.angle || 'general',
+      }))
+      setAnalytics(enriched)
       if (data.mock)  setEmptyReason('no_token')
       if (data.empty) setEmptyReason('no_ads')
     } catch (err) {
@@ -77,19 +94,24 @@ export default function TrackingDashboard() {
   const sorted = [...analytics].sort((a, b) => {
     const ai = a.insights || {}
     const bi = b.insights || {}
-    if (sortBy === 'ctr')   return parseFloat(bi.ctr)  - parseFloat(ai.ctr)
-    if (sortBy === 'clicks') return parseInt(bi.clicks) - parseInt(ai.clicks)
-    if (sortBy === 'spend')  return parseFloat(bi.spend) - parseFloat(ai.spend)
+    if (sortBy === 'spend')       return parseFloat(bi.spend)       - parseFloat(ai.spend)
+    if (sortBy === 'impressions') return parseInt(bi.impressions)   - parseInt(ai.impressions)
+    if (sortBy === 'ctr')         return parseFloat(bi.ctr)         - parseFloat(ai.ctr)
+    if (sortBy === 'clicks')      return parseInt(bi.clicks)        - parseInt(ai.clicks)
     return 0
   })
 
-  const totalSpend   = analytics.reduce((s, a) => s + parseFloat(a.insights?.spend  || 0), 0)
-  const totalClicks  = analytics.reduce((s, a) => s + parseInt(a.insights?.clicks   || 0), 0)
-  const avgCTR       = analytics.length
-    ? (analytics.reduce((s, a) => s + parseFloat(a.insights?.ctr || 0), 0) / analytics.length).toFixed(2)
-    : 0
-  const avgCPC       = totalClicks ? (totalSpend / totalClicks).toFixed(2) : 0
+  const totalSpend      = analytics.reduce((s, a) => s + parseFloat(a.insights?.spend       || 0), 0)
+  const totalClicks     = analytics.reduce((s, a) => s + parseInt(a.insights?.clicks         || 0), 0)
+  const totalImpressions = analytics.reduce((s, a) => s + parseInt(a.insights?.impressions   || 0), 0)
+  const avgCTR          = totalImpressions
+    ? ((totalClicks / totalImpressions) * 100).toFixed(2)
+    : analytics.length
+      ? (analytics.reduce((s, a) => s + parseFloat(a.insights?.ctr || 0), 0) / analytics.length).toFixed(2)
+      : '0.00'
+  const avgCPC          = totalClicks ? (totalSpend / totalClicks).toFixed(2) : '0.00'
 
+  // Best performer: prefer highest spend (means it ran the most), fallback to impressions
   const winner = sorted[0]
 
   return (
@@ -112,6 +134,7 @@ export default function TrackingDashboard() {
               <option value="last_30d">Last 30 days</option>
               <option value="last_90d">Last 3 months</option>
               <option value="last_365d">Last year</option>
+              <option value="alltime">All time</option>
               <option value="custom">Custom range</option>
             </select>
             {dateRange === 'custom' && (
@@ -131,10 +154,10 @@ export default function TrackingDashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={BarChart3}    label="Active Ads"    value={analytics.filter((a) => a.status === 'ACTIVE').length}  color="text-brand-400" change={12} />
-        <StatCard icon={MousePointer} label="Total Clicks"  value={totalClicks.toLocaleString()} color="text-green-400" change={8} />
-        <StatCard icon={TrendingUp}   label="Avg CTR"       value={`${avgCTR}%`} color="text-yellow-400" change={-2} />
-        <StatCard icon={DollarSign}   label="Total Spend"   value={`$${totalSpend.toFixed(2)}`} sub={`$${avgCPC} avg CPC`} color="text-purple-400" change={5} />
+        <StatCard icon={BarChart3}    label="Total Ads"     value={analytics.length} sub={`${analytics.filter((a) => a.status === 'ACTIVE').length} active`} color="text-brand-400" />
+        <StatCard icon={MousePointer} label="Total Clicks"  value={totalClicks.toLocaleString()} color="text-green-400" />
+        <StatCard icon={TrendingUp}   label="Avg CTR"       value={`${avgCTR}%`} color="text-yellow-400" />
+        <StatCard icon={DollarSign}   label="Total Spend"   value={`$${totalSpend.toFixed(2)}`} sub={`$${avgCPC} avg CPC`} color="text-purple-400" />
       </div>
 
       {/* Winner card */}
@@ -169,7 +192,7 @@ export default function TrackingDashboard() {
           <h3 className="font-semibold text-white text-sm">All Ads ({analytics.length})</h3>
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">Sort by:</span>
-            {['ctr', 'clicks', 'spend'].map((key) => (
+            {['spend', 'impressions', 'ctr', 'clicks'].map((key) => (
               <button
                 key={key}
                 onClick={() => setSortBy(key)}
@@ -193,7 +216,7 @@ export default function TrackingDashboard() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs text-gray-500 uppercase tracking-wide border-b border-gray-800">
-                  {['Rank', 'Ad Name', 'Angle', 'Status', 'Impressions', 'Clicks', 'CTR', 'CPC', 'Spend'].map((h) => (
+                  {['Rank', 'Ad Name', 'Angle', 'Status', 'Impressions', 'Reach', 'Clicks', 'CTR', 'CPC', 'Spend'].map((h) => (
                     <th key={h} className="px-4 py-3 text-left font-medium whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -230,6 +253,7 @@ export default function TrackingDashboard() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-300">{parseInt(ins.impressions || 0).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-gray-300">{parseInt(ins.reach || 0).toLocaleString()}</td>
                       <td className="px-4 py-3 text-gray-300">{parseInt(ins.clicks || 0).toLocaleString()}</td>
                       <td className="px-4 py-3">
                         <CTRBar value={parseFloat(ins.ctr || 0)} />

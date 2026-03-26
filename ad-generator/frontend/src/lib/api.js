@@ -161,26 +161,64 @@ export async function getAnalytics(adAccountId, { since, until } = {}) {
   const token = getKey('facebook')
   if (!token) return { data: getMockAnalytics(), mock: true }
 
-  // Error #100 "nonexisting field (ads)" means no ads in the account yet — return empty gracefully
   const accountId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
-  try {
-    const params = new URLSearchParams({
-      fields: 'id,name,status,insights{impressions,clicks,spend,ctr,cpc}',
-      time_range: JSON.stringify({ since, until }),
-      access_token: token,
-    })
-    const res  = await fetch(`https://graph.facebook.com/v19.0/${accountId}/ads?${params}`)
-    const data = await res.json()
+  const FB = 'https://graph.facebook.com/v19.0'
 
-    if (data.error) {
-      // #100 = no ads yet, #200 = permissions — return empty array instead of throwing
-      if (data.error.code === 100 || data.error.code === 200) {
-        return { data: [], empty: true, errorMessage: data.error.message }
+  try {
+    // 1. Fetch all ads (names + statuses) — no date filter so we always see every ad
+    const adsRes = await fetch(
+      `${FB}/${accountId}/ads?fields=id,name,status&limit=200&access_token=${token}`
+    )
+    const adsData = await adsRes.json()
+
+    if (adsData.error) {
+      if (adsData.error.code === 100 || adsData.error.code === 200) {
+        return { data: [], empty: true, errorMessage: adsData.error.message }
       }
-      throw new Error(data.error.message)
+      throw new Error(adsData.error.message)
     }
 
-    return { data: data.data || [] }
+    const ads = adsData.data || []
+    if (ads.length === 0) return { data: [], empty: true }
+
+    // 2. Fetch metrics via the /insights endpoint at ad level (correct approach)
+    //    time_range filters which period's metrics to show, but all ads are still listed above
+    const insightsParams = new URLSearchParams({
+      level: 'ad',
+      fields: 'ad_id,ad_name,impressions,clicks,spend,ctr,cpc,reach',
+      time_range: JSON.stringify({ since, until }),
+      limit: 200,
+      access_token: token,
+    })
+    const insightsRes = await fetch(`${FB}/${accountId}/insights?${insightsParams}`)
+    const insightsData = await insightsRes.json()
+
+    // Build a quick-lookup map by ad_id
+    const insightsMap = {}
+    for (const ins of insightsData.data || []) {
+      insightsMap[ins.ad_id] = ins
+    }
+
+    // 3. Merge — show ALL ads, attach metrics where the period had delivery
+    const merged = ads.map((ad) => {
+      const ins = insightsMap[ad.id] || {}
+      return {
+        id:     ad.id,
+        name:   ad.name,
+        status: ad.status,
+        angle:  'general', // enriched by TrackingDashboard using local uploadResults
+        insights: {
+          impressions: ins.impressions || '0',
+          clicks:      ins.clicks      || '0',
+          spend:       ins.spend       || '0',
+          ctr:         ins.ctr         || '0',
+          cpc:         ins.cpc         || '0',
+          reach:       ins.reach       || '0',
+        },
+      }
+    })
+
+    return { data: merged }
   } catch (err) {
     throw err
   }
