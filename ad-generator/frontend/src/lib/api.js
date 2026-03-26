@@ -295,59 +295,79 @@ export async function generateAdVideo({ variation, brandContext, format = 'feed'
   const creativePrompt = await buildCreativePrompt(variation, brandContext, format, 'video')
 
   // 1. Submit to queue
-  const submitRes = await fetch(`${FAL_QUEUE}/fal-ai/kling-video/v1.6/standard/text-to-video`, {
-    method: 'POST',
-    headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt:       creativePrompt,
-      duration:     '5',
-      aspect_ratio: KLING_RATIOS[format] || '16:9',
-    }),
-  })
-
-  if (!submitRes.ok) {
-    const err = await submitRes.json().catch(() => ({}))
-    throw new Error(err.detail || `fal.ai error ${submitRes.status}`)
+  let submitData
+  try {
+    const submitRes = await fetch(`${FAL_QUEUE}/fal-ai/kling-video/v1.6/standard/text-to-video`, {
+      method: 'POST',
+      headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt:       creativePrompt,
+        duration:     '5',
+        aspect_ratio: KLING_RATIOS[format] || '16:9',
+      }),
+    })
+    submitData = await submitRes.json()
+    if (!submitRes.ok) {
+      const msg = submitData?.detail || submitData?.message || submitData?.error || `fal.ai status ${submitRes.status}`
+      throw new Error(msg)
+    }
+  } catch (err) {
+    console.error('[fal.ai Kling] submit failed:', err)
+    throw new Error(`Kling submit failed: ${err.message}`)
   }
 
-  const { request_id } = await submitRes.json()
-  onProgress?.('Queued — waiting for Kling to start…')
+  // fal.ai returns pre-built URLs — use them directly (more reliable than building manually)
+  const { request_id, status_url, response_url } = submitData
+  const statusUrl = status_url || `${FAL_QUEUE}/fal-ai/kling-video/v1.6/standard/text-to-video/requests/${request_id}/status`
+  const resultUrl = response_url || `${FAL_QUEUE}/fal-ai/kling-video/v1.6/standard/text-to-video/requests/${request_id}`
+
+  onProgress?.(`Queued (id: ${String(request_id).substring(0, 8)}…) — waiting for Kling…`)
 
   // 2. Poll until done (videos take 60-120s)
-  const statusUrl = `${FAL_QUEUE}/fal-ai/kling-video/v1.6/standard/text-to-video/requests/${request_id}/status`
-  const resultUrl = `${FAL_QUEUE}/fal-ai/kling-video/v1.6/standard/text-to-video/requests/${request_id}`
-
   for (let attempt = 0; attempt < 60; attempt++) {
     await sleep(3000)
-    const statusRes = await fetch(`${statusUrl}?logs=1`, { headers: { Authorization: `Key ${falKey}` } })
-    const status    = await statusRes.json()
+
+    let status
+    try {
+      const statusRes = await fetch(`${statusUrl}?logs=1`, { headers: { Authorization: `Key ${falKey}` } })
+      status = await statusRes.json()
+    } catch (err) {
+      console.warn('[fal.ai Kling] status poll error:', err)
+      continue
+    }
 
     if (status.status === 'COMPLETED') {
       onProgress?.('Fetching video…')
-      const resultRes = await fetch(resultUrl, { headers: { Authorization: `Key ${falKey}` } })
-      const result    = await resultRes.json()
-      // fal.ai may return video at different paths depending on SDK version
-      const videoUrl  = result.video?.url
+      let result
+      try {
+        const resultRes = await fetch(resultUrl, { headers: { Authorization: `Key ${falKey}` } })
+        result = await resultRes.json()
+      } catch (err) {
+        throw new Error(`Kling result fetch failed: ${err.message}`)
+      }
+      // fal.ai may return video at different paths
+      const videoUrl = result.video?.url
         || result.output?.video?.url
         || result.videos?.[0]?.url
         || status.output?.video?.url
       if (!videoUrl) {
-        console.error('[fal.ai] Unexpected Kling result shape:', JSON.stringify(result).substring(0, 400))
-        throw new Error('Video URL missing in fal.ai response — check console for details')
+        console.error('[fal.ai Kling] Unexpected result shape:', JSON.stringify(result).substring(0, 500))
+        throw new Error('Video URL missing in fal.ai response — check browser console for details')
       }
       onProgress?.('Done!')
       return { videoUrl, creativePrompt }
     }
 
     if (status.status === 'FAILED') {
-      throw new Error(`Video generation failed: ${status.error || 'unknown error'}`)
+      const reason = status.error || status.detail || 'unknown error'
+      throw new Error(`Kling generation failed: ${reason}`)
     }
 
     const pct = Math.round((attempt / 40) * 100)
-    onProgress?.(`Generating video… ${Math.min(pct, 95)}%`)
+    onProgress?.(`Kling generating… ${Math.min(pct, 95)}% (${attempt * 3}s elapsed)`)
   }
 
-  throw new Error('Video generation timed out — try again')
+  throw new Error('Video generation timed out after 3 minutes — try again')
 }
 
 // ── Claude helper ─────────────────────────────────────────────
@@ -396,19 +416,32 @@ Desired outcomes: ${insights.desiredOutcomes?.slice(0, 3).map((o) => o.text).joi
 Trigger phrases: ${insights.triggerPhrases?.slice(0, 5).join(', ')}`
     : ''
 
+  // If multiple audiences are listed, distribute them across variations
+  const audienceList = targetAudience.split(/[,;\/]+/).map((a) => a.trim()).filter(Boolean)
+  const audienceNote = audienceList.length > 1
+    ? `IMPORTANT: Multiple audience segments are listed (${audienceList.join(', ')}). Each variation must target EXACTLY ONE specific audience segment. Speak directly to that one person — never combine audiences in a single ad. Rotate through segments across variations.`
+    : `Audience: ${targetAudience}`
+
   return `You are a world-class Facebook ad copywriter for ${brandName} (${landingPageUrl}).
-Product: ${product} | Audience: ${targetAudience} | CTA: ${cta}
+Product: ${product} | CTA: ${cta}
+${audienceNote}
 ${insightsSummary}
 
 Generate EXACTLY ${count} unique Facebook ad variations using different angles: pain_point, outcome, social_proof, curiosity, authority, fomo.
 
+Rules:
+- Each ad speaks to ONE specific person, not a list of industries
+- Copy is direct, conversational, specific — no corporate fluff
+- Headlines are punchy and under 40 characters
+
 Return ONLY a valid JSON array with exactly ${count} objects:
 [{
   "headline": "max 40 chars",
-  "primaryText": "90-150 words, conversational",
+  "primaryText": "90-150 words, conversational, speaks to ONE audience segment",
   "description": "max 25 chars",
   "cta": "${cta}",
-  "angle": "pain_point|outcome|social_proof|curiosity|authority|fomo"
+  "angle": "pain_point|outcome|social_proof|curiosity|authority|fomo",
+  "targetSegment": "the specific audience this ad targets"
 }]`
 }
 
@@ -422,11 +455,13 @@ function buildVariationObject(item, brandContext, format, index) {
     description: item.description || '',
     cta: item.cta || brandContext.cta || 'Learn More',
     angle: item.angle || 'general',
+    targetSegment: item.targetSegment || null,
     format: item.format || format,
     status: 'draft',
     facebookAdId: null,
     createdAt: new Date().toISOString(),
-    imageUrl: brandContext.imageUrl || null,
+    imageUrl: null,
+    videoUrl: null,
   }
 }
 

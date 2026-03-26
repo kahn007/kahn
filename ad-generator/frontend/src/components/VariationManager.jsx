@@ -524,6 +524,9 @@ function VariationCard({ variation, brandContext, selected, cardStatus, onToggle
       {/* Copy */}
       <div className="space-y-1 px-1 flex-1">
         <p className="font-semibold text-white text-sm leading-tight line-clamp-2">{variation.headline}</p>
+        {variation.targetSegment && (
+          <p className="text-teal-400/70 text-[10px] font-medium truncate">→ {variation.targetSegment}</p>
+        )}
         <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">{variation.primaryText}</p>
       </div>
 
