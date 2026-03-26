@@ -1,0 +1,45 @@
+name: Deploy Ad Generator to GitHub Pages
+
+on:
+  push:
+    branches: [main, claude/react-facebook-ad-generator-Eipw7]
+    paths:
+      - 'ad-generator/frontend/**'
+      - '.github/workflows/deploy-ad-generator.yml'
+  workflow_dispatch:   # allows manual trigger from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ad-generator/frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ad-generator/frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: ad-generator/frontend
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: ad-generator/frontend/dist
+          target-folder: ad-generator
+          branch: gh-pages
+          clean: false   # don't wipe existing site at root
