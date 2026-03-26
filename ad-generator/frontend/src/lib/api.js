@@ -648,7 +648,7 @@ Return ONLY a JSON array with exactly ${total} objects:
 }
 
 // ── Claude — landing page generator ──────────────────────────
-export async function generateLandingPage({ variation, brandContext, insights, competitorIntel }) {
+export async function generateLandingPage({ variation, brandContext, insights, competitorIntel, pageConfig }) {
   const key = getKey('anthropic')
   if (!key) throw new Error('Add your Anthropic key in Settings to generate landing pages')
 
@@ -676,9 +676,27 @@ COMPETITOR INTELLIGENCE — use to position us as the superior choice:
 - Our differentiators to highlight prominently: ${competitorIntel.suggestedDifferentiators?.join('; ')}
 - Competitor weaknesses to contrast against: ${competitorIntel.competitors?.map((c) => c.weaknesses).filter(Boolean).join('; ')}` : ''
 
-  const ctaUrl = brandContext.landingPageUrl || '#'
-  const brand = brandContext.brandName || 'Our Solution'
+  // Use pageConfig values if provided, otherwise fall back to brandContext
+  const pc = pageConfig || {}
+  const ctaUrl = pc.ctaUrl || brandContext.landingPageUrl || '#'
+  const brand = pc.companyName || brandContext.brandName || 'Our Solution'
   const audience = variation.targetSegment || brandContext.targetAudience || 'professionals'
+  const tagline = pc.tagline || ''
+  const trustMetric = pc.trustMetric || '2,400+ customers'
+  const logoHtml = pc.logoSrc
+    ? `<img src="${pc.logoSrc}" alt="${brand}" style="height:32px;object-fit:contain;" />`
+    : `<div style="width:32px;height:32px;border-radius:8px;background:var(--accent);display:inline-block;"></div>`
+
+  // Design system from theme
+  const bgColor    = pc.bg      || '#080c14'
+  const bg2Color   = pc.surface || '#0d1422'
+  const bg3Color   = pc.bg3     || (pc.light ? '#f1f5f9' : '#131929')
+  const accentColor  = pc.accent  || '#6c63ff'
+  const accent2Color = pc.accent2 || '#8b5cf6'
+  const accentGlow   = accentColor + '40'
+  const textColor    = pc.textColor || '#f1f5f9'
+  const mutedColor   = pc.light ? '#64748b' : '#94a3b8'
+  const borderColor  = pc.light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.07)'
 
   const prompt = `You are a senior conversion-rate optimization expert and award-winning web designer. Your landing pages generate 8-15% conversion rates. You are about to build a complete, pixel-perfect, professional HTML landing page.
 
@@ -694,6 +712,8 @@ Ad copy: "${variation.primaryText}"
 CTA button text: "${variation.cta || 'Get Started'}"
 CTA URL: ${ctaUrl}
 Ad angle: ${variation.angle || 'general'}
+${tagline ? `Brand tagline: "${tagline}"` : ''}
+Social proof metric: "${trustMetric}"
 
 AUDIENCE INTELLIGENCE:
 Pain points: ${painPoints.join(' | ')}
@@ -707,18 +727,19 @@ MANDATORY DESIGN SYSTEM (follow exactly)
 ═══════════════════════════════════════
 Typography: Load Inter from Google Fonts (weights 400, 500, 600, 700, 800, 900)
 Root CSS variables:
-  --bg: #080c14
-  --bg2: #0d1422
-  --bg3: #131929
-  --border: rgba(255,255,255,0.07)
-  --accent: #6c63ff
-  --accent2: #8b5cf6
-  --accent-glow: rgba(108,99,255,0.25)
-  --text: #f1f5f9
-  --muted: #94a3b8
+  --bg: ${bgColor}
+  --bg2: ${bg2Color}
+  --bg3: ${bg3Color}
+  --border: ${borderColor}
+  --accent: ${accentColor}
+  --accent2: ${accent2Color}
+  --accent-glow: ${accentGlow}
+  --text: ${textColor}
+  --muted: ${mutedColor}
   --success: #10b981
   --radius: 16px
   --radius-sm: 10px
+LOGO HTML (use exactly as-is in the navbar and footer): ${logoHtml}
 
 Max page width: 1100px, centered with auto margins
 Section vertical padding: 100px top/bottom (60px mobile)
@@ -730,9 +751,9 @@ SECTIONS — BUILD ALL OF THESE IN ORDER
 ═══════════════════════════════════════════════════════
 
 1. STICKY NAVBAR
-   - Fixed top, backdrop-filter blur(20px), bg rgba(8,12,20,0.85)
-   - Left: logo mark (colored div) + brand name in white font-weight 700
-   - Right: one ghost link "Features" + one solid accent CTA button "${variation.cta || 'Get Started'}"
+   - Fixed top, backdrop-filter blur(20px), bg rgba from var(--bg) at 0.85 opacity
+   - Left: use the LOGO HTML provided above exactly, then brand name "${brand}" in var(--text) font-weight 700
+   - Right: one ghost link "Features" + one solid accent CTA button "${variation.cta || 'Get Started'}" linking to ${ctaUrl}
    - No border bottom, subtle box-shadow
 
 2. HERO SECTION (above-the-fold, full viewport height optional)
@@ -741,7 +762,7 @@ SECTIONS — BUILD ALL OF THESE IN ORDER
    - Support headline: expand on the ad's promise in 1 sentence, 22px, --muted color
    - Short 2-line paragraph reinforcing the specific pain point from the ad copy
    - TWO buttons side by side: primary solid accent + secondary ghost (e.g. "See how it works →")
-   - Social proof micro-line below buttons: avatar stack (5 colored circles with initials) + "2,400+ ${audience} already using this"
+   - Social proof micro-line below buttons: avatar stack (5 colored circles with initials) + "${trustMetric}"
    - Decorative: large blurred radial gradient glow behind the headline (accent color, opacity 0.15)
 
 3. TRUST BAR (full-width strip)
