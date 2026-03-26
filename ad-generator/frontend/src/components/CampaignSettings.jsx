@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Key, Eye, EyeOff, CheckCircle, XCircle, Loader, ExternalLink, Settings, User, Globe, Zap, Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAdStore } from '../store/adStore'
-import { getKeys, saveKeys } from '../lib/keys'
+import { getKeys, saveKeys, getSettings, saveSettings } from '../lib/keys'
 
 const API_CONFIGS = [
   {
@@ -83,6 +83,13 @@ export default function CampaignSettings() {
   const [testing, setTesting] = useState({})
   const [testStatus, setTestStatus] = useState({})
 
+  // Rehydrate brand + campaign from localStorage on first load
+  useEffect(() => {
+    const saved = getSettings()
+    if (saved.brandContext) setBrandContext(saved.brandContext)
+    if (saved.campaign)     setCampaign(saved.campaign)
+  }, [])
+
   // Auto-save keys to localStorage on every change
   const updateKey = (id, value) => {
     const updated = { ...keys, [id]: value }
@@ -90,6 +97,20 @@ export default function CampaignSettings() {
     saveKeys(updated)
   }
   const toggleShow = (id) => setShown((s) => ({ ...s, [id]: !s[id] }))
+
+  // Auto-save brand context
+  const updateBrand = (updates) => {
+    const updated = { ...brandContext, ...updates }
+    setBrandContext(updates)
+    saveSettings({ brandContext: updated, campaign })
+  }
+
+  // Auto-save campaign config
+  const updateCampaign = (updates) => {
+    const updated = { ...campaign, ...updates }
+    setCampaign(updates)
+    saveSettings({ brandContext, campaign: updated })
+  }
 
   const handleTest = async (cfg) => {
     const key = keys[cfg.id]
@@ -201,23 +222,23 @@ export default function CampaignSettings() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs text-gray-400 mb-1.5 block">Brand Name</label>
-            <input className="input" value={brandContext.brandName} onChange={(e) => setBrandContext({ brandName: e.target.value })} />
+            <input className="input" value={brandContext.brandName} onChange={(e) => updateBrand({ brandName: e.target.value })} />
           </div>
           <div>
             <label className="text-xs text-gray-400 mb-1.5 block">Website</label>
-            <input className="input" value={brandContext.website} onChange={(e) => setBrandContext({ website: e.target.value })} />
+            <input className="input" value={brandContext.website} onChange={(e) => updateBrand({ website: e.target.value })} />
           </div>
           <div className="col-span-2">
             <label className="text-xs text-gray-400 mb-1.5 block">Product / Service</label>
-            <textarea className="textarea" rows={2} value={brandContext.product} onChange={(e) => setBrandContext({ product: e.target.value })} placeholder="What are you advertising?" />
+            <textarea className="textarea" rows={2} value={brandContext.product} onChange={(e) => updateBrand({ product: e.target.value })} placeholder="What are you advertising?" />
           </div>
           <div>
             <label className="text-xs text-gray-400 mb-1.5 block">Target Audience</label>
-            <input className="input" value={brandContext.targetAudience} onChange={(e) => setBrandContext({ targetAudience: e.target.value })} placeholder="e.g. coaches, e-commerce founders" />
+            <input className="input" value={brandContext.targetAudience} onChange={(e) => updateBrand({ targetAudience: e.target.value })} placeholder="e.g. coaches, e-commerce founders" />
           </div>
           <div>
             <label className="text-xs text-gray-400 mb-1.5 block">Default CTA</label>
-            <select className="input" value={brandContext.cta} onChange={(e) => setBrandContext({ cta: e.target.value })}>
+            <select className="input" value={brandContext.cta} onChange={(e) => updateBrand({ cta: e.target.value })}>
               {['Learn More', 'Sign Up', 'Get Started', 'Shop Now', 'Download', 'Contact Us'].map((c) => (
                 <option key={c} value={c}>{c}</option>
               ))}
@@ -225,7 +246,7 @@ export default function CampaignSettings() {
           </div>
           <div className="col-span-2">
             <label className="text-xs text-gray-400 mb-1.5 block">Landing Page URL</label>
-            <input className="input" value={brandContext.landingPageUrl} onChange={(e) => setBrandContext({ landingPageUrl: e.target.value })} />
+            <input className="input" value={brandContext.landingPageUrl} onChange={(e) => updateBrand({ landingPageUrl: e.target.value })} />
           </div>
         </div>
       </div>
@@ -239,11 +260,11 @@ export default function CampaignSettings() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="text-xs text-gray-400 mb-1.5 block">Ad Account ID</label>
-            <input className="input" placeholder="act_123456789" value={campaign.adAccountId} onChange={(e) => setCampaign({ adAccountId: e.target.value })} />
+            <input className="input" placeholder="act_123456789" value={campaign.adAccountId} onChange={(e) => updateCampaign({ adAccountId: e.target.value })} />
           </div>
           <div>
             <label className="text-xs text-gray-400 mb-1.5 block">Page ID</label>
-            <input className="input" placeholder="123456789" value={campaign.pageId} onChange={(e) => setCampaign({ pageId: e.target.value })} />
+            <input className="input" placeholder="123456789" value={campaign.pageId} onChange={(e) => updateCampaign({ pageId: e.target.value })} />
           </div>
         </div>
       </div>
