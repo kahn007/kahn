@@ -73,18 +73,20 @@ const API_CONFIGS = [
     },
   },
   {
-    id: 'openai',
-    name: 'OpenAI (DALL-E 3)',
-    placeholder: 'sk-proj-...',
-    helpUrl: 'https://platform.openai.com/api-keys',
-    helpLabel: 'platform.openai.com/api-keys',
+    id: 'falai',
+    name: 'fal.ai (Images + Videos)',
+    placeholder: 'fal-...',
+    helpUrl: 'https://fal.ai/dashboard/keys',
+    helpLabel: 'fal.ai/dashboard/keys',
     color: 'text-teal-400',
     bg: 'bg-teal-500/10 border-teal-500/30',
     icon: '🎨',
-    description: 'Generates professional ad images — Claude writes the prompt, DALL-E 3 renders it',
+    description: 'Flux Pro 1.1 for images · Kling 1.6 for short video ads — one key covers both',
     testFn: async (key) => {
-      const res = await fetch('https://api.openai.com/v1/models/dall-e-3', {
-        headers: { Authorization: `Bearer ${key}` },
+      const res = await fetch('https://fal.run/fal-ai/flux-pro/v1.1', {
+        method: 'POST',
+        headers: { Authorization: `Key ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: 'test', image_size: 'square', num_images: 1 }),
       })
       if (!res.ok) throw new Error(`Status ${res.status}`)
     },

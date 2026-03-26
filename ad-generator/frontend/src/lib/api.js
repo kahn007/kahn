@@ -181,76 +181,133 @@ export async function getAnalytics(adAccountId, { since, until } = {}) {
   }
 }
 
-// ── Image generation (Claude prompt → DALL-E 3) ──────────────
-const DALLE_SIZES = {
-  feed:   '1792x1024',  // 1.91:1 — Facebook feed
-  square: '1024x1024',  // 1:1    — Instagram / square
-  story:  '1024x1792',  // 9:16   — Stories / Reels
+// ── fal.ai helpers ────────────────────────────────────────────
+const FAL_BASE  = 'https://fal.run'
+const FAL_QUEUE = 'https://queue.fal.run'
+
+const FLUX_SIZES = {
+  feed:   'landscape_16_9',  // 1792×1024 — Facebook feed
+  square: 'square_hd',       // 1024×1024 — Instagram / square
+  story:  'portrait_16_9',   // 1024×1792 — Stories / Reels
+}
+const KLING_RATIOS = {
+  feed:   '16:9',
+  square: '1:1',
+  story:  '9:16',
 }
 
-export async function generateAdImage({ variation, brandContext, format = 'feed' }) {
+// Build creative prompt via Claude (or fallback)
+async function buildCreativePrompt(variation, brandContext, format, type) {
   const anthropicKey = getKey('anthropic')
-  const openaiKey    = getKey('openai')
+  const typeDesc = type === 'video'
+    ? 'a 5-second Facebook video ad. Describe motion, scene, and atmosphere.'
+    : 'a Facebook ad image.'
 
-  if (!openaiKey) {
-    throw new Error('Add your OpenAI API key in Settings to generate images')
+  if (!anthropicKey) {
+    return `Professional ${type === 'video' ? 'cinematic video ad' : 'marketing photography'} for ${brandContext.brandName}. Product: ${brandContext.product}. Audience: ${brandContext.targetAudience}. Clean, modern, aspirational. No text or logos. Bright natural lighting.`
   }
 
-  // Step 1 — Claude writes a detailed image prompt
-  let imagePrompt
-  if (anthropicKey) {
-    const promptRequest = `You are an expert Facebook ad creative director.
+  const prompt = `You are an expert Facebook ad creative director.
 
 Brand: ${brandContext.brandName} (${brandContext.website})
 Product: ${brandContext.product}
 Audience: ${brandContext.targetAudience}
-Ad headline: "${variation.headline}"
-Ad copy: "${variation.primaryText?.substring(0, 200)}"
-Format: ${format} ad
+Headline: "${variation.headline}"
+Copy: "${variation.primaryText?.substring(0, 150)}"
+Format: ${format} ${typeDesc}
 
-Write a single DALL-E image generation prompt for a professional Facebook ad creative.
+Write a single generation prompt for ${typeDesc}
 Rules:
-- Photorealistic, high-quality marketing photography style
-- NO text, words, logos or overlays in the image (Facebook renders text separately)
-- Show the outcome/benefit, not the product itself
-- Aspirational lifestyle imagery matching the target audience
-- Specific lighting: bright, clean, modern
-- Return ONLY the prompt, nothing else. Max 200 words.`
+- Photorealistic, cinematic quality
+- NO text, words, logos or overlays — Facebook renders text separately
+- Show the outcome/benefit felt by the audience, not the product
+- Aspirational lifestyle, matching the target audience
+- Specific lighting: bright, clean, modern${type === 'video' ? '\n- Describe the motion/action happening in the scene\n- Keep it simple: one clear scene, smooth camera movement' : ''}
+- Return ONLY the prompt. Max 150 words.`
 
-    imagePrompt = await callClaude(anthropicKey, promptRequest)
-    imagePrompt = imagePrompt.trim()
-  } else {
-    // Fallback prompt without Claude
-    imagePrompt = `Professional marketing photography for ${brandContext.brandName}, ${brandContext.product}, targeting ${brandContext.targetAudience}. Clean, modern, aspirational lifestyle image. No text, no logos. Bright natural lighting, high quality.`
-  }
+  const raw = await callClaude(anthropicKey, prompt)
+  return raw.trim()
+}
 
-  // Step 2 — DALL-E 3 renders the image
-  const res = await fetch('https://api.openai.com/v1/images/generations', {
+// ── Flux Pro 1.1 — image generation ──────────────────────────
+export async function generateAdImage({ variation, brandContext, format = 'feed' }) {
+  const falKey = getKey('falai')
+  if (!falKey) throw new Error('Add your fal.ai key in Settings to generate images')
+
+  const creativePrompt = await buildCreativePrompt(variation, brandContext, format, 'image')
+
+  const res = await fetch(`${FAL_BASE}/fal-ai/flux-pro/v1.1`, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${openaiKey}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model:   'dall-e-3',
-      prompt:  imagePrompt,
-      n:       1,
-      size:    DALLE_SIZES[format] || '1792x1024',
-      quality: 'hd',
-      style:   'natural',
+      prompt:      creativePrompt,
+      image_size:  FLUX_SIZES[format] || 'landscape_16_9',
+      num_images:  1,
+      output_format: 'jpeg',
+      safety_tolerance: '2',
     }),
   })
 
   if (!res.ok) {
-    const err = await res.json()
-    throw new Error(err.error?.message || `OpenAI error ${res.status}`)
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.detail || err.message || `fal.ai error ${res.status}`)
   }
 
   const data = await res.json()
-  return {
-    imageUrl:    data.data[0].url,
-    imagePrompt,
+  return { imageUrl: data.images[0].url, creativePrompt }
+}
+
+// ── Kling 1.6 — video generation (async queue) ───────────────
+export async function generateAdVideo({ variation, brandContext, format = 'feed', onProgress }) {
+  const falKey = getKey('falai')
+  if (!falKey) throw new Error('Add your fal.ai key in Settings to generate videos')
+
+  const creativePrompt = await buildCreativePrompt(variation, brandContext, format, 'video')
+
+  // 1. Submit to queue
+  const submitRes = await fetch(`${FAL_QUEUE}/fal-ai/kling-video/v1.6/standard/text-to-video`, {
+    method: 'POST',
+    headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt:       creativePrompt,
+      duration:     '5',
+      aspect_ratio: KLING_RATIOS[format] || '16:9',
+    }),
+  })
+
+  if (!submitRes.ok) {
+    const err = await submitRes.json().catch(() => ({}))
+    throw new Error(err.detail || `fal.ai error ${submitRes.status}`)
   }
+
+  const { request_id } = await submitRes.json()
+  onProgress?.('Queued — waiting for Kling to start…')
+
+  // 2. Poll until done (videos take 60-120s)
+  const statusUrl = `${FAL_QUEUE}/fal-ai/kling-video/v1.6/standard/text-to-video/requests/${request_id}/status`
+  const resultUrl = `${FAL_QUEUE}/fal-ai/kling-video/v1.6/standard/text-to-video/requests/${request_id}`
+
+  for (let attempt = 0; attempt < 60; attempt++) {
+    await sleep(3000)
+    const statusRes = await fetch(statusUrl, { headers: { Authorization: `Key ${falKey}` } })
+    const status    = await statusRes.json()
+
+    if (status.status === 'COMPLETED') {
+      onProgress?.('Done!')
+      const resultRes = await fetch(resultUrl, { headers: { Authorization: `Key ${falKey}` } })
+      const result    = await resultRes.json()
+      return { videoUrl: result.video?.url, creativePrompt }
+    }
+
+    if (status.status === 'FAILED') {
+      throw new Error(`Video generation failed: ${status.error || 'unknown error'}`)
+    }
+
+    const pct = Math.round((attempt / 40) * 100)
+    onProgress?.(`Generating video… ${Math.min(pct, 95)}%`)
+  }
+
+  throw new Error('Video generation timed out — try again')
 }
 
 // ── Claude helper ─────────────────────────────────────────────
