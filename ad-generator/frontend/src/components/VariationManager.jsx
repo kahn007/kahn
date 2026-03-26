@@ -182,8 +182,8 @@ export default function VariationManager() {
   const [bulkDone, setBulkDone]       = useState(0)
   const [bulkTotal, setBulkTotal]     = useState(0)
   const [showMixer, setShowMixer]       = useState(false)
-  const [videoModelId, setVideoModelId] = useState('kling3')
-  const [videoDuration, setVideoDuration] = useState('5')
+  const [videoModelId, setVideoModelId] = useState('veo31')
+  const [videoDuration, setVideoDuration] = useState('8s')
 
   // Creative mix
   const targets = selectedVariations.length > 0

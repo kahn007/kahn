@@ -198,10 +198,19 @@ const AD_ASPECT_RATIOS = {
 
 // ── Video model registry ──────────────────────────────────────
 export const VIDEO_MODELS = {
+  veo31: {
+    id:        'veo31',
+    label:     'Google Veo 3.1',
+    sublabel:  'Most realistic · best humans',
+    durations: [{ value: '4s', label: '4s' }, { value: '6s', label: '6s' }, { value: '8s', label: '8s' }],
+    endpoint:  'fal-ai/veo3.1',
+    buildBody: (prompt, ratio, dur) => ({ prompt, aspect_ratio: ratio, duration: dur || '8s', generate_audio: false }),
+    getUrl:    (r) => r.video?.url,
+  },
   kling3: {
     id:        'kling3',
     label:     'Kling 3.0',
-    sublabel:  'Best quality',
+    sublabel:  'High quality · ~90s',
     durations: [{ value: '5', label: '5s' }, { value: '10', label: '10s' }],
     endpoint:  'fal-ai/kling-video/v3/standard/text-to-video',
     buildBody: (prompt, ratio, dur) => ({ prompt, aspect_ratio: ratio, duration: dur || '5', cfg_scale: 0.5, generate_audio: false }),
