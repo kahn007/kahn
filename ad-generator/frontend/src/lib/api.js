@@ -90,11 +90,12 @@ export async function pushAdsDraft({ adAccountId, adSetId, pageId, variations })
   const results = []
   const errors = []
   const FB = 'https://graph.facebook.com/v19.0'
+  const accountId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
 
   for (const v of variations) {
     try {
       // 1. Create creative
-      const creativeRes = await fetch(`${FB}/${adAccountId}/adcreatives`, {
+      const creativeRes = await fetch(`${FB}/${accountId}/adcreatives`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -115,7 +116,7 @@ export async function pushAdsDraft({ adAccountId, adSetId, pageId, variations })
       if (creative.error) throw new Error(creative.error.message)
 
       // 2. Create ad (paused)
-      const adRes = await fetch(`${FB}/${adAccountId}/ads`, {
+      const adRes = await fetch(`${FB}/${accountId}/ads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -144,8 +145,11 @@ export async function getFacebookAdSets(adAccountId) {
   const token = getKey('facebook')
   if (!token) return { adSets: getMockAdSets() }
 
+  // Facebook Graph API requires act_ prefix for ad account IDs
+  const accountId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
+
   const res = await fetch(
-    `https://graph.facebook.com/v19.0/${adAccountId}/adsets?fields=id,name,status,daily_budget&access_token=${token}`
+    `https://graph.facebook.com/v19.0/${accountId}/adsets?fields=id,name,status,daily_budget&access_token=${token}`
   )
   const data = await res.json()
   if (data.error) throw new Error(data.error.message)
@@ -158,13 +162,14 @@ export async function getAnalytics(adAccountId, { since, until } = {}) {
   if (!token) return { data: getMockAnalytics(), mock: true }
 
   // Error #100 "nonexisting field (ads)" means no ads in the account yet — return empty gracefully
+  const accountId = adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`
   try {
     const params = new URLSearchParams({
       fields: 'id,name,status,insights{impressions,clicks,spend,ctr,cpc}',
       time_range: JSON.stringify({ since, until }),
       access_token: token,
     })
-    const res  = await fetch(`https://graph.facebook.com/v19.0/${adAccountId}/ads?${params}`)
+    const res  = await fetch(`https://graph.facebook.com/v19.0/${accountId}/ads?${params}`)
     const data = await res.json()
 
     if (data.error) {
