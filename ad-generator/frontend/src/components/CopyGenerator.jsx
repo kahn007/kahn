@@ -23,7 +23,9 @@ const ANGLE_LABELS = {
 }
 
 export default function CopyGenerator() {
-  const { brandContext, setBrandContext, insights, addVariations, setIsGenerating, isGenerating, setActiveTab } = useAdStore()
+  const { brandContext, setBrandContext, researchSessions, activeResearchId, setActiveResearchId, addVariations, setIsGenerating, isGenerating, setActiveTab } = useAdStore()
+  const activeSession = researchSessions.find((r) => r.id === activeResearchId)
+  const insights = activeSession?.insights || null
 
   const [count, setCount]     = useState(10)
   const [formats, setFormats] = useState(['feed'])
@@ -176,16 +178,31 @@ export default function CopyGenerator() {
               </div>
             </div>
 
-            {/* Insights badge */}
-            {insights ? (
-              <div className="flex items-center gap-2 text-xs text-green-400 bg-green-900/20 border border-green-900/40 rounded-xl px-3 py-2">
-                <span>✓</span>
-                Using {insights.painPoints?.length} pain points + {insights.triggerPhrases?.length} trigger phrases from research
+            {/* Research session picker */}
+            {researchSessions.length > 0 ? (
+              <div className="space-y-1.5">
+                <label className="text-xs text-gray-400 block">Research to use</label>
+                <select
+                  className="input text-sm"
+                  value={activeResearchId || ''}
+                  onChange={(e) => setActiveResearchId(e.target.value)}
+                >
+                  <option value="">None (generate without research)</option>
+                  {researchSessions.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                {insights && (
+                  <p className="text-xs text-green-400 flex items-center gap-1.5">
+                    <span>✓</span>
+                    Using {insights.painPoints?.length} pain points + {insights.triggerPhrases?.length} trigger phrases
+                  </p>
+                )}
               </div>
             ) : (
               <div className="flex items-center gap-2 text-xs text-yellow-400 bg-yellow-900/20 border border-yellow-900/40 rounded-xl px-3 py-2">
                 <span>!</span>
-                No research data yet — run Research first for better copy
+                No research yet — run Research first for better copy
               </div>
             )}
 

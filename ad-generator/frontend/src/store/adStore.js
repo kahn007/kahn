@@ -23,8 +23,10 @@ export const useAdStore = create(
         landingPageUrl: 'https://www.brayneai.com',
       },
 
-      // ── Research insights ─────────────────────────────────────────
-      insights: null,
+      // ── Research library ──────────────────────────────────────────
+      // Each session: { id, name, product, targetAudience, insights, createdAt }
+      researchSessions: [],
+      activeResearchId: null,   // which session feeds into Generate Copy
       isResearching: false,
 
       // ── Ad variations ─────────────────────────────────────────────
@@ -51,8 +53,35 @@ export const useAdStore = create(
       setBrandContext: (updates) =>
         set((s) => ({ brandContext: { ...s.brandContext, ...updates } })),
 
-      setInsights: (insights) => set({ insights }),
+      // Research library actions
+      saveResearchSession: (session) =>
+        set((s) => {
+          const exists = s.researchSessions.find((r) => r.id === session.id)
+          const sessions = exists
+            ? s.researchSessions.map((r) => (r.id === session.id ? session : r))
+            : [session, ...s.researchSessions]
+          return { researchSessions: sessions, activeResearchId: session.id }
+        }),
+
+      deleteResearchSession: (id) =>
+        set((s) => {
+          const sessions = s.researchSessions.filter((r) => r.id !== id)
+          const activeId = s.activeResearchId === id
+            ? (sessions[0]?.id || null)
+            : s.activeResearchId
+          return { researchSessions: sessions, activeResearchId: activeId }
+        }),
+
+      setActiveResearchId: (id) => set({ activeResearchId: id }),
+
       setIsResearching: (v) => set({ isResearching: v }),
+
+      // Convenience: get the active session's insights
+      getActiveInsights: () => {
+        const s = get()
+        const session = s.researchSessions.find((r) => r.id === s.activeResearchId)
+        return session?.insights || null
+      },
 
       addVariations: (vars) =>
         set((s) => ({ variations: [...s.variations, ...vars] })),
@@ -94,14 +123,14 @@ export const useAdStore = create(
     }),
     {
       name: 'brayne-ai-store',
-      // Only persist the data fields, not loading states
       partialize: (s) => ({
-        campaign:       s.campaign,
-        brandContext:   s.brandContext,
-        insights:       s.insights,
-        variations:     s.variations,
-        uploadResults:  s.uploadResults,
-        activeTab:      s.activeTab,
+        campaign:          s.campaign,
+        brandContext:      s.brandContext,
+        researchSessions:  s.researchSessions,
+        activeResearchId:  s.activeResearchId,
+        variations:        s.variations,
+        uploadResults:     s.uploadResults,
+        activeTab:         s.activeTab,
       }),
     }
   )
