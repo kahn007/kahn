@@ -498,6 +498,7 @@ Rules:
 - Each ad speaks to ONE specific person, not a list of industries
 - Copy is direct, conversational, specific — no corporate fluff
 - Headlines are punchy and under 40 characters
+- NEVER use em dashes (—) or en dashes (–) anywhere in the copy
 
 Return ONLY a valid JSON array with exactly ${count} objects:
 [{
