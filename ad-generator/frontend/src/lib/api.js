@@ -196,34 +196,64 @@ const KLING_RATIOS = {
   story:  '9:16',
 }
 
+// Angle-specific creative direction
+const ANGLE_CREATIVE_DIRECTION = {
+  pain_point: 'Show a person visibly stressed, frustrated, or overwhelmed — expression tight, environment chaotic. The pain must feel real and relatable. Dark or harsh lighting enhances the tension.',
+  outcome:    'Show a person looking genuinely ecstatic — fist pump, huge smile, eyes wide with excitement. Bright energetic lighting. The result has arrived. Pure emotional payoff.',
+  social_proof: 'Show a confident successful person in a professional environment with visible results — packed calendar, positive metrics on a screen, or a group of satisfied people.',
+  curiosity:  'Intriguing, slightly unexpected scene. Something is off or surprising — creates visual tension that makes you want to know more. Unusual composition or juxtaposition.',
+  authority:  'Clean, expert-looking professional environment. Person looks highly competent and in command. Premium lighting, sharp focus, signals credibility.',
+  fomo:       'High-energy scene: something big is happening RIGHT NOW and others are already in. Celebration, momentum, rapid positive change. Urgency visible in the frame.',
+  general:    'Clean modern workspace, confident professional, bright open environment. Aspirational but relatable.',
+}
+
+// Angle-specific fallback prompts (no Claude key)
+const ANGLE_FALLBACK = {
+  pain_point:   'Stressed entrepreneur at cluttered desk staring at phone with missed calls, visibly exhausted, harsh overhead light casting shadows, shallow depth of field on stressed face — photorealistic DSLR, no text, no logos',
+  outcome:      'Excited business owner pumping fist at clean desk with laptop showing fully booked calendar, bright modern office, golden hour light, candid emotion — photorealistic DSLR, no text, no logos',
+  social_proof: 'Confident professional in modern office reviewing impressive charts on dual monitors, clean background, soft professional lighting, looking directly at camera with subtle smile — photorealistic DSLR, no text, no logos',
+  curiosity:    'Split dramatic composition: left side chaotic and dark, right side bright and organized, one person crossing the threshold from chaos to clarity, cinematic lighting — photorealistic DSLR, no text, no logos',
+  authority:    'Expert-looking person confidently presenting to attentive colleagues in sleek boardroom, premium lighting, sharp focus, commands the room — photorealistic DSLR, no text, no logos',
+  fomo:         'Group of energetic entrepreneurs celebrating breakthrough results around a bright screen showing impressive numbers, dynamic movement, high energy — photorealistic DSLR, no text, no logos',
+  general:      'Focused entrepreneur working confidently in bright modern workspace, natural light, calm and in control — photorealistic DSLR, no text, no logos',
+}
+
 // Build creative prompt via Claude (or fallback)
 async function buildCreativePrompt(variation, brandContext, format, type) {
   const anthropicKey = getKey('anthropic')
-  const typeDesc = type === 'video'
-    ? 'a 5-second Facebook video ad. Describe motion, scene, and atmosphere.'
-    : 'a Facebook ad image.'
+  const angle = variation.angle || 'general'
 
   if (!anthropicKey) {
-    return `Professional ${type === 'video' ? 'cinematic video ad' : 'marketing photography'} for ${brandContext.brandName}. Product: ${brandContext.product}. Audience: ${brandContext.targetAudience}. Clean, modern, aspirational. No text or logos. Bright natural lighting.`
+    const base = ANGLE_FALLBACK[angle] || ANGLE_FALLBACK.general
+    return `${base}. Scene relates to: ${brandContext.product} helping ${brandContext.targetAudience}.`
   }
 
-  const prompt = `You are an expert Facebook ad creative director.
+  const formatLabel = format === 'story' ? '9:16 vertical' : format === 'square' ? '1:1 square' : '16:9 landscape'
+  const typeLabel   = type === 'video' ? '5-second cinematic Facebook video ad' : 'Facebook ad still image'
 
-Brand: ${brandContext.brandName} (${brandContext.website})
-Product: ${brandContext.product}
-Audience: ${brandContext.targetAudience}
-Headline: "${variation.headline}"
-Copy: "${variation.primaryText?.substring(0, 150)}"
-Format: ${format} ${typeDesc}
+  const prompt = `You are a world-class direct-response Facebook ad creative director. Your job is to write scroll-stopping image/video generation prompts.
 
-Write a single generation prompt for ${typeDesc}
-Rules:
-- Photorealistic, cinematic quality
-- NO text, words, logos or overlays — Facebook renders text separately
-- Show the outcome/benefit felt by the audience, not the product
-- Aspirational lifestyle, matching the target audience
-- Specific lighting: bright, clean, modern${type === 'video' ? '\n- Describe the motion/action happening in the scene\n- Keep it simple: one clear scene, smooth camera movement' : ''}
-- Return ONLY the prompt. Max 150 words.`
+Brand: ${brandContext.brandName} | Product: ${brandContext.product}
+Target audience: ${brandContext.targetAudience}
+Ad headline: "${variation.headline}"
+Ad angle: ${angle}
+Creative format: ${typeLabel}, ${formatLabel}
+
+Emotional direction for this angle: ${ANGLE_CREATIVE_DIRECTION[angle] || ANGLE_CREATIVE_DIRECTION.general}
+
+Write a generation prompt for a ${typeLabel} that will make someone STOP scrolling in 0.3 seconds.
+
+Hard rules:
+- Photorealistic, ${type === 'video' ? 'cinematic' : 'DSLR editorial'} quality — no illustrations
+- ZERO text, words, signs, logos, UI or overlays anywhere — Facebook adds its own text
+- Feature a real person (not a product) showing a strong, specific, recognizable emotion matching the angle
+- Be hyper-specific: exact facial expression, body language, clothing, environment, lighting setup, camera angle
+- Lighting must serve the emotion: harsh/dark for pain, golden/bright for outcomes, premium studio for authority${type === 'video' ? `
+- Describe the motion clearly: what moves, how the camera moves (slow push-in, static with subject action, etc.)
+- ONE clear scene — simple motion that amplifies the emotion` : ''}
+- Composition: subject sharp, rule of thirds, background supports the mood
+
+Return ONLY the prompt text. Max 120 words.`
 
   const raw = await callClaude(anthropicKey, prompt)
   return raw.trim()
@@ -289,14 +319,24 @@ export async function generateAdVideo({ variation, brandContext, format = 'feed'
 
   for (let attempt = 0; attempt < 60; attempt++) {
     await sleep(3000)
-    const statusRes = await fetch(statusUrl, { headers: { Authorization: `Key ${falKey}` } })
+    const statusRes = await fetch(`${statusUrl}?logs=1`, { headers: { Authorization: `Key ${falKey}` } })
     const status    = await statusRes.json()
 
     if (status.status === 'COMPLETED') {
-      onProgress?.('Done!')
+      onProgress?.('Fetching video…')
       const resultRes = await fetch(resultUrl, { headers: { Authorization: `Key ${falKey}` } })
       const result    = await resultRes.json()
-      return { videoUrl: result.video?.url, creativePrompt }
+      // fal.ai may return video at different paths depending on SDK version
+      const videoUrl  = result.video?.url
+        || result.output?.video?.url
+        || result.videos?.[0]?.url
+        || status.output?.video?.url
+      if (!videoUrl) {
+        console.error('[fal.ai] Unexpected Kling result shape:', JSON.stringify(result).substring(0, 400))
+        throw new Error('Video URL missing in fal.ai response — check console for details')
+      }
+      onProgress?.('Done!')
+      return { videoUrl, creativePrompt }
     }
 
     if (status.status === 'FAILED') {
