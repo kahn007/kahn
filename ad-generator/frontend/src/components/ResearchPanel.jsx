@@ -31,7 +31,7 @@ export default function ResearchPanel() {
     setActiveTab, saveSwipeFile, competitorSwipeFile,
   } = useAdStore()
 
-  const [form, setForm] = useState({ product: brandContext.product || '', targetAudience: brandContext.targetAudience || '' })
+  const [form, setForm] = useState({ product: '', targetAudience: '' })
   const [creating, setCreating] = useState(researchSessions.length === 0)
   const [activeTab, setLocalTab] = useState('audience')  // 'audience' | 'competitor'
   const [competitors, setCompetitors] = useState('')

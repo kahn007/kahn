@@ -167,6 +167,7 @@ export default function VariationManager() {
     variations, selectedVariations, brandContext,
     toggleSelectVariation, selectAll, clearSelection,
     removeVariation, updateVariation, setActiveTab, addVariations,
+    competitorSwipeFile,
   } = useAdStore()
 
   const [viewMode, setViewMode]       = useState('grid')
@@ -214,7 +215,7 @@ export default function VariationManager() {
   const handleGenImage = async (v) => {
     setCard(v.id, { type: 'image', label: 'Generating image…' })
     try {
-      const result = await generateAdImage({ variation: v, brandContext, format: v.format || 'feed' })
+      const result = await generateAdImage({ variation: v, brandContext, format: v.format || 'feed', competitorIntel: competitorSwipeFile || null })
       updateVariation(v.id, { imageUrl: result.imageUrl, videoUrl: null, creativePrompt: result.creativePrompt })
       toast.success('Image ready!')
     } catch (err) { toast.error(err.message) }
@@ -277,6 +278,7 @@ export default function VariationManager() {
       const result = await generateAdVideo({
         variation: v, brandContext, format: v.format || 'feed',
         videoModelId, videoDuration,
+        competitorIntel: competitorSwipeFile || null,
         onProgress: (label) => setCard(v.id, { type: 'video', label }),
       })
       updateVariation(v.id, { videoUrl: result.videoUrl, imageUrl: null, creativePrompt: result.creativePrompt })
@@ -309,7 +311,7 @@ export default function VariationManager() {
       const v = imageSlots[i]
       log(`🖼  Generating image ${i + 1}/${imageSlots.length} — "${v.headline?.substring(0, 30)}…"`)
       try {
-        const result = await generateAdImage({ variation: v, brandContext, format: v.format || 'feed' })
+        const result = await generateAdImage({ variation: v, brandContext, format: v.format || 'feed', competitorIntel: competitorSwipeFile || null })
         updateVariation(v.id, { imageUrl: result.imageUrl, videoUrl: null, creativePrompt: result.creativePrompt })
         log(`✅ Image ${i + 1} done`)
       } catch (err) {
@@ -328,6 +330,7 @@ export default function VariationManager() {
         const result = await generateAdVideo({
           variation: v, brandContext, format: v.format || 'feed',
           videoModelId, videoDuration,
+          competitorIntel: competitorSwipeFile || null,
           onProgress: (label) => log(`   ${label}`),
         })
         updateVariation(v.id, { videoUrl: result.videoUrl, imageUrl: null, creativePrompt: result.creativePrompt })

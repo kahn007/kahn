@@ -39,7 +39,7 @@ export async function researchAudience({ product, targetAudience, brandName }) {
 }
 
 // ── Claude — bulk variation generation ───────────────────────
-export async function generateVariations({ brandContext, insights, count = 10, formats = ['feed'] }) {
+export async function generateVariations({ brandContext, insights, competitorIntel, count = 10, formats = ['feed'] }) {
   const key = getKey('anthropic')
   const total = Math.min(count, 100)
 
@@ -55,7 +55,7 @@ export async function generateVariations({ brandContext, insights, count = 10, f
 
   const allVariations = []
   for (const batchSize of batchSizes) {
-    const prompt = buildBatchPrompt(brandContext, insights, batchSize, formats)
+    const prompt = buildBatchPrompt(brandContext, insights, batchSize, formats, competitorIntel)
     const raw = await callClaude(key, prompt)
 
     let parsed = []
@@ -268,7 +268,8 @@ const ANGLE_FALLBACK = {
 }
 
 // Build creative prompt via Claude (or fallback)
-async function buildCreativePrompt(variation, brandContext, format, type, durationSeconds) {
+// competitorIntel is optional — when present, visual direction exploits market gaps
+async function buildCreativePrompt(variation, brandContext, format, type, durationSeconds, competitorIntel) {
   const anthropicKey = getKey('anthropic')
   const angle = variation.angle || 'general'
   const audience = variation.targetSegment || brandContext.targetAudience || 'business owner'
@@ -289,6 +290,16 @@ Example structure: "[Subject doing X] — [static/slow push-in/slow pan], holdin
     : `A mini story with a beginning, development and payoff across ${dur} seconds. Two beats max — setup (${Math.round(dur * 0.4)}s) then emotional resolution (${Math.round(dur * 0.6)}s). One location, simple camera movement.
 Example structure: "[Subject doing X showing tension] — [camera slowly pushes in] — [subject reacts to Y, emotion shifts to Z]"`
 
+  // Competitor creative gap direction
+  let competitorCreativeNote = ''
+  if (competitorIntel) {
+    const gaps = competitorIntel.gapOpportunities?.slice(0, 2) || []
+    const themes = competitorIntel.competitors?.flatMap((c) => c.themes || []).slice(0, 4) || []
+    if (gaps.length || themes.length) {
+      competitorCreativeNote = `\n- Market gap to exploit visually: ${gaps.join('; ')}. Make the visual fill this gap that competitors are ignoring.`
+    }
+  }
+
   const prompt = `You are a top direct-response creative director at a performance marketing agency. You write AI generation prompts that produce scroll-stopping Facebook ad visuals rated 9/10 or higher by creative directors.
 
 THE AD:
@@ -296,7 +307,7 @@ THE AD:
 - Product: ${brandContext.product}
 - Headline: "${variation.headline}"
 - Copy snippet: "${variation.primaryText?.substring(0, 200)}"
-- Emotional angle: ${angle} — ${ANGLE_CREATIVE_DIRECTION[angle] || ANGLE_CREATIVE_DIRECTION.general}
+- Emotional angle: ${angle} — ${ANGLE_CREATIVE_DIRECTION[angle] || ANGLE_CREATIVE_DIRECTION.general}${competitorCreativeNote}
 - Format: ${formatLabel}${isVideo ? `, ${dur}-second video` : ', still image'}
 
 YOUR TASK:
@@ -324,11 +335,11 @@ Return ONLY the prompt. No explanation. Max 160 words.`
 }
 
 // ── Nano Banana Pro — image generation ───────────────────────
-export async function generateAdImage({ variation, brandContext, format = 'feed' }) {
+export async function generateAdImage({ variation, brandContext, format = 'feed', competitorIntel }) {
   const falKey = getKey('falai')
   if (!falKey) throw new Error('Add your fal.ai key in Settings to generate images')
 
-  const creativePrompt = await buildCreativePrompt(variation, brandContext, format, 'image')
+  const creativePrompt = await buildCreativePrompt(variation, brandContext, format, 'image', null, competitorIntel)
 
   const res = await fetch(`${FAL_BASE}/fal-ai/nano-banana-pro`, {
     method: 'POST',
@@ -354,14 +365,14 @@ export async function generateAdImage({ variation, brandContext, format = 'feed'
 }
 
 // ── Video generation — async queue (any model) ───────────────
-export async function generateAdVideo({ variation, brandContext, format = 'feed', onProgress, videoModelId = 'kling3', videoDuration }) {
+export async function generateAdVideo({ variation, brandContext, format = 'feed', onProgress, videoModelId = 'kling3', videoDuration, competitorIntel }) {
   const falKey = getKey('falai')
   if (!falKey) throw new Error('Add your fal.ai key in Settings to generate videos')
 
   const model = VIDEO_MODELS[videoModelId] || VIDEO_MODELS.kling3
   const ratio = AD_ASPECT_RATIOS[format] || '16:9'
   const dur = videoDuration || model.durations[0].value
-  const creativePrompt = await buildCreativePrompt(variation, brandContext, format, 'video', dur)
+  const creativePrompt = await buildCreativePrompt(variation, brandContext, format, 'video', dur, competitorIntel)
 
   // 1. Submit to queue
   let submitData
@@ -679,13 +690,31 @@ Return a JSON object with this exact shape:
 Find 6-8 pain points, 4-6 desired outcomes, 8-10 trigger phrases, 3-5 objections, 6-8 keywords.`
 }
 
-function buildBatchPrompt(brandContext, insights, count, formats) {
+function buildBatchPrompt(brandContext, insights, count, formats, competitorIntel) {
   const { brandName, product, targetAudience, cta, landingPageUrl } = brandContext
   const insightsSummary = insights
     ? `Pain points: ${insights.painPoints?.slice(0, 3).map((p) => p.text).join('; ')}
 Desired outcomes: ${insights.desiredOutcomes?.slice(0, 3).map((o) => o.text).join('; ')}
 Trigger phrases: ${insights.triggerPhrases?.slice(0, 5).join(', ')}`
     : ''
+
+  // Competitor intelligence block
+  let competitorBlock = ''
+  if (competitorIntel) {
+    const { competitors = [], winningAngles = [], gapOpportunities = [], suggestedDifferentiators = [] } = competitorIntel
+    const provenHooks = competitors.flatMap((c) => c.hooks || []).slice(0, 8)
+    const weaknesses = competitors.map((c) => c.weaknesses).filter(Boolean).slice(0, 3)
+
+    competitorBlock = `
+COMPETITOR INTELLIGENCE (use this to make ads that can't lose):
+- Winning angles in this market that CONVERT: ${winningAngles.join(', ')} — bias your variations toward these
+- Proven hook structures competitors use (inspire from, do NOT copy verbatim): ${provenHooks.join(' | ')}
+- What competitors are FAILING at (exploit these gaps): ${gapOpportunities.join('; ')}
+- Competitor weaknesses to beat: ${weaknesses.join('; ')}
+- Your differentiators to hammer: ${suggestedDifferentiators.join('; ')}
+
+CRITICAL: Generate ads that fill the gaps competitors are missing. If competitors ignore a niche or angle, target it.`
+  }
 
   // If multiple audiences are listed, distribute them across variations
   const audienceList = targetAudience.split(/[,;\/]+/).map((a) => a.trim()).filter(Boolean)
@@ -697,6 +726,7 @@ Trigger phrases: ${insights.triggerPhrases?.slice(0, 5).join(', ')}`
 Product: ${product} | CTA: ${cta}
 ${audienceNote}
 ${insightsSummary}
+${competitorBlock}
 
 Generate EXACTLY ${count} unique Facebook ad variations using different angles: pain_point, outcome, social_proof, curiosity, authority, fomo.
 
@@ -705,6 +735,7 @@ Rules:
 - Copy is direct, conversational, specific — no corporate fluff
 - Headlines are punchy and under 40 characters
 - NEVER use em dashes (—) or en dashes (–) anywhere in the copy
+${competitorIntel ? '- Prioritize angles and themes proven to convert in this market from the competitor intel above' : ''}
 
 Return ONLY a valid JSON array with exactly ${count} objects:
 [{

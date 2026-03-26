@@ -31,6 +31,7 @@ export default function CopyGenerator() {
     researchSessions, activeResearchId, setActiveResearchId,
     addVariations, variations, setIsGenerating, isGenerating, setActiveTab,
     hookLibrary, addHook, removeHook,
+    competitorSwipeFile,
   } = useAdStore()
   const activeSession = researchSessions.find((r) => r.id === activeResearchId)
   const insights = activeSession?.insights || null
@@ -38,11 +39,12 @@ export default function CopyGenerator() {
   const [count, setCount]         = useState(10)
   const [formats, setFormats]     = useState(['feed'])
   const [progress, setProgress]   = useState(0)
-  const [scores, setScores]       = useState({})     // variationId → { score, rationale }
-  const [isScoring, setIsScoring] = useState(false)
+  const [scores, setScores]           = useState({})
+  const [isScoring, setIsScoring]     = useState(false)
   const [isRetargeting, setIsRetargeting] = useState(false)
-  const [newHook, setNewHook]     = useState('')
-  const [injectHook, setInjectHook] = useState(null)  // hook text to inject
+  const [newHook, setNewHook]         = useState('')
+  const [injectHook, setInjectHook]   = useState(null)
+  const [useCompetitorIntel, setUseCompetitorIntel] = useState(!!competitorSwipeFile)
 
   const toggleFormat = (id) => {
     setFormats((f) => f.includes(id) ? (f.length > 1 ? f.filter((x) => x !== id) : f) : [...f, id])
@@ -70,6 +72,7 @@ export default function CopyGenerator() {
       const data = await generateVariations({
         brandContext,
         insights: enrichedInsights,
+        competitorIntel: useCompetitorIntel && competitorSwipeFile ? competitorSwipeFile : null,
         count,
         formats,
       })
@@ -277,6 +280,28 @@ export default function CopyGenerator() {
                     <option key={h.id} value={h.text}>{h.text.substring(0, 60)}</option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {/* Competitor intel toggle */}
+            {competitorSwipeFile && (
+              <div
+                className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                  useCompetitorIntel
+                    ? 'bg-red-900/10 border-red-800/50'
+                    : 'bg-gray-800/40 border-gray-700 opacity-60'
+                }`}
+                onClick={() => setUseCompetitorIntel((v) => !v)}
+              >
+                <div className={`w-4 h-4 rounded flex-shrink-0 mt-0.5 flex items-center justify-center border transition-colors ${useCompetitorIntel ? 'bg-red-500 border-red-500' : 'border-gray-600'}`}>
+                  {useCompetitorIntel && <span className="text-white text-[10px] font-bold">✓</span>}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">Use competitor intelligence</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Claude will exploit {competitorSwipeFile.gapOpportunities?.length || 0} market gaps and bias toward winning angles ({competitorSwipeFile.winningAngles?.join(', ')})
+                  </p>
+                </div>
               </div>
             )}
 
