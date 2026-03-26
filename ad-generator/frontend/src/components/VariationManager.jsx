@@ -72,7 +72,7 @@ function CreativeMix({ total, imageCount, videoCount, videoModelId, videoDuratio
             </div>
             <div>
               <p className="text-white text-sm font-semibold">Images</p>
-              <p className="text-gray-500 text-xs">Flux Pro Ultra · ~10s</p>
+              <p className="text-gray-500 text-xs">Nano Banana Pro · ~10s</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -151,7 +151,7 @@ function CreativeMix({ total, imageCount, videoCount, videoModelId, videoDuratio
             {videoCount > 0 && <div className="bg-teal-500 transition-all duration-300" style={{ width: `${(videoCount / total) * 100}%` }} />}
           </div>
           <div className="flex justify-between text-xs text-gray-500">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />{imageCount} images · Flux Ultra</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />{imageCount} images · Nano Banana Pro</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-500 inline-block" />{videoCount} videos · {currentModel.label}</span>
           </div>
         </div>

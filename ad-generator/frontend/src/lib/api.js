@@ -323,14 +323,14 @@ Return ONLY the prompt. No explanation. Max 160 words.`
   return raw.trim()
 }
 
-// ── Flux Pro 1.1 Ultra — image generation ────────────────────
+// ── Nano Banana Pro — image generation ───────────────────────
 export async function generateAdImage({ variation, brandContext, format = 'feed' }) {
   const falKey = getKey('falai')
   if (!falKey) throw new Error('Add your fal.ai key in Settings to generate images')
 
   const creativePrompt = await buildCreativePrompt(variation, brandContext, format, 'image')
 
-  const res = await fetch(`${FAL_BASE}/fal-ai/flux-pro/v1.1-ultra`, {
+  const res = await fetch(`${FAL_BASE}/fal-ai/nano-banana-pro`, {
     method: 'POST',
     headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
