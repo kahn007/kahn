@@ -858,10 +858,9 @@ SECTIONS — BUILD ALL OF THESE IN ORDER
 JAVASCRIPT REQUIREMENTS
 ═══════════════════════════════════════
 1. FAQ accordion: click expands/collapses answer, chevron rotates 180deg, smooth max-height transition
-2. Scroll animations: CSS: .reveal { opacity:0; transform:translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease } .reveal.visible { opacity:1; transform:none }
-   Use IntersectionObserver to add 'visible' class. CRITICAL FALLBACK: immediately after setting up the observer, also run: setTimeout(()=>{ document.querySelectorAll('.reveal').forEach(el=>el.classList.add('visible')) }, 300) — this ensures all content is visible even if the observer never fires.
-3. Smooth scroll: html { scroll-behavior: smooth }
-4. Sticky nav shadow: add box-shadow on scroll past 60px
+2. Smooth scroll: html { scroll-behavior: smooth }
+3. Sticky nav shadow: add box-shadow on scroll past 60px
+DO NOT use IntersectionObserver or any JS-controlled visibility. DO NOT set opacity:0 on any element. All content must be fully visible as soon as the page loads.
 
 ═══════════════════════════════════════
 CSS REQUIREMENTS
@@ -870,10 +869,9 @@ CSS REQUIREMENTS
 - body: font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased
 - Primary button: gradient accent bg, white text, font-weight 600, padding 14px 32px, border-radius 12px, no border, cursor pointer, transition all 0.2s, hover: brightness(1.1) translateY(-1px), box-shadow accent glow
 - Ghost button: transparent bg, 1.5px solid rgba(255,255,255,0.2), white text, same padding/radius, hover: border-color white
-- All section headings: add 'reveal' class for animation
-- All cards: add 'reveal' class for animation
 - Grid layouts use CSS Grid (not flexbox for multi-column)
 - Responsive: single breakpoint @media(max-width: 768px) collapses all grids to 1 column
+- NEVER set opacity:0 on any element. NEVER hide content by default.
 
 CRITICAL RULES:
 - Return ONLY the complete HTML. Start immediately with <!DOCTYPE html>. Zero explanation, zero markdown.
@@ -888,8 +886,14 @@ CRITICAL RULES:
 
   // Use higher token limit for landing pages
   const raw = await callClaudeLarge(key, prompt)
-  const cleaned = raw.replace(/^```html\n?/i, '').replace(/\n?```$/i, '').trim()
-  return cleaned
+
+  // Robustly extract the HTML — find the actual <!DOCTYPE start, strip any preamble or markdown fences
+  let html = raw
+  const doctypeIdx = raw.toLowerCase().indexOf('<!doctype')
+  if (doctypeIdx > 0) html = raw.slice(doctypeIdx)
+  // Strip trailing markdown fences if present
+  html = html.replace(/\n?```\s*$/i, '').trim()
+  return html
 }
 
 // ── Claude helpers ────────────────────────────────────────────
