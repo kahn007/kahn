@@ -53,6 +53,17 @@ export const useAdStore = create(
       // ── Competitor swipe file ─────────────────────────────────────
       competitorSwipeFile: null,
 
+      // ── Landing page config ───────────────────────────────────────
+      landingPageConfig: {
+        themeId: 'dark_pro',
+        accentOverride: '',
+        logoSrc: '',
+        companyName: '',
+        tagline: '',
+        ctaUrl: '',
+        trustMetric: '',
+      },
+
       // ── Active tab ────────────────────────────────────────────────
       activeTab: 'research',
 
@@ -139,6 +150,10 @@ export const useAdStore = create(
       // Competitor swipe file
       saveSwipeFile: (data) => set({ competitorSwipeFile: data }),
 
+      // Landing page config
+      setLandingPageConfig: (updates) =>
+        set((s) => ({ landingPageConfig: { ...s.landingPageConfig, ...updates } })),
+
       setActiveTab: (tab) => set({ activeTab: tab }),
     }),
     {
@@ -154,6 +169,7 @@ export const useAdStore = create(
         hookLibrary:          s.hookLibrary,
         utmConfig:            s.utmConfig,
         competitorSwipeFile:  s.competitorSwipeFile,
+        landingPageConfig:    s.landingPageConfig,
       }),
     }
   )

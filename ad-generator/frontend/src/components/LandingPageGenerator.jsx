@@ -28,7 +28,10 @@ const LOADING_MESSAGES = [
 ]
 
 export default function LandingPageGenerator() {
-  const { variations, brandContext, researchSessions, activeResearchId, competitorSwipeFile } = useAdStore()
+  const {
+    variations, brandContext, researchSessions, activeResearchId, competitorSwipeFile,
+    landingPageConfig, setLandingPageConfig,
+  } = useAdStore()
   const activeSession = researchSessions.find((r) => r.id === activeResearchId)
   const insights = activeSession?.insights || null
 
@@ -37,17 +40,25 @@ export default function LandingPageGenerator() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('')
   const [previewMode, setPreviewMode] = useState('preview')
-
-  // Page config
-  const [themeId, setThemeId] = useState('dark_pro')
-  const [accentOverride, setAccentOverride] = useState('')
-  const [logoSrc, setLogoSrc] = useState('')          // data URL or http URL
-  const [logoInputMode, setLogoInputMode] = useState('url') // 'url' | 'file'
+  const [logoInputMode, setLogoInputMode] = useState('url')
   const [logoUrl, setLogoUrl] = useState('')
-  const [companyName, setCompanyName] = useState('')
-  const [tagline, setTagline] = useState('')
-  const [ctaUrl, setCtaUrl] = useState('')
-  const [trustMetric, setTrustMetric] = useState('')
+
+  // All config is stored in Zustand so it persists across sessions
+  const themeId       = landingPageConfig.themeId       || 'dark_pro'
+  const accentOverride = landingPageConfig.accentOverride || ''
+  const logoSrc       = landingPageConfig.logoSrc       || ''
+  const companyName   = landingPageConfig.companyName   || ''
+  const tagline       = landingPageConfig.tagline       || ''
+  const ctaUrl        = landingPageConfig.ctaUrl        || ''
+  const trustMetric   = landingPageConfig.trustMetric   || ''
+
+  const setThemeId       = (v) => setLandingPageConfig({ themeId: v })
+  const setAccentOverride = (v) => setLandingPageConfig({ accentOverride: v })
+  const setLogoSrc       = (v) => setLandingPageConfig({ logoSrc: v })
+  const setCompanyName   = (v) => setLandingPageConfig({ companyName: v })
+  const setTagline       = (v) => setLandingPageConfig({ tagline: v })
+  const setCtaUrl        = (v) => setLandingPageConfig({ ctaUrl: v })
+  const setTrustMetric   = (v) => setLandingPageConfig({ trustMetric: v })
 
   const fileInputRef = useRef(null)
   const selectedVariation = variations.find((v) => v.id === selectedId)

@@ -858,7 +858,8 @@ SECTIONS — BUILD ALL OF THESE IN ORDER
 JAVASCRIPT REQUIREMENTS
 ═══════════════════════════════════════
 1. FAQ accordion: click expands/collapses answer, chevron rotates 180deg, smooth max-height transition
-2. Scroll animations: use IntersectionObserver — add class 'visible' to elements with class 'reveal' when they enter viewport. CSS: .reveal { opacity:0; transform:translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease } .reveal.visible { opacity:1; transform:none }
+2. Scroll animations: CSS: .reveal { opacity:0; transform:translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease } .reveal.visible { opacity:1; transform:none }
+   Use IntersectionObserver to add 'visible' class. CRITICAL FALLBACK: immediately after setting up the observer, also run: setTimeout(()=>{ document.querySelectorAll('.reveal').forEach(el=>el.classList.add('visible')) }, 300) — this ensures all content is visible even if the observer never fires.
 3. Smooth scroll: html { scroll-behavior: smooth }
 4. Sticky nav shadow: add box-shadow on scroll past 60px
 
