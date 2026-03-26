@@ -83,13 +83,13 @@ export default function CampaignSettings() {
   const [testing, setTesting] = useState({})
   const [testStatus, setTestStatus] = useState({})
 
-  const updateKey = (id, value) => setKeys((k) => ({ ...k, [id]: value }))
-  const toggleShow = (id) => setShown((s) => ({ ...s, [id]: !s[id] }))
-
-  const handleSaveKeys = () => {
-    saveKeys(keys)
-    toast.success('API keys saved to browser storage')
+  // Auto-save keys to localStorage on every change
+  const updateKey = (id, value) => {
+    const updated = { ...keys, [id]: value }
+    setKeys(updated)
+    saveKeys(updated)
   }
+  const toggleShow = (id) => setShown((s) => ({ ...s, [id]: !s[id] }))
 
   const handleTest = async (cfg) => {
     const key = keys[cfg.id]
@@ -187,10 +187,9 @@ export default function CampaignSettings() {
           </div>
         ))}
 
-        <button className="btn-primary" onClick={handleSaveKeys}>
-          <Key size={14} />
-          Save All Keys
-        </button>
+        <p className="text-xs text-green-400 flex items-center gap-1.5">
+          <CheckCircle size={12} /> Keys auto-save as you type — no button needed
+        </p>
       </div>
 
       {/* Brand */}
