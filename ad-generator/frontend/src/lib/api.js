@@ -155,17 +155,30 @@ export async function getFacebookAdSets(adAccountId) {
 // ── Facebook — analytics ──────────────────────────────────────
 export async function getAnalytics(adAccountId, { since, until } = {}) {
   const token = getKey('facebook')
-  if (!token) return { data: getMockAnalytics() }
+  if (!token) return { data: getMockAnalytics(), mock: true }
 
-  const params = new URLSearchParams({
-    fields: 'id,name,status,insights{impressions,clicks,spend,ctr,cpc}',
-    time_range: JSON.stringify({ since, until }),
-    access_token: token,
-  })
-  const res = await fetch(`https://graph.facebook.com/v19.0/${adAccountId}/ads?${params}`)
-  const data = await res.json()
-  if (data.error) throw new Error(data.error.message)
-  return { data: data.data }
+  // Error #100 "nonexisting field (ads)" means no ads in the account yet — return empty gracefully
+  try {
+    const params = new URLSearchParams({
+      fields: 'id,name,status,insights{impressions,clicks,spend,ctr,cpc}',
+      time_range: JSON.stringify({ since, until }),
+      access_token: token,
+    })
+    const res  = await fetch(`https://graph.facebook.com/v19.0/${adAccountId}/ads?${params}`)
+    const data = await res.json()
+
+    if (data.error) {
+      // #100 = no ads yet, #200 = permissions — return empty array instead of throwing
+      if (data.error.code === 100 || data.error.code === 200) {
+        return { data: [], empty: true, errorMessage: data.error.message }
+      }
+      throw new Error(data.error.message)
+    }
+
+    return { data: data.data || [] }
+  } catch (err) {
+    throw err
+  }
 }
 
 // ── Claude helper ─────────────────────────────────────────────

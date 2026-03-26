@@ -40,9 +40,11 @@ export default function TrackingDashboard() {
   const { campaign, analytics, setAnalytics, isLoadingAnalytics, setIsLoadingAnalytics } = useAdStore()
   const [dateRange, setDateRange] = useState('last_7d')
   const [sortBy, setSortBy]       = useState('ctr')
+  const [emptyReason, setEmptyReason] = useState(null)
 
   const loadAnalytics = async () => {
     setIsLoadingAnalytics(true)
+    setEmptyReason(null)
     try {
       const ranges = {
         last_7d:  { since: nDaysAgo(7),  until: today() },
@@ -54,6 +56,8 @@ export default function TrackingDashboard() {
         ranges[dateRange]
       )
       setAnalytics(data.data || [])
+      if (data.mock)  setEmptyReason('no_token')
+      if (data.empty) setEmptyReason('no_ads')
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -216,9 +220,28 @@ export default function TrackingDashboard() {
               </tbody>
             </table>
             {sorted.length === 0 && (
-              <div className="py-16 text-center text-gray-500">
+              <div className="py-16 text-center px-6">
                 <Target size={36} className="mx-auto mb-3 text-gray-700" />
-                No ads to show. Upload ads first.
+                {emptyReason === 'no_token' && (
+                  <>
+                    <p className="text-gray-400 font-medium">Showing demo data</p>
+                    <p className="text-gray-600 text-sm mt-1">Add your Facebook Access Token in Settings to see real ad performance.</p>
+                  </>
+                )}
+                {emptyReason === 'no_ads' && (
+                  <>
+                    <p className="text-gray-400 font-medium">No ads in your account yet</p>
+                    <p className="text-gray-600 text-sm mt-2 max-w-sm mx-auto">
+                      Your Facebook ad account is connected but has no ads. Generate variations → select them → push to Facebook first. Once your ads are live, data will appear here.
+                    </p>
+                  </>
+                )}
+                {!emptyReason && (
+                  <>
+                    <p className="text-gray-400 font-medium">No ads found</p>
+                    <p className="text-gray-600 text-sm mt-1">Try a different date range, or push ads first.</p>
+                  </>
+                )}
               </div>
             )}
           </div>
