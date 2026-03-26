@@ -222,38 +222,44 @@ const ANGLE_FALLBACK = {
 async function buildCreativePrompt(variation, brandContext, format, type) {
   const anthropicKey = getKey('anthropic')
   const angle = variation.angle || 'general'
+  const audience = variation.targetSegment || brandContext.targetAudience || 'business owner'
 
   if (!anthropicKey) {
     const base = ANGLE_FALLBACK[angle] || ANGLE_FALLBACK.general
-    return `${base}. Scene relates to: ${brandContext.product} helping ${brandContext.targetAudience}.`
+    return `${base}. Scene is relevant to: ${brandContext.product} for ${audience}.`
   }
 
-  const formatLabel = format === 'story' ? '9:16 vertical' : format === 'square' ? '1:1 square' : '16:9 landscape'
-  const typeLabel   = type === 'video' ? '5-second cinematic Facebook video ad' : 'Facebook ad still image'
+  const formatLabel = format === 'story' ? '9:16 vertical portrait' : format === 'square' ? '1:1 square' : '16:9 landscape widescreen'
+  const isVideo = type === 'video'
 
-  const prompt = `You are a world-class direct-response Facebook ad creative director. Your job is to write scroll-stopping image/video generation prompts.
+  const prompt = `You are a top direct-response creative director at a performance marketing agency. You write AI generation prompts that produce scroll-stopping Facebook ad visuals rated 9/10 or higher by creative directors.
 
-Brand: ${brandContext.brandName} | Product: ${brandContext.product}
-Target audience: ${brandContext.targetAudience}
-Ad headline: "${variation.headline}"
-Ad angle: ${angle}
-Creative format: ${typeLabel}, ${formatLabel}
+THE AD:
+- Target: ${audience}
+- Product: ${brandContext.product}
+- Headline: "${variation.headline}"
+- Copy snippet: "${variation.primaryText?.substring(0, 200)}"
+- Emotional angle: ${angle} — ${ANGLE_CREATIVE_DIRECTION[angle] || ANGLE_CREATIVE_DIRECTION.general}
+- Format: ${formatLabel}${isVideo ? ', 5-second video' : ', still image'}
 
-Emotional direction for this angle: ${ANGLE_CREATIVE_DIRECTION[angle] || ANGLE_CREATIVE_DIRECTION.general}
+YOUR TASK:
+Write ONE generation prompt for ${isVideo ? 'Kling AI video generation' : 'Flux Pro image generation'} that will make the target audience STOP SCROLLING because they feel seen.
 
-Write a generation prompt for a ${typeLabel} that will make someone STOP scrolling in 0.3 seconds.
+The scene must:
+1. Feature a real person who LOOKS EXACTLY LIKE the target audience (infer their age, style, environment from "${audience}")
+2. Capture the SPECIFIC MOMENT described by the ad copy — not a generic "stressed person" but the exact scenario (e.g. if copy mentions missed calls, show the phone screen; if it mentions booked appointments, show the calendar)
+3. Use the physical environment that audience lives in (a real estate agent = open-plan office with property flyers; a contractor = job site or truck; a solar rep = suburban driveway with panels visible in background)
+4. Show ONE ultra-specific facial expression + body language that encodes the exact emotion
+5. Use cinematic lighting that amplifies the emotion (harsh tungsten for pain/exhaustion, warm golden for wins, bright clean studio for authority/trust)
+${isVideo ? `6. Describe motion as: [SUBJECT ACTION] + [CAMERA MOVEMENT] — keep it simple (e.g. "slow push-in as she exhales and smiles at her phone screen") — ONE scene, ONE beat, 5 seconds total` : '6. Sharp subject on rule-of-thirds, background slightly blurred (f/2 depth of field), environment adds context without distracting'}
 
-Hard rules:
-- Photorealistic, ${type === 'video' ? 'cinematic' : 'DSLR editorial'} quality — no illustrations
-- ZERO text, words, signs, logos, UI or overlays anywhere — Facebook adds its own text
-- Feature a real person (not a product) showing a strong, specific, recognizable emotion matching the angle
-- Be hyper-specific: exact facial expression, body language, clothing, environment, lighting setup, camera angle
-- Lighting must serve the emotion: harsh/dark for pain, golden/bright for outcomes, premium studio for authority${type === 'video' ? `
-- Describe the motion clearly: what moves, how the camera moves (slow push-in, static with subject action, etc.)
-- ONE clear scene — simple motion that amplifies the emotion` : ''}
-- Composition: subject sharp, rule of thirds, background supports the mood
+HARD RULES:
+- Zero text, words, signs, digits, logos, UI overlays — none
+- Photorealistic only — no illustration, 3D render, painting
+- Camera: ${isVideo ? 'cinema lens, ARRI ALEXA quality' : 'Sony A7R IV, 85mm f/1.8, editorial photography quality'}
+- No stock photo look — candid, authentic, raw emotion
 
-Return ONLY the prompt text. Max 120 words.`
+Return ONLY the prompt. No explanation. Max 150 words.`
 
   const raw = await callClaude(anthropicKey, prompt)
   return raw.trim()
