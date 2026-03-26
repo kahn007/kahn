@@ -716,173 +716,243 @@ COMPETITOR INTELLIGENCE — use to position us as the superior choice:
   const mutedColor   = pc.light ? '#64748b' : '#94a3b8'
   const borderColor  = pc.light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.07)'
 
-  const prompt = `You are a senior conversion-rate optimization expert and award-winning web designer. Your landing pages generate 8-15% conversion rates. You are about to build a complete, pixel-perfect, professional HTML landing page.
+  const prompt = `You are the world's best conversion-focused landing page developer. Your pages look like they were built by a $200k/year agency and consistently hit 10-18% conversion rates. You write copy that makes people feel understood and creates unstoppable urgency to act. You are about to build a complete, breathtaking, professional HTML landing page.
 
-═══════════════════════════════════════════════════════
-AD TO MATCH (message-match is the #1 conversion factor)
-═══════════════════════════════════════════════════════
+════════════════════════════════════════════
+CONTEXT — READ CAREFULLY
+════════════════════════════════════════════
 Brand: ${brand}
-Website: ${brandContext.website || ctaUrl}
-Product: ${brandContext.product}
+Product/Service: ${brandContext.product}
 Target audience: ${audience}
-Ad headline: "${variation.headline}"
-Ad copy: "${variation.primaryText}"
-CTA button text: "${variation.cta || 'Get Started'}"
-CTA URL: ${ctaUrl}
-Ad angle: ${variation.angle || 'general'}
-${tagline ? `Brand tagline: "${tagline}"` : ''}
-Social proof metric: "${trustMetric}"
+Website: ${brandContext.website || ctaUrl}
+${tagline ? `Tagline: "${tagline}"` : ''}
 
-AUDIENCE INTELLIGENCE:
-Pain points: ${painPoints.join(' | ')}
-Desired outcomes: ${outcomes.join(' | ')}
-Objections to handle: ${objections.join(' | ')}
-${triggers.length ? `Trigger phrases that resonate: ${triggers.join(', ')}` : ''}
+AD TO MATCH (message-match is the #1 conversion lever):
+  Headline: "${variation.headline}"
+  Body copy: "${variation.primaryText}"
+  CTA text: "${variation.cta || 'Get Started'}"
+  Ad angle: ${variation.angle || 'general'}
+  CTA URL (ALL buttons link here): ${ctaUrl}
+
+SOCIAL PROOF METRIC: "${trustMetric}"
+
+AUDIENCE PAIN POINTS: ${painPoints.join(' · ')}
+DESIRED OUTCOMES: ${outcomes.join(' · ')}
+OBJECTIONS TO HANDLE: ${objections.join(' · ')}
+${triggers.length ? `RESONANT PHRASES: ${triggers.join(', ')}` : ''}
 ${competitorEdge}
 
-═══════════════════════════════════════
-MANDATORY DESIGN SYSTEM (follow exactly)
-═══════════════════════════════════════
-Typography: Load Inter from Google Fonts (weights 400, 500, 600, 700, 800, 900)
-Root CSS variables:
-  --bg: ${bgColor}
-  --bg2: ${bg2Color}
-  --bg3: ${bg3Color}
-  --border: ${borderColor}
-  --accent: ${accentColor}
-  --accent2: ${accent2Color}
-  --accent-glow: ${accentGlow}
-  --text: ${textColor}
-  --muted: ${mutedColor}
-  --success: #10b981
-  --radius: 16px
-  --radius-sm: 10px
-LOGO HTML (use exactly as-is in the navbar and footer): ${logoHtml}
+════════════════════════════════════════════
+DESIGN SYSTEM — IMPLEMENT EXACTLY
+════════════════════════════════════════════
+Font: Inter from Google Fonts (weights 300,400,500,600,700,800,900)
 
-Max page width: 1100px, centered with auto margins
-Section vertical padding: 100px top/bottom (60px mobile)
-All body copy: font-size 17px, line-height 1.7, color var(--muted)
-All primary headings: font-weight 800, color var(--text), letter-spacing -0.02em
+CSS :root variables (bake these in):
+  --bg:           ${bgColor};
+  --bg2:          ${bg2Color};
+  --bg3:          ${bg3Color};
+  --border:       ${borderColor};
+  --accent:       ${accentColor};
+  --accent2:      ${accent2Color};
+  --accent-glow:  ${accentGlow};
+  --text:         ${textColor};
+  --muted:        ${mutedColor};
+  --success:      #10b981;
+  --warn:         #f59e0b;
+  --danger:       #ef4444;
 
-═══════════════════════════════════════════════════════
-SECTIONS — BUILD ALL OF THESE IN ORDER
-═══════════════════════════════════════════════════════
+LOGO HTML — use exactly in navbar and footer: ${logoHtml}
 
-1. STICKY NAVBAR
-   - Fixed top, backdrop-filter blur(20px), bg rgba from var(--bg) at 0.85 opacity
-   - Left: use the LOGO HTML provided above exactly, then brand name "${brand}" in var(--text) font-weight 700
-   - Right: one ghost link "Features" + one solid accent CTA button "${variation.cta || 'Get Started'}" linking to ${ctaUrl}
-   - No border bottom, subtle box-shadow
+COMPONENT PATTERNS — use these throughout:
 
-2. HERO SECTION (above-the-fold, full viewport height optional)
-   - Announcement pill badge at top: small rounded pill, gradient border, text like "New · [short benefit]"
-   - H1 headline: MUST mirror the ad headline closely. 52px desktop / 36px mobile. Font-weight 900. White.
-   - Support headline: expand on the ad's promise in 1 sentence, 22px, --muted color
-   - Short 2-line paragraph reinforcing the specific pain point from the ad copy
-   - TWO buttons side by side: primary solid accent + secondary ghost (e.g. "See how it works →")
-   - Social proof micro-line below buttons: avatar stack (5 colored circles with initials) + "${trustMetric}"
-   - Decorative: large blurred radial gradient glow behind the headline (accent color, opacity 0.15)
+/* Gradient text (use on hero H1 partial words or stats numbers) */
+.grad { background: linear-gradient(135deg, ${textColor} 30%, ${accentColor} 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 
-3. TRUST BAR (full-width strip)
-   - Subtle bg var(--bg2), border top + bottom var(--border)
-   - "Trusted by teams at" label in --muted, then 5 company names in muted white, font-weight 600
-   - Use plausible company names relevant to ${audience}
+/* Glass card */
+.glass { background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%); backdrop-filter: blur(12px); border: 1px solid ${borderColor}; border-radius: 20px; }
 
-4. PAIN / PROBLEM SECTION
-   - Section label: small uppercase tracking-widest text in accent color: "THE PROBLEM"
-   - H2: "You already know the struggle." — make it feel personal to ${audience}
-   - 4 pain point cards in a 2×2 grid (1-col on mobile):
-     Each card: rounded-2xl, bg var(--bg3), border var(--border), padding 28px
-     Icon: large emoji relevant to the pain (❌, 😤, 💸, ⏰ etc.)
-     Bold title (1 line) + supporting sentence
-     Use the pain points: ${painPoints.slice(0, 4).join(' | ')}
+/* Card hover lift */
+.card-hover { transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; }
+.card-hover:hover { transform: translateY(-5px); box-shadow: 0 24px 48px rgba(0,0,0,0.35); border-color: ${accentColor}44; }
 
-5. SOLUTION / FEATURES SECTION
-   - Section label: "THE SOLUTION"
-   - H2: Position ${brand} as the answer — bold and specific
-   - Subheadline: one sentence promise
-   - 3 feature cards in a row (stack on mobile), each with:
-     Icon block: 52px square, rounded-xl, gradient accent bg, white emoji or symbol inside
-     Feature title: font-weight 700, 18px
-     Feature body: 2-3 sentences, specific benefit, --muted color
-     Small "Learn more →" link in accent color
-   - Use the desired outcomes: ${outcomes.join(' | ')}
+/* Gradient button */
+.btn-grad { background: linear-gradient(135deg, ${accentColor} 0%, ${accent2Color} 100%); color: #fff; font-weight: 700; padding: 15px 36px; border-radius: 14px; border: none; cursor: pointer; font-size: 15px; letter-spacing: -0.01em; transition: all 0.25s ease; box-shadow: 0 4px 20px ${accentGlow}; }
+.btn-grad:hover { transform: translateY(-2px); box-shadow: 0 8px 32px ${accentColor}55; filter: brightness(1.08); }
 
-6. HOW IT WORKS (numbered steps)
-   - H2: "Up and running in minutes"
-   - 3 horizontal steps on desktop (vertical on mobile), connected by dashed line
-   - Each step: large number (80px, very light opacity, accent color), bold step title, 1-sentence description
-   - Steps should reflect the actual product workflow
+/* Ghost button */
+.btn-ghost { background: transparent; color: ${textColor}; font-weight: 600; padding: 15px 36px; border-radius: 14px; border: 1.5px solid ${borderColor}; cursor: pointer; font-size: 15px; transition: all 0.2s; }
+.btn-ghost:hover { border-color: ${textColor}60; background: rgba(255,255,255,0.04); }
 
-7. SOCIAL PROOF — TESTIMONIALS
-   - Section label: "WHAT THEY'RE SAYING"
-   - H2: Results from real ${audience}
-   - 3 testimonial cards in a row (stack on mobile):
-     Card bg: var(--bg3), border var(--border), rounded-2xl, padding 32px
-     Top: 5 gold stars (★★★★★) in gold color (#f59e0b)
-     Quote: italic, 16px, --text color, specific and credible (mention product outcomes with numbers)
-     Bottom: avatar circle (48px, gradient bg, white initials) + Name (bold) + Role, Company
-   - FABRICATE realistic names, roles, and specific outcome-driven quotes relevant to ${audience}
-   - One quote must mention a specific number (e.g. "3x", "47%", "$12k", "saved 8 hours")
+/* Section label pill */
+.label-pill { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: ${accentColor}; background: ${accentColor}18; border: 1px solid ${accentColor}35; padding: 5px 14px; border-radius: 100px; margin-bottom: 20px; }
 
-8. COMPARISON TABLE
-   - H2: "Why ${brand} vs the alternatives"
-   - Table with 4 rows of comparison criteria
-   - Columns: Feature | ${brand} (checkmark ✓ in green) | Typical Alternatives (✗ in muted red)
-   - Make the differentiators specific and meaningful to ${audience}
-   - Accent the ${brand} column header with a "Recommended" badge
+/* Announcement pill (hero) */
+.announce { display: inline-flex; align-items: center; gap: 8px; background: ${accentColor}12; border: 1px solid ${accentColor}30; padding: 7px 16px; border-radius: 100px; font-size: 13px; color: ${mutedColor}; margin-bottom: 32px; }
+.announce-dot { width: 7px; height: 7px; border-radius: 50%; background: ${accentColor}; box-shadow: 0 0 8px ${accentColor}; flex-shrink: 0; }
 
-9. FAQ SECTION
-   - H2: "Frequently Asked Questions"
-   - 4 FAQ items with smooth JavaScript accordion (click to expand/collapse)
-   - Each item: border-bottom separator, question in white font-weight 600, answer in --muted
-   - Animated chevron rotation on open
-   - Cover the objections: ${objections.join(' | ')}
-   - Plus one more common question
+/* Section spacing */
+section { padding: 110px 0; }
+.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+.section-center { text-align: center; max-width: 720px; margin: 0 auto 64px; }
 
-10. FINAL CTA SECTION
-    - Full-width section with radial gradient background (accent color glow)
-    - H2: Urgent, specific call to action (not generic — tie it to the ad's promise)
-    - Short paragraph: what happens after they click
-    - Large primary CTA button (min-width 260px, height 56px) + ghost secondary
-    - Small trust line below: "No credit card required · Cancel anytime" or similar
-    - Subtle decorative elements (blurred circles in background)
+/* Typography */
+h1 { font-size: clamp(42px, 6vw, 78px); font-weight: 900; line-height: 1.05; letter-spacing: -0.03em; color: ${textColor}; }
+h2 { font-size: clamp(32px, 4vw, 52px); font-weight: 800; line-height: 1.1; letter-spacing: -0.025em; color: ${textColor}; margin-bottom: 20px; }
+p.lead { font-size: 19px; line-height: 1.65; color: ${mutedColor}; }
 
-11. FOOTER
-    - bg var(--bg2), border-top var(--border), padding 48px 0
-    - Left: logo + brand name + tagline (1 line, --muted)
-    - Center: 3-4 nav links (Features, Pricing, About, Contact) in --muted
-    - Right: copyright "© 2025 ${brand}. All rights reserved."
+NEVER use opacity:0. NEVER hide content. Everything visible immediately on load.
 
-═══════════════════════════════════════
-JAVASCRIPT REQUIREMENTS
-═══════════════════════════════════════
-1. FAQ accordion: click expands/collapses answer, chevron rotates 180deg, smooth max-height transition
-2. Smooth scroll: html { scroll-behavior: smooth }
-3. Sticky nav shadow: add box-shadow on scroll past 60px
-DO NOT use IntersectionObserver or any JS-controlled visibility. DO NOT set opacity:0 on any element. All content must be fully visible as soon as the page loads.
+════════════════════════════════════════════
+BUILD ALL 12 SECTIONS IN EXACT ORDER
+════════════════════════════════════════════
 
-═══════════════════════════════════════
-CSS REQUIREMENTS
-═══════════════════════════════════════
-- Full reset: *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
-- body: font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased
-- Primary button: gradient accent bg, white text, font-weight 600, padding 14px 32px, border-radius 12px, no border, cursor pointer, transition all 0.2s, hover: brightness(1.1) translateY(-1px), box-shadow accent glow
-- Ghost button: transparent bg, 1.5px solid rgba(255,255,255,0.2), white text, same padding/radius, hover: border-color white
-- Grid layouts use CSS Grid (not flexbox for multi-column)
-- Responsive: single breakpoint @media(max-width: 768px) collapses all grids to 1 column
-- NEVER set opacity:0 on any element. NEVER hide content by default.
+━━━ 1. STICKY NAVBAR ━━━
+- position: fixed; top:0; left:0; right:0; z-index:1000
+- background: ${bgColor}dd; backdrop-filter: blur(20px) saturate(180%); border-bottom: 1px solid ${borderColor}
+- Inner flex: logo+name LEFT | nav links CENTER (Features, How it works, Testimonials) | CTA button RIGHT
+- Logo: use LOGO HTML above exactly + brand name "${brand}" in ${textColor} font-weight:700 font-size:16px
+- CTA button: .btn-grad style, text "${variation.cta || 'Get Started'}", links to ${ctaUrl}
+- JS: on scroll past 80px, add box-shadow: 0 4px 30px rgba(0,0,0,0.4) to navbar
 
-CRITICAL RULES:
-- Return ONLY the complete HTML. Start immediately with <!DOCTYPE html>. Zero explanation, zero markdown.
-- The page must look like it was built by a $50,000/month agency. Every detail matters.
-- CTA URL for ALL buttons and links: ${ctaUrl}
+━━━ 2. HERO ━━━
+- min-height: 100vh; display:flex; align-items:center; padding-top:80px (navbar offset)
+- BACKGROUND: position:relative; overflow:hidden
+  Decorative absolute positioned blobs (pointer-events:none, z-index:0):
+    Blob 1: width:700px height:600px rounded-full background:radial-gradient(circle, ${accentColor}20 0%, transparent 70%) top:-200px left:-100px
+    Blob 2: width:500px height:500px rounded-full background:radial-gradient(circle, ${accent2Color}15 0%, transparent 70%) bottom:-100px right:-50px
+  All hero content in a relative z-index:1 container
+- Announcement pill (.announce): "⚡ New · [write a 1-sentence specific benefit based on the product]"
+- H1: MUST closely mirror "${variation.headline}" — can add a line break for emphasis. Apply .grad class to 1-3 key words.
+- Subheadline (p.lead): one punchy sentence expanding on the ad promise, max-width:620px
+- Body: 2 sentences addressing the core pain point from the ad copy
+- Button row (flex gap:16px margin-top:40px): .btn-grad "${variation.cta || 'Get Started'}" href="${ctaUrl}" + .btn-ghost "See how it works →" links to #how
+- SOCIAL PROOF ROW (margin-top:32px): flex align-center gap:12px
+    5 avatar circles (40px, gradient bg, white initials, -8px overlap) + bold text "${trustMetric}" in ${textColor} + muted subtext "and counting"
+
+━━━ 2b. HERO VISUAL (right side, or below on mobile) ━━━
+On desktop: make hero a 2-column grid. Right column: a stylized "product dashboard" built entirely in HTML/CSS:
+  A rounded-2xl container (background:${bg2Color}; border:1px solid ${borderColor}; padding:20px; max-width:480px)
+  Inside: fake UI elements relevant to the product — stat cards, a mini bar chart using CSS bars, status indicators.
+  Make it look like an actual product screenshot. Use the brand colors. This replaces any placeholder image.
+
+━━━ 3. SOCIAL PROOF BAR (trust strip) ━━━
+- background: ${bg2Color}; border-top/bottom: 1px solid ${borderColor}; padding: 22px 0;
+- Flex, centered, gap:48px, flex-wrap:wrap
+- "Trusted by 2,400+ companies including:" in ${mutedColor} + 5 recognizable company NAME ONLY (bold, ${textColor}cc, font-size:15px)
+- Pick names plausible for ${audience}
+
+━━━ 4. METRICS / STATS (new section) ━━━
+- background: ${bg2Color}
+- 4 stat cards in a CSS grid (4 cols desktop, 2x2 mobile), each card:
+  Big number (56px, font-weight:900, .grad class): invent a believable metric related to the product (e.g. "3×", "47%", "8h", "$12k")
+  Label below (14px, ${mutedColor}): what that number means
+  Small description (12px, ${mutedColor}cc): one extra line of context
+- Cards separated by thin vertical border (hidden on mobile)
+- These stats must be SPECIFIC and CREDIBLE for ${brandContext.product} and ${audience}
+
+━━━ 5. PAIN / PROBLEM SECTION ━━━
+- background: ${bgColor}
+- .label-pill "THE PROBLEM"
+- H2: A bold, personal headline that makes ${audience} feel deeply understood
+- Subheadline: 1 sentence that intensifies the problem
+- 2×2 CSS grid of pain cards (1-col mobile), each .glass .card-hover:
+  Top: emoji icon (2em) + bold title (font-weight:700, 17px)
+  Body: 2 sentences, conversational, specific to this audience
+  Use: ${painPoints.slice(0, 4).join(' | ')}
+
+━━━ 6. SOLUTION / FEATURES ━━━
+- background: ${bg2Color}
+- .label-pill "THE SOLUTION"
+- H2: Position ${brand} as the definitive answer. Bold, specific.
+- Subheadline
+- 3-col CSS grid (1-col mobile), each feature card .glass .card-hover:
+  Icon block: 56px×56px, border-radius:16px, background: linear-gradient(135deg, ${accentColor}33, ${accent2Color}22), emoji inside (font-size:26px), margin-bottom:20px
+  Feature title: 18px, font-weight:700, color:${textColor}
+  Feature body: 3 sentences, benefit-focused, color:${mutedColor}
+  "Learn more →" link: color:${accentColor}, font-weight:600, font-size:14px, no underline, hover underline
+  Use outcomes: ${outcomes.join(' | ')}
+
+━━━ 7. HOW IT WORKS ━━━
+- background: ${bgColor}; id="how"
+- .label-pill "HOW IT WORKS"
+- H2: "Up and running in minutes, not months"
+- 3-step horizontal layout desktop (vertical mobile), connected by CSS dashed line:
+  Step number: 80px, font-weight:900, color:${accentColor}22, line-height:1, margin-bottom:8px
+  Step title: 20px font-weight:700, color:${textColor}
+  Step body: 2 sentences describing this step for ${brandContext.product}
+
+━━━ 8. TESTIMONIALS ━━━
+- background: ${bg2Color}
+- .label-pill "SOCIAL PROOF"
+- H2: "Results from real ${audience}"
+- 3-col grid (1-col mobile), each card .glass .card-hover padding:36px:
+  Stars row: "★★★★★" color:#f59e0b, font-size:18px, letter-spacing:2px
+  Quote: font-style:italic; font-size:16px; line-height:1.65; color:${textColor}; margin:20px 0; must be SPECIFIC with real numbers
+  Author row: 48px avatar (gradient bg, initials in white, font-weight:700) + Name (bold, 15px) + Role + Company
+  FABRICATE 3 different realistic people from ${audience} — make each quote tell a mini success story with numbers
+
+━━━ 9. COMPARISON ━━━
+- background: ${bgColor}
+- .label-pill "WHY ${brand.toUpperCase()}"
+- H2: "Everything your current solution is missing"
+- Styled comparison grid (NOT a plain HTML table — use CSS grid with alternating row bg):
+  Header row: Feature (left) | ${brand} (center, with gradient background + "✦ Best Choice" badge) | Alternatives (right)
+  5 feature rows: each row has Feature name + ✓ in ${accentColor} for us + ✗ in ${dangerColor || '#ef444480'} for them
+  Make features specific and meaningful for ${audience}
+  Bottom row: CTA button spanning full width, .btn-grad
+
+━━━ 10. FAQ ━━━
+- background: ${bg2Color}
+- .label-pill "FAQ"
+- H2: "Everything you need to know"
+- 5 FAQ items, each: border-bottom:1px solid ${borderColor}; padding:24px 0;
+  Question row: flex between, question text (17px, font-weight:600, color:${textColor}) + chevron div (rotate 0/180 on open)
+  Answer: div with max-height:0/300px transition, overflow:hidden; content: 16px ${mutedColor}
+  Cover: ${objections.join(' | ')} + one "How do I get started?" question
+  JS: toggle .open class on click, rotate chevron, expand/collapse max-height
+
+━━━ 11. FINAL CTA ━━━
+- background: ${bgColor}; position:relative; overflow:hidden; text-align:center; padding:120px 0
+- Background decorative: two giant blurred circles (absolute positioned, z-index:0), same technique as hero
+- All text in z-index:1 container
+- .label-pill "GET STARTED TODAY"
+- H2: Urgent, specific headline tied to the ad's promise — make them feel like they'll miss out if they don't act now
+- p.lead: what happens after clicking — be specific and reassuring
+- .btn-grad (min-width:280px, height:62px, font-size:17px) + .btn-ghost side by side
+- Trust line: "No credit card required · Takes 2 minutes to set up · Cancel anytime"
+- Repeat social proof: "${trustMetric} · 4.9★ average rating"
+
+━━━ 12. FOOTER ━━━
+- background: ${bg2Color}; border-top:1px solid ${borderColor}; padding:60px 0 40px
+- 3-column grid:
+  Left: LOGO HTML + "${brand}" bold + tagline "${tagline || 'The smarter way forward'}" in ${mutedColor}
+  Center: Links grid — Features, How it works, Testimonials, FAQ, Contact — in ${mutedColor}, hover:${textColor}
+  Right: "© ${new Date().getFullYear()} ${brand}. All rights reserved." + privacy/terms links in ${mutedColor}cc
+- Bottom strip: thin border-top, centered text in ${mutedColor}66 font-size:12px "Built with ❤️ for ${audience}"
+
+════════════════════════════════════════════
+JAVASCRIPT (one <script> tag before </body>)
+════════════════════════════════════════════
+1. FAQ accordion: document.querySelectorAll('.faq-item') click handler — toggle .open class, rotate chevron, expand answer via max-height
+2. Navbar scroll shadow: window.addEventListener('scroll', ...) — add/remove class with box-shadow at >80px
+3. Smooth scroll for anchor links
+ABSOLUTELY NO opacity:0 on any element. ABSOLUTELY NO IntersectionObserver. Everything is visible by default.
+
+════════════════════════════════════════════
+FINAL OUTPUT RULES
+════════════════════════════════════════════
+- Start IMMEDIATELY with <!DOCTYPE html> — zero preamble, zero explanation, zero markdown fences
+- Single <style> tag in <head> (complete CSS)
+- Single <script> tag before </body> (complete JS)
+- Load Inter: <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+- ALL buttons and CTAs link to: ${ctaUrl}
+- page title: "${brand} — ${variation.headline?.substring(0, 50)}"
+- meta description: relevant to the ad copy
+- Full mobile responsive with @media (max-width: 768px)
 - The hero headline MUST closely mirror: "${variation.headline}"
-- The tone MUST match the ad angle (${variation.angle}) throughout
-- Include Google Fonts link tag in <head>
-- All CSS in one <style> tag in <head>
-- All JS in one <script> tag before </body>
-- No external resources except Google Fonts`
+- Tone throughout MUST match angle: ${variation.angle || 'general'}
+- NO external images. NO placeholder divs labeled "image goes here". Use CSS-only visuals.
+- This page must look indistinguishable from a page built by a world-class agency charging $200k+`
 
   // Use higher token limit for landing pages
   const raw = await callClaudeLarge(key, prompt)

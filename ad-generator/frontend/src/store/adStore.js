@@ -64,6 +64,9 @@ export const useAdStore = create(
         trustMetric: '',
       },
 
+      // ── Saved landing pages (history, last 5) ─────────────────────
+      savedPages: [],
+
       // ── Active tab ────────────────────────────────────────────────
       activeTab: 'research',
 
@@ -154,6 +157,12 @@ export const useAdStore = create(
       setLandingPageConfig: (updates) =>
         set((s) => ({ landingPageConfig: { ...s.landingPageConfig, ...updates } })),
 
+      // Saved pages history
+      savePage: (page) =>
+        set((s) => ({ savedPages: [page, ...s.savedPages.filter((p) => p.id !== page.id)].slice(0, 8) })),
+      deleteSavedPage: (id) =>
+        set((s) => ({ savedPages: s.savedPages.filter((p) => p.id !== id) })),
+
       setActiveTab: (tab) => set({ activeTab: tab }),
     }),
     {
@@ -170,6 +179,7 @@ export const useAdStore = create(
         utmConfig:            s.utmConfig,
         competitorSwipeFile:  s.competitorSwipeFile,
         landingPageConfig:    s.landingPageConfig,
+        savedPages:           s.savedPages,
       }),
     }
   )

@@ -1,6 +1,11 @@
 import React, { useState, useRef } from 'react'
-import { Globe, Wand2, RefreshCw, Copy, Download, ChevronDown, LayoutTemplate, Upload, X, Palette, Link } from 'lucide-react'
+import {
+  Globe, Wand2, RefreshCw, Copy, Download, ChevronDown, LayoutTemplate,
+  Upload, X, Palette, Link, ExternalLink, Monitor, Smartphone, Trash2,
+  Clock, ChevronRight,
+} from 'lucide-react'
 import toast from 'react-hot-toast'
+import { v4 as uuidv4 } from 'uuid'
 import { useAdStore } from '../store/adStore'
 import { generateLandingPage } from '../lib/api'
 
@@ -16,21 +21,23 @@ const THEMES = [
 ]
 
 const LOADING_MESSAGES = [
-  'Writing hero section…',
-  'Crafting pain point cards…',
-  'Building feature grid…',
-  'Writing testimonials…',
+  'Researching your audience…',
+  'Crafting the hero section…',
+  'Writing pain point copy…',
+  'Building feature cards…',
+  'Generating testimonials…',
   'Building comparison table…',
-  'Building FAQ accordion…',
-  'Polishing final CTA…',
-  'Adding animations and CSS…',
-  'Almost there…',
+  'Writing FAQ answers…',
+  'Polishing the CTA section…',
+  'Applying design system…',
+  'Almost done…',
 ]
 
 export default function LandingPageGenerator() {
   const {
     variations, brandContext, researchSessions, activeResearchId, competitorSwipeFile,
     landingPageConfig, setLandingPageConfig,
+    savedPages, savePage, deleteSavedPage,
   } = useAdStore()
   const activeSession = researchSessions.find((r) => r.id === activeResearchId)
   const insights = activeSession?.insights || null
@@ -39,26 +46,29 @@ export default function LandingPageGenerator() {
   const [html, setHtml] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState('')
+  const [loadingPct, setLoadingPct] = useState(0)
   const [previewMode, setPreviewMode] = useState('preview')
+  const [previewWidth, setPreviewWidth] = useState('desktop')
+  const [showHistory, setShowHistory] = useState(false)
   const [logoInputMode, setLogoInputMode] = useState('url')
   const [logoUrl, setLogoUrl] = useState('')
 
-  // All config is stored in Zustand so it persists across sessions
-  const themeId       = landingPageConfig.themeId       || 'dark_pro'
+  // All config persisted in Zustand
+  const themeId        = landingPageConfig.themeId        || 'dark_pro'
   const accentOverride = landingPageConfig.accentOverride || ''
-  const logoSrc       = landingPageConfig.logoSrc       || ''
-  const companyName   = landingPageConfig.companyName   || ''
-  const tagline       = landingPageConfig.tagline       || ''
-  const ctaUrl        = landingPageConfig.ctaUrl        || ''
-  const trustMetric   = landingPageConfig.trustMetric   || ''
+  const logoSrc        = landingPageConfig.logoSrc        || ''
+  const companyName    = landingPageConfig.companyName    || ''
+  const tagline        = landingPageConfig.tagline        || ''
+  const ctaUrl         = landingPageConfig.ctaUrl         || ''
+  const trustMetric    = landingPageConfig.trustMetric    || ''
 
-  const setThemeId       = (v) => setLandingPageConfig({ themeId: v })
+  const setThemeId        = (v) => setLandingPageConfig({ themeId: v })
   const setAccentOverride = (v) => setLandingPageConfig({ accentOverride: v })
-  const setLogoSrc       = (v) => setLandingPageConfig({ logoSrc: v })
-  const setCompanyName   = (v) => setLandingPageConfig({ companyName: v })
-  const setTagline       = (v) => setLandingPageConfig({ tagline: v })
-  const setCtaUrl        = (v) => setLandingPageConfig({ ctaUrl: v })
-  const setTrustMetric   = (v) => setLandingPageConfig({ trustMetric: v })
+  const setLogoSrc        = (v) => setLandingPageConfig({ logoSrc: v })
+  const setCompanyName    = (v) => setLandingPageConfig({ companyName: v })
+  const setTagline        = (v) => setLandingPageConfig({ tagline: v })
+  const setCtaUrl         = (v) => setLandingPageConfig({ ctaUrl: v })
+  const setTrustMetric    = (v) => setLandingPageConfig({ trustMetric: v })
 
   const fileInputRef = useRef(null)
   const selectedVariation = variations.find((v) => v.id === selectedId)
@@ -74,10 +84,10 @@ export default function LandingPageGenerator() {
   }
 
   const handleLogoUrlApply = () => {
-    if (logoUrl.trim()) setLogoSrc(logoUrl.trim())
+    if (logoUrl.trim()) { setLogoSrc(logoUrl.trim()); setLogoUrl('') }
   }
 
-  const pageConfig = {
+  const buildPageConfig = () => ({
     themeId,
     bg: selectedTheme.bg,
     surface: selectedTheme.surface,
@@ -87,26 +97,30 @@ export default function LandingPageGenerator() {
     light: selectedTheme.light || false,
     logoSrc: logoSrc || null,
     companyName: companyName || brandContext.brandName || '',
-    tagline: tagline || '',
-    ctaUrl: ctaUrl || brandContext.landingPageUrl || '#',
+    tagline,
+    ctaUrl: ctaUrl || brandContext.landingPageUrl || '',
     trustMetric: trustMetric || '2,400+ customers',
-  }
+  })
 
   const handleGenerate = async () => {
     if (!selectedVariation) { toast.error('Select an ad variation first'); return }
-    if (!pageConfig.ctaUrl || pageConfig.ctaUrl === '#') {
-      toast.error('Add a CTA URL — where should buttons link to?')
+    const pc = buildPageConfig()
+    if (!pc.ctaUrl || pc.ctaUrl === '#') {
+      toast.error('Add a CTA URL in Page Settings first')
       return
     }
+
     setIsGenerating(true)
     setHtml('')
+    setLoadingPct(0)
     setLoadingMsg(LOADING_MESSAGES[0])
 
     let msgIdx = 0
     const msgInterval = setInterval(() => {
       msgIdx = Math.min(msgIdx + 1, LOADING_MESSAGES.length - 1)
       setLoadingMsg(LOADING_MESSAGES[msgIdx])
-    }, 5000)
+      setLoadingPct(Math.round((msgIdx / (LOADING_MESSAGES.length - 1)) * 90))
+    }, 4500)
 
     try {
       const result = await generateLandingPage({
@@ -114,9 +128,20 @@ export default function LandingPageGenerator() {
         brandContext,
         insights,
         competitorIntel: competitorSwipeFile || null,
-        pageConfig,
+        pageConfig: pc,
       })
       setHtml(result)
+      setLoadingPct(100)
+
+      // Auto-save to history
+      savePage({
+        id: uuidv4(),
+        headline: selectedVariation.headline?.substring(0, 60) || 'Landing Page',
+        themeId,
+        themeLabel: selectedTheme.label,
+        html: result,
+        createdAt: new Date().toISOString(),
+      })
       toast.success('Landing page generated!')
     } catch (err) {
       toast.error(err.message)
@@ -127,18 +152,31 @@ export default function LandingPageGenerator() {
     }
   }
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(html)
-    toast.success('HTML copied to clipboard!')
+  const handleOpenNewTab = () => {
+    const blob = new Blob([html], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
   }
 
   const handleDownload = () => {
     const blob = new Blob([html], { type: 'text/html' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `landing-page-${(selectedVariation?.headline || 'ad').replace(/[^a-z0-9]/gi, '-').substring(0, 30)}.html`
+    a.download = `landing-page-${(selectedVariation?.headline || 'page').replace(/[^a-z0-9]/gi, '-').substring(0, 30)}.html`
     a.click()
     toast.success('Downloaded!')
+  }
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(html)
+    toast.success('HTML copied!')
+  }
+
+  const loadFromHistory = (page) => {
+    setHtml(page.html)
+    setThemeId(page.themeId)
+    setPreviewMode('preview')
+    toast.success('Loaded from history')
   }
 
   return (
@@ -146,49 +184,38 @@ export default function LandingPageGenerator() {
       <div>
         <h2 className="text-2xl font-bold text-white">Landing Page Generator</h2>
         <p className="text-gray-400 mt-1">
-          Build a complete, professional landing page that matches your ad copy. Choose a theme, add your logo, and generate.
+          AI-built, agency-quality landing pages in ~60 seconds. Choose a theme, configure, and generate.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left config panel */}
+        {/* ── Left config panel ─────────────────────────────── */}
         <div className="space-y-4">
 
-          {/* Ad variation picker */}
-          <div className="card space-y-4">
+          {/* Ad variation */}
+          <div className="card space-y-3">
             <h3 className="font-semibold text-white text-sm flex items-center gap-2">
               <LayoutTemplate size={14} className="text-brand-500" />
               Ad Variation
             </h3>
-
             {variations.length === 0 ? (
               <div className="bg-yellow-900/20 border border-yellow-900/40 rounded-xl p-3 text-xs text-yellow-400">
-                No variations yet — generate ad copy first, then come back here.
+                Generate ad copy first, then come back here.
               </div>
             ) : (
-              <div>
-                <div className="relative">
-                  <select
-                    className="input pr-8 text-sm"
-                    value={selectedId}
-                    onChange={(e) => setSelectedId(e.target.value)}
-                  >
-                    {variations.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        #{v.index} — {v.headline?.substring(0, 40)}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+              <div className="relative">
+                <select className="input pr-8 text-sm" value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
+                  {variations.map((v) => (
+                    <option key={v.id} value={v.id}>#{v.index} — {v.headline?.substring(0, 42)}</option>
+                  ))}
+                </select>
+                <ChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
             )}
-
             {selectedVariation && (
-              <div className="bg-gray-800/50 rounded-xl p-3 space-y-1.5">
-                <p className="text-white text-sm font-semibold line-clamp-2">{selectedVariation.headline}</p>
-                <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">{selectedVariation.primaryText}</p>
-                <div className="flex items-center gap-2 pt-1">
+              <div className="bg-gray-800/50 rounded-xl p-3 space-y-1">
+                <p className="text-white text-xs font-semibold line-clamp-2">{selectedVariation.headline}</p>
+                <div className="flex items-center gap-2">
                   <span className="badge bg-gray-700 text-gray-300 text-xs">{selectedVariation.angle?.replace('_', ' ')}</span>
                   {selectedVariation.targetSegment && (
                     <span className="text-teal-400/70 text-xs truncate">→ {selectedVariation.targetSegment}</span>
@@ -198,7 +225,7 @@ export default function LandingPageGenerator() {
             )}
           </div>
 
-          {/* Theme picker */}
+          {/* Theme */}
           <div className="card space-y-3">
             <h3 className="font-semibold text-white text-sm flex items-center gap-2">
               <Palette size={14} className="text-brand-500" />
@@ -211,37 +238,34 @@ export default function LandingPageGenerator() {
                   onClick={() => { setThemeId(t.id); setAccentOverride('') }}
                   title={t.label}
                   className={`relative rounded-xl overflow-hidden h-14 border-2 transition-all ${
-                    themeId === t.id ? 'border-brand-500 scale-105' : 'border-transparent hover:border-gray-600'
+                    themeId === t.id ? 'border-brand-500 scale-105 shadow-lg shadow-brand-500/20' : 'border-transparent hover:border-gray-600'
                   }`}
                   style={{ background: t.bg }}
                 >
-                  <div
-                    className="absolute bottom-0 left-0 right-0 h-1"
-                    style={{ background: t.preview }}
-                  />
-                  <div
-                    className="absolute top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full"
-                    style={{ background: t.preview }}
-                  />
+                  <div className="absolute bottom-0 left-0 right-0 h-1" style={{ background: t.preview }} />
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full" style={{ background: t.preview }} />
                   {themeId === t.id && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-3 h-3 rounded-full bg-white" />
-                    </div>
+                    <div className="absolute inset-0 ring-2 ring-inset ring-brand-500/50 rounded-xl" />
                   )}
                 </button>
               ))}
             </div>
             <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-400">{selectedTheme.label}</p>
+              <p className="text-xs text-gray-400 font-medium">{selectedTheme.label}</p>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-500">Accent override:</span>
+                <span className="text-xs text-gray-500">Accent:</span>
                 <input
                   type="color"
-                  value={accentOverride || selectedTheme.accent}
+                  value={effectiveAccent}
                   onChange={(e) => setAccentOverride(e.target.value)}
                   className="w-8 h-6 rounded cursor-pointer border-0 bg-transparent"
-                  title="Override accent color"
+                  title="Override accent colour"
                 />
+                {accentOverride && (
+                  <button onClick={() => setAccentOverride('')} className="text-xs text-gray-500 hover:text-white">
+                    reset
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -253,20 +277,13 @@ export default function LandingPageGenerator() {
               Logo
             </h3>
             <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1">
-              <button
-                onClick={() => setLogoInputMode('url')}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${logoInputMode === 'url' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}
-              >
-                URL
-              </button>
-              <button
-                onClick={() => setLogoInputMode('file')}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${logoInputMode === 'file' ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}
-              >
-                Upload
-              </button>
+              {['url', 'file'].map((mode) => (
+                <button key={mode} onClick={() => setLogoInputMode(mode)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${logoInputMode === mode ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}>
+                  {mode === 'url' ? 'Paste URL' : 'Upload File'}
+                </button>
+              ))}
             </div>
-
             {logoInputMode === 'url' ? (
               <div className="flex gap-2">
                 <input
@@ -274,30 +291,23 @@ export default function LandingPageGenerator() {
                   placeholder="https://yoursite.com/logo.png"
                   value={logoUrl}
                   onChange={(e) => setLogoUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleLogoUrlApply()}
                 />
-                <button className="btn-secondary flex-shrink-0 text-xs" onClick={handleLogoUrlApply}>
-                  Use
-                </button>
+                <button className="btn-secondary flex-shrink-0 text-xs px-3" onClick={handleLogoUrlApply}>Use</button>
               </div>
             ) : (
               <>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoFile} />
-                <button
-                  className="btn-secondary w-full text-sm"
-                  onClick={() => fileInputRef.current?.click()}
-                >
+                <button className="btn-secondary w-full text-sm" onClick={() => fileInputRef.current?.click()}>
                   <Upload size={13} /> Choose image file
                 </button>
               </>
             )}
-
             {logoSrc && (
-              <div className="relative bg-gray-800/50 rounded-xl p-3 flex items-center justify-center" style={{ minHeight: '64px' }}>
-                <img src={logoSrc} alt="Logo preview" className="max-h-12 max-w-full object-contain" />
-                <button
-                  onClick={() => { setLogoSrc(''); setLogoUrl('') }}
-                  className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors"
-                >
+              <div className="relative bg-gray-800/50 rounded-xl p-3 flex items-center justify-center min-h-[60px]">
+                <img src={logoSrc} alt="logo" className="max-h-10 max-w-full object-contain" />
+                <button onClick={() => { setLogoSrc(''); setLogoUrl('') }}
+                  className="absolute top-1.5 right-1.5 p-1 rounded-lg bg-gray-700 hover:bg-red-900/60 transition-colors">
                   <X size={11} className="text-gray-300" />
                 </button>
               </div>
@@ -310,205 +320,201 @@ export default function LandingPageGenerator() {
               <Link size={14} className="text-brand-500" />
               Page Settings
             </h3>
-
             <div>
               <label className="text-xs text-gray-400 mb-1.5 block">CTA URL <span className="text-red-400">*</span></label>
-              <input
-                className="input text-sm"
-                placeholder="https://yoursite.com/signup"
-                value={ctaUrl}
-                onChange={(e) => setCtaUrl(e.target.value)}
-              />
-              <p className="text-xs text-gray-600 mt-1">All buttons on the page link here</p>
+              <input className="input text-sm" placeholder="https://yoursite.com/signup" value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} />
+              <p className="text-xs text-gray-600 mt-1">All buttons link here</p>
             </div>
-
             <div>
               <label className="text-xs text-gray-400 mb-1.5 block">Company Name</label>
-              <input
-                className="input text-sm"
-                placeholder={brandContext.brandName || 'Your Company'}
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-              />
+              <input className="input text-sm" placeholder={brandContext.brandName || 'Your Company'} value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
             </div>
-
             <div>
               <label className="text-xs text-gray-400 mb-1.5 block">Tagline</label>
-              <input
-                className="input text-sm"
-                placeholder="The fastest way to…"
-                value={tagline}
-                onChange={(e) => setTagline(e.target.value)}
-              />
+              <input className="input text-sm" placeholder="The fastest way to…" value={tagline} onChange={(e) => setTagline(e.target.value)} />
             </div>
-
             <div>
               <label className="text-xs text-gray-400 mb-1.5 block">Social Proof Metric</label>
-              <input
-                className="input text-sm"
-                placeholder="2,400+ businesses trust us"
-                value={trustMetric}
-                onChange={(e) => setTrustMetric(e.target.value)}
-              />
+              <input className="input text-sm" placeholder="2,400+ businesses trust us" value={trustMetric} onChange={(e) => setTrustMetric(e.target.value)} />
             </div>
           </div>
 
-          {/* Status badges */}
-          <div className="space-y-2">
+          {/* Intel badges */}
+          <div className="space-y-1.5">
             {insights && (
-              <p className="text-xs text-green-400 flex items-center gap-1.5">
-                <span>✓</span> Using audience research to address objections
-              </p>
+              <p className="text-xs text-green-400 flex items-center gap-1.5 px-1"><span>✓</span> Audience research will address objections</p>
             )}
             {competitorSwipeFile && (
-              <p className="text-xs text-green-400 flex items-center gap-1.5">
-                <span>✓</span> Competitor intel will position against alternatives
-              </p>
+              <p className="text-xs text-orange-400 flex items-center gap-1.5 px-1"><span>✓</span> Competitor intel will sharpen positioning</p>
             )}
           </div>
 
-          {/* Generate button */}
-          <button
-            className="btn-primary w-full"
-            onClick={handleGenerate}
-            disabled={isGenerating || !selectedVariation}
-          >
+          {/* Generate */}
+          <button className="btn-primary w-full text-base py-3" onClick={handleGenerate} disabled={isGenerating || !selectedVariation}>
             {isGenerating
               ? <><RefreshCw size={15} className="animate-spin" /> Generating…</>
-              : <><Wand2 size={15} /> Generate Landing Page</>
-            }
+              : <><Wand2 size={16} /> Generate Landing Page</>}
           </button>
 
           {isGenerating && (
             <div className="space-y-2">
               <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden">
-                <div className="h-1.5 bg-brand-500 rounded-full animate-pulse" style={{ width: '60%' }} />
+                <div className="h-1.5 bg-gradient-to-r from-brand-500 to-purple-500 rounded-full transition-all duration-700" style={{ width: `${loadingPct}%` }} />
               </div>
-              <p className="text-xs text-gray-500 text-center">{loadingMsg}</p>
-              <p className="text-xs text-gray-600 text-center">Building 11-section page… ~45s</p>
+              <p className="text-xs text-gray-400 text-center">{loadingMsg}</p>
             </div>
           )}
 
-          {/* Export */}
-          {html && (
-            <div className="card space-y-3">
-              <h3 className="font-semibold text-white text-sm">Export</h3>
-              <button className="btn-secondary w-full text-sm" onClick={handleCopy}>
-                <Copy size={13} /> Copy HTML
+          {/* History */}
+          {savedPages.length > 0 && (
+            <div className="card space-y-2">
+              <button
+                className="flex items-center justify-between w-full"
+                onClick={() => setShowHistory((v) => !v)}
+              >
+                <h3 className="font-semibold text-white text-sm flex items-center gap-2">
+                  <Clock size={13} className="text-gray-500" />
+                  History ({savedPages.length})
+                </h3>
+                <ChevronRight size={14} className={`text-gray-500 transition-transform ${showHistory ? 'rotate-90' : ''}`} />
               </button>
-              <button className="btn-secondary w-full text-sm" onClick={handleDownload}>
-                <Download size={13} /> Download .html
-              </button>
+              {showHistory && (
+                <div className="space-y-2 pt-1">
+                  {savedPages.map((p) => (
+                    <div key={p.id} className="flex items-center gap-2 bg-gray-800/50 rounded-xl p-2.5">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-white font-medium truncate">{p.headline}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{p.themeLabel} · {new Date(p.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <button onClick={() => loadFromHistory(p)} className="text-xs text-brand-400 hover:text-brand-300 font-medium flex-shrink-0">Load</button>
+                      <button onClick={() => deleteSavedPage(p.id)} className="text-gray-600 hover:text-red-400 flex-shrink-0">
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Preview panel */}
+        {/* ── Right preview panel ───────────────────────────── */}
         <div className="lg:col-span-2 space-y-3">
           {html ? (
             <>
-              <div className="flex items-center justify-between">
+              {/* Controls bar */}
+              <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1">
-                  <button
-                    onClick={() => setPreviewMode('preview')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${previewMode === 'preview' ? 'bg-brand-500 text-white' : 'text-gray-400 hover:text-white'}`}
-                  >
-                    Preview
+                  {['preview', 'code'].map((m) => (
+                    <button key={m} onClick={() => setPreviewMode(m)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${previewMode === m ? 'bg-brand-500 text-white' : 'text-gray-400 hover:text-white'}`}>
+                      {m === 'code' ? 'HTML Code' : 'Preview'}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {previewMode === 'preview' && (
+                    <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1">
+                      <button onClick={() => setPreviewWidth('desktop')} title="Desktop"
+                        className={`p-1.5 rounded-lg transition-all ${previewWidth === 'desktop' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-white'}`}>
+                        <Monitor size={13} />
+                      </button>
+                      <button onClick={() => setPreviewWidth('mobile')} title="Mobile (375px)"
+                        className={`p-1.5 rounded-lg transition-all ${previewWidth === 'mobile' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-white'}`}>
+                        <Smartphone size={13} />
+                      </button>
+                    </div>
+                  )}
+                  <button onClick={handleOpenNewTab} title="Open in new tab"
+                    className="p-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:border-gray-600 transition-all">
+                    <ExternalLink size={13} />
                   </button>
-                  <button
-                    onClick={() => setPreviewMode('code')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${previewMode === 'code' ? 'bg-brand-500 text-white' : 'text-gray-400 hover:text-white'}`}
-                  >
-                    HTML Code
+                  <button onClick={handleCopy} className="btn-secondary text-xs py-1.5 px-3">
+                    <Copy size={12} /> Copy
+                  </button>
+                  <button onClick={handleDownload} className="btn-secondary text-xs py-1.5 px-3">
+                    <Download size={12} /> .html
                   </button>
                 </div>
-                <p className="text-xs text-gray-500">{html.length.toLocaleString()} characters</p>
               </div>
+              <p className="text-xs text-gray-600">{html.length.toLocaleString()} characters</p>
 
               {previewMode === 'preview' ? (
-                <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-950" style={{ height: '720px' }}>
-                  <iframe
-                    srcDoc={html}
-                    className="w-full h-full"
-                    title="Landing page preview"
-                    sandbox="allow-same-origin allow-scripts"
-                  />
+                <div className={`rounded-2xl overflow-hidden border border-gray-800 bg-gray-950 transition-all ${previewWidth === 'mobile' ? 'flex justify-center' : ''}`} style={{ height: '740px' }}>
+                  {previewWidth === 'mobile' ? (
+                    <div className="relative h-full flex flex-col items-center justify-start pt-3">
+                      <div className="w-[375px] h-full rounded-2xl overflow-hidden border-2 border-gray-700 relative">
+                        <iframe srcDoc={html} className="w-full h-full" title="Mobile preview" sandbox="allow-same-origin allow-scripts" />
+                      </div>
+                    </div>
+                  ) : (
+                    <iframe srcDoc={html} className="w-full h-full" title="Desktop preview" sandbox="allow-same-origin allow-scripts" />
+                  )}
                 </div>
               ) : (
-                <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-950" style={{ height: '720px' }}>
-                  <pre className="text-xs text-gray-300 p-4 overflow-auto h-full leading-relaxed font-mono whitespace-pre-wrap">
-                    {html}
-                  </pre>
+                <div className="rounded-2xl overflow-hidden border border-gray-800 bg-gray-950" style={{ height: '740px' }}>
+                  <pre className="text-xs text-gray-300 p-4 overflow-auto h-full leading-relaxed font-mono whitespace-pre-wrap">{html}</pre>
                 </div>
               )}
             </>
           ) : (
-            <div className="h-full min-h-[500px] flex flex-col items-center justify-center">
-              {/* Theme preview card */}
-              <div
-                className="w-full rounded-2xl border border-gray-800 overflow-hidden"
-                style={{ background: selectedTheme.bg, minHeight: '360px' }}
-              >
-                {/* Mock navbar */}
-                <div
-                  className="flex items-center justify-between px-6 py-3 border-b"
-                  style={{ borderColor: 'rgba(255,255,255,0.07)', background: selectedTheme.surface }}
-                >
-                  <div className="flex items-center gap-2">
+            /* ── Empty state — theme preview mockup ─── */
+            <div className="h-full min-h-[560px] flex flex-col gap-4">
+              <div className="rounded-2xl overflow-hidden border border-gray-800 flex-1" style={{ background: selectedTheme.bg, minHeight: '420px' }}>
+                {/* Mock nav */}
+                <div className="flex items-center justify-between px-6 py-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.07)', background: selectedTheme.surface }}>
+                  <div className="flex items-center gap-2.5">
                     {logoSrc
-                      ? <img src={logoSrc} alt="logo" className="h-6 object-contain" />
-                      : <div className="w-6 h-6 rounded-md" style={{ background: effectiveAccent }} />
-                    }
-                    <span className="font-bold text-sm" style={{ color: selectedTheme.text }}>
-                      {companyName || brandContext.brandName || 'Your Brand'}
-                    </span>
+                      ? <img src={logoSrc} alt="logo" className="h-7 object-contain" />
+                      : <div className="w-7 h-7 rounded-lg" style={{ background: effectiveAccent }} />}
+                    <span className="font-bold text-sm" style={{ color: selectedTheme.text }}>{companyName || brandContext.brandName || 'Your Brand'}</span>
                   </div>
-                  <div
-                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
-                    style={{ background: effectiveAccent, color: '#fff' }}
-                  >
+                  <div className="text-xs font-semibold px-3 py-1.5 rounded-lg" style={{ background: effectiveAccent, color: '#fff' }}>
                     {selectedVariation?.cta || 'Get Started'}
                   </div>
                 </div>
 
                 {/* Mock hero */}
-                <div className="flex flex-col items-center text-center px-8 py-12 space-y-4">
-                  <div
-                    className="text-xs font-semibold px-3 py-1 rounded-full border"
-                    style={{ color: effectiveAccent, borderColor: effectiveAccent + '40', background: effectiveAccent + '15' }}
-                  >
+                <div className="relative flex flex-col items-center text-center px-8 py-12 space-y-4 overflow-hidden">
+                  {/* Background glow */}
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-48 rounded-full blur-3xl pointer-events-none" style={{ background: effectiveAccent + '25' }} />
+
+                  <div className="text-xs font-semibold px-3 py-1 rounded-full border relative z-10" style={{ color: effectiveAccent, borderColor: effectiveAccent + '50', background: effectiveAccent + '15' }}>
                     {selectedTheme.label} Theme
                   </div>
-                  <p className="text-xl font-black leading-tight" style={{ color: selectedTheme.text }}>
+                  <p className="text-xl font-black leading-tight relative z-10 max-w-md" style={{ color: selectedTheme.text }}>
                     {selectedVariation?.headline || 'Your ad headline will appear here'}
                   </p>
-                  {tagline && (
-                    <p className="text-sm" style={{ color: selectedTheme.text + 'aa' }}>{tagline}</p>
-                  )}
-                  <div className="flex gap-3 pt-2">
-                    <div
-                      className="text-xs font-semibold px-4 py-2 rounded-lg"
-                      style={{ background: effectiveAccent, color: '#fff' }}
-                    >
+                  {tagline && <p className="text-sm relative z-10" style={{ color: selectedTheme.text + '99' }}>{tagline}</p>}
+                  <div className="flex gap-3 pt-1 relative z-10">
+                    <div className="text-xs font-semibold px-4 py-2 rounded-xl" style={{ background: `linear-gradient(135deg, ${effectiveAccent}, ${selectedTheme.accent2})`, color: '#fff' }}>
                       {selectedVariation?.cta || 'Get Started'}
                     </div>
-                    <div
-                      className="text-xs font-semibold px-4 py-2 rounded-lg border"
-                      style={{ borderColor: 'rgba(255,255,255,0.2)', color: selectedTheme.text }}
-                    >
+                    <div className="text-xs font-semibold px-4 py-2 rounded-xl border" style={{ borderColor: 'rgba(255,255,255,0.18)', color: selectedTheme.text }}>
                       See how it works →
                     </div>
                   </div>
-                  <p className="text-xs mt-2" style={{ color: selectedTheme.text + '60' }}>
+                  <p className="text-xs relative z-10" style={{ color: selectedTheme.text + '55' }}>
                     {trustMetric || '2,400+ customers trust us'}
                   </p>
                 </div>
+
+                {/* Mock stats bar */}
+                <div className="flex justify-around px-8 py-4 border-t border-b" style={{ borderColor: 'rgba(255,255,255,0.06)', background: selectedTheme.surface + 'bb' }}>
+                  {['3x ROI', '47% CTR', '8h Saved', '2,400+'].map((s) => (
+                    <div key={s} className="text-center">
+                      <p className="text-sm font-black" style={{ color: effectiveAccent }}>{s.split(' ')[0]}</p>
+                      <p className="text-xs" style={{ color: selectedTheme.text + '60' }}>{s.split(' ').slice(1).join(' ')}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="text-center mt-6">
-                <Globe size={32} className="text-gray-700 mx-auto mb-3" />
-                <p className="text-gray-400 text-sm font-medium">Theme preview — configure above, then generate</p>
-                <p className="text-gray-600 text-xs mt-1">11-section page built in ~45 seconds</p>
+              <div className="text-center">
+                <Globe size={28} className="text-gray-700 mx-auto mb-2" />
+                <p className="text-gray-400 text-sm font-medium">Configure above and click Generate</p>
+                <p className="text-gray-600 text-xs mt-1">12-section agency page · ~60 seconds</p>
               </div>
             </div>
           )}
