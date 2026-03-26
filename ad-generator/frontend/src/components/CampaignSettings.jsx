@@ -72,6 +72,23 @@ const API_CONFIGS = [
       if (data.error) throw new Error(data.error.message)
     },
   },
+  {
+    id: 'openai',
+    name: 'OpenAI (DALL-E 3)',
+    placeholder: 'sk-proj-...',
+    helpUrl: 'https://platform.openai.com/api-keys',
+    helpLabel: 'platform.openai.com/api-keys',
+    color: 'text-teal-400',
+    bg: 'bg-teal-500/10 border-teal-500/30',
+    icon: '🎨',
+    description: 'Generates professional ad images — Claude writes the prompt, DALL-E 3 renders it',
+    testFn: async (key) => {
+      const res = await fetch('https://api.openai.com/v1/models/dall-e-3', {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+    },
+  },
 ]
 
 export default function CampaignSettings() {

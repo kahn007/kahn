@@ -181,6 +181,78 @@ export async function getAnalytics(adAccountId, { since, until } = {}) {
   }
 }
 
+// ── Image generation (Claude prompt → DALL-E 3) ──────────────
+const DALLE_SIZES = {
+  feed:   '1792x1024',  // 1.91:1 — Facebook feed
+  square: '1024x1024',  // 1:1    — Instagram / square
+  story:  '1024x1792',  // 9:16   — Stories / Reels
+}
+
+export async function generateAdImage({ variation, brandContext, format = 'feed' }) {
+  const anthropicKey = getKey('anthropic')
+  const openaiKey    = getKey('openai')
+
+  if (!openaiKey) {
+    throw new Error('Add your OpenAI API key in Settings to generate images')
+  }
+
+  // Step 1 — Claude writes a detailed image prompt
+  let imagePrompt
+  if (anthropicKey) {
+    const promptRequest = `You are an expert Facebook ad creative director.
+
+Brand: ${brandContext.brandName} (${brandContext.website})
+Product: ${brandContext.product}
+Audience: ${brandContext.targetAudience}
+Ad headline: "${variation.headline}"
+Ad copy: "${variation.primaryText?.substring(0, 200)}"
+Format: ${format} ad
+
+Write a single DALL-E image generation prompt for a professional Facebook ad creative.
+Rules:
+- Photorealistic, high-quality marketing photography style
+- NO text, words, logos or overlays in the image (Facebook renders text separately)
+- Show the outcome/benefit, not the product itself
+- Aspirational lifestyle imagery matching the target audience
+- Specific lighting: bright, clean, modern
+- Return ONLY the prompt, nothing else. Max 200 words.`
+
+    imagePrompt = await callClaude(anthropicKey, promptRequest)
+    imagePrompt = imagePrompt.trim()
+  } else {
+    // Fallback prompt without Claude
+    imagePrompt = `Professional marketing photography for ${brandContext.brandName}, ${brandContext.product}, targeting ${brandContext.targetAudience}. Clean, modern, aspirational lifestyle image. No text, no logos. Bright natural lighting, high quality.`
+  }
+
+  // Step 2 — DALL-E 3 renders the image
+  const res = await fetch('https://api.openai.com/v1/images/generations', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${openaiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model:   'dall-e-3',
+      prompt:  imagePrompt,
+      n:       1,
+      size:    DALLE_SIZES[format] || '1792x1024',
+      quality: 'hd',
+      style:   'natural',
+    }),
+  })
+
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err.error?.message || `OpenAI error ${res.status}`)
+  }
+
+  const data = await res.json()
+  return {
+    imageUrl:    data.data[0].url,
+    imagePrompt,
+  }
+}
+
 // ── Claude helper ─────────────────────────────────────────────
 async function callClaude(key, prompt) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
