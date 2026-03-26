@@ -4,6 +4,14 @@ import toast from 'react-hot-toast'
 import { useAdStore } from '../store/adStore'
 import { pushAdsDraft, getFacebookAdSets } from '../lib/api'
 
+// Detect FB token expiry and return a helpful message
+function fbErrorMessage(msg) {
+  if (/session has expired|access token/i.test(msg)) {
+    return 'Facebook token expired — go to Settings and paste a new token from developers.facebook.com/tools/explorer'
+  }
+  return msg
+}
+
 export default function FacebookUploader() {
   const {
     campaign, setCampaign,
@@ -33,7 +41,7 @@ export default function FacebookUploader() {
       setAdSets(data.adSets || [])
       if (data.adSets?.length) toast.success(`Found ${data.adSets.length} ad sets`)
     } catch (err) {
-      toast.error(err.message)
+      toast.error(fbErrorMessage(err.message), { duration: 6000 })
     } finally {
       setLoadingAdSets(false)
     }
@@ -70,7 +78,7 @@ export default function FacebookUploader() {
       const successes = allResults.filter((r) => r.success).length
       toast.success(`${successes} ads pushed to Facebook as drafts!`)
     } catch (err) {
-      toast.error(err.message)
+      toast.error(fbErrorMessage(err.message), { duration: 6000 })
     } finally {
       setIsUploading(false)
     }
