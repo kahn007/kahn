@@ -185,15 +185,46 @@ export async function getAnalytics(adAccountId, { since, until } = {}) {
 const FAL_BASE  = 'https://fal.run'
 const FAL_QUEUE = 'https://queue.fal.run'
 
-const FLUX_SIZES = {
-  feed:   'landscape_16_9',  // 1792×1024 — Facebook feed
-  square: 'square_hd',       // 1024×1024 — Instagram / square
-  story:  'portrait_16_9',   // 1024×1792 — Stories / Reels
-}
-const KLING_RATIOS = {
+const AD_ASPECT_RATIOS = {
   feed:   '16:9',
   square: '1:1',
   story:  '9:16',
+}
+
+// ── Video model registry ──────────────────────────────────────
+export const VIDEO_MODELS = {
+  kling3: {
+    id:       'kling3',
+    label:    'Kling 3.0',
+    sublabel: 'Best quality · ~90s',
+    endpoint: 'fal-ai/kling-video/v3/standard/text-to-video',
+    buildBody: (prompt, ratio) => ({ prompt, aspect_ratio: ratio, cfg_scale: 0.5, generate_audio: false }),
+    getUrl:   (r) => r.video?.url,
+  },
+  luma: {
+    id:       'luma',
+    label:    'Luma Ray 2',
+    sublabel: 'Cinematic · ~60s',
+    endpoint: 'fal-ai/luma-dream-machine/ray-2',
+    buildBody: (prompt, ratio) => ({ prompt, aspect_ratio: ratio, duration: '5s' }),
+    getUrl:   (r) => r.video?.url,
+  },
+  hailuo: {
+    id:       'hailuo',
+    label:    'Hailuo-02 Pro',
+    sublabel: '1080p · 6s · fastest',
+    endpoint: 'fal-ai/minimax/hailuo-02/pro/text-to-video',
+    buildBody: (prompt, ratio) => ({ prompt, aspect_ratio: ratio, duration: '6', prompt_optimizer: true }),
+    getUrl:   (r) => r.video?.url,
+  },
+  kling16: {
+    id:       'kling16',
+    label:    'Kling 1.6',
+    sublabel: 'Legacy fallback',
+    endpoint: 'fal-ai/kling-video/v1.6/standard/text-to-video',
+    buildBody: (prompt, ratio) => ({ prompt, duration: '5', aspect_ratio: ratio }),
+    getUrl:   (r) => r.video?.url,
+  },
 }
 
 // Angle-specific creative direction
@@ -265,52 +296,52 @@ Return ONLY the prompt. No explanation. Max 150 words.`
   return raw.trim()
 }
 
-// ── Flux Pro 1.1 — image generation ──────────────────────────
+// ── Flux Pro 1.1 Ultra — image generation ────────────────────
 export async function generateAdImage({ variation, brandContext, format = 'feed' }) {
   const falKey = getKey('falai')
   if (!falKey) throw new Error('Add your fal.ai key in Settings to generate images')
 
   const creativePrompt = await buildCreativePrompt(variation, brandContext, format, 'image')
 
-  const res = await fetch(`${FAL_BASE}/fal-ai/flux-pro/v1.1`, {
+  const res = await fetch(`${FAL_BASE}/fal-ai/flux-pro/v1.1-ultra`, {
     method: 'POST',
     headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      prompt:      creativePrompt,
-      image_size:  FLUX_SIZES[format] || 'landscape_16_9',
-      num_images:  1,
-      output_format: 'jpeg',
+      prompt:           creativePrompt,
+      aspect_ratio:     AD_ASPECT_RATIOS[format] || '16:9',
+      num_images:       1,
+      output_format:    'jpeg',
       safety_tolerance: '2',
     }),
   })
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.detail || err.message || `fal.ai error ${res.status}`)
+    throw new Error(err.detail || err.message || `fal.ai image error ${res.status}`)
   }
 
   const data = await res.json()
-  return { imageUrl: data.images[0].url, creativePrompt }
+  const imageUrl = data.images?.[0]?.url
+  if (!imageUrl) throw new Error('No image URL in fal.ai response')
+  return { imageUrl, creativePrompt }
 }
 
-// ── Kling 1.6 — video generation (async queue) ───────────────
-export async function generateAdVideo({ variation, brandContext, format = 'feed', onProgress }) {
+// ── Video generation — async queue (any model) ───────────────
+export async function generateAdVideo({ variation, brandContext, format = 'feed', onProgress, videoModelId = 'kling3' }) {
   const falKey = getKey('falai')
   if (!falKey) throw new Error('Add your fal.ai key in Settings to generate videos')
 
+  const model = VIDEO_MODELS[videoModelId] || VIDEO_MODELS.kling3
+  const ratio = AD_ASPECT_RATIOS[format] || '16:9'
   const creativePrompt = await buildCreativePrompt(variation, brandContext, format, 'video')
 
   // 1. Submit to queue
   let submitData
   try {
-    const submitRes = await fetch(`${FAL_QUEUE}/fal-ai/kling-video/v1.6/standard/text-to-video`, {
+    const submitRes = await fetch(`${FAL_QUEUE}/${model.endpoint}`, {
       method: 'POST',
       headers: { Authorization: `Key ${falKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt:       creativePrompt,
-        duration:     '5',
-        aspect_ratio: KLING_RATIOS[format] || '16:9',
-      }),
+      body: JSON.stringify(model.buildBody(creativePrompt, ratio)),
     })
     submitData = await submitRes.json()
     if (!submitRes.ok) {
@@ -324,10 +355,10 @@ export async function generateAdVideo({ variation, brandContext, format = 'feed'
 
   // fal.ai returns pre-built URLs — use them directly (more reliable than building manually)
   const { request_id, status_url, response_url } = submitData
-  const statusUrl = status_url || `${FAL_QUEUE}/fal-ai/kling-video/v1.6/standard/text-to-video/requests/${request_id}/status`
-  const resultUrl = response_url || `${FAL_QUEUE}/fal-ai/kling-video/v1.6/standard/text-to-video/requests/${request_id}`
+  const statusUrl = status_url || `${FAL_QUEUE}/${model.endpoint}/requests/${request_id}/status`
+  const resultUrl = response_url || `${FAL_QUEUE}/${model.endpoint}/requests/${request_id}`
 
-  onProgress?.(`Queued (id: ${String(request_id).substring(0, 8)}…) — waiting for Kling…`)
+  onProgress?.(`Queued (${model.label} · id: ${String(request_id).substring(0, 8)}…)`)
 
   // 2. Poll until done (videos take 60-120s)
   for (let attempt = 0; attempt < 60; attempt++) {
@@ -352,13 +383,13 @@ export async function generateAdVideo({ variation, brandContext, format = 'feed'
         throw new Error(`Kling result fetch failed: ${err.message}`)
       }
       // fal.ai may return video at different paths
-      const videoUrl = result.video?.url
+      const videoUrl = model.getUrl(result)
         || result.output?.video?.url
         || result.videos?.[0]?.url
         || status.output?.video?.url
       if (!videoUrl) {
-        console.error('[fal.ai Kling] Unexpected result shape:', JSON.stringify(result).substring(0, 500))
-        throw new Error('Video URL missing in fal.ai response — check browser console for details')
+        console.error(`[fal.ai ${model.label}] Unexpected result shape:`, JSON.stringify(result).substring(0, 500))
+        throw new Error(`Video URL missing in ${model.label} response — check browser console for details`)
       }
       onProgress?.('Done!')
       return { videoUrl, creativePrompt }
@@ -370,10 +401,10 @@ export async function generateAdVideo({ variation, brandContext, format = 'feed'
     }
 
     const pct = Math.round((attempt / 40) * 100)
-    onProgress?.(`Kling generating… ${Math.min(pct, 95)}% (${attempt * 3}s elapsed)`)
+    onProgress?.(`${model.label} generating… ${Math.min(pct, 95)}% (${attempt * 3}s)`)
   }
 
-  throw new Error('Video generation timed out after 3 minutes — try again')
+  throw new Error(`${model.label} timed out after 3 minutes — try again`)
 }
 
 // ── Claude helper ─────────────────────────────────────────────

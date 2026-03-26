@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import { LayoutGrid, List, Trash2, CheckSquare, Square, Edit3, Copy, ChevronRight, ImagePlus, Loader, Sparkles, Video, Image, Minus, Plus } from 'lucide-react'
+import { LayoutGrid, List, Trash2, CheckSquare, Square, Edit3, Copy, ChevronRight, ImagePlus, Loader, Sparkles, Video, Image, Minus, Plus, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAdStore } from '../store/adStore'
-import { generateAdImage, generateAdVideo } from '../lib/api'
+import { generateAdImage, generateAdVideo, VIDEO_MODELS } from '../lib/api'
 import AdPreview from './AdPreview'
 
 const ANGLE_COLORS = {
@@ -16,11 +16,11 @@ const ANGLE_COLORS = {
 }
 
 // ── Creative Mix selector ─────────────────────────────────────
-function CreativeMix({ total, imageCount, videoCount, onChange }) {
+function CreativeMix({ total, imageCount, videoCount, videoModelId, onChange, onModelChange }) {
   const PRESETS = [
     { label: 'All Images',  images: total, videos: 0 },
-    { label: `${total - 1} + 1 vid`, images: Math.max(total - 1, 0), videos: Math.min(1, total) },
-    { label: '50 / 50',     images: Math.ceil(total / 2), videos: Math.floor(total / 2) },
+    { label: `${total - 1}+1`,        images: Math.max(total - 1, 0), videos: Math.min(1, total) },
+    { label: '50/50',       images: Math.ceil(total / 2), videos: Math.floor(total / 2) },
     { label: 'All Videos',  images: 0, videos: total },
   ]
 
@@ -33,15 +33,16 @@ function CreativeMix({ total, imageCount, videoCount, onChange }) {
     onChange({ images: total - vids, videos: vids })
   }
 
+  const currentModel = VIDEO_MODELS[videoModelId] || VIDEO_MODELS.kling3
+
   return (
     <div className="card space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-semibold text-white text-sm flex items-center gap-2">
           <Sparkles size={14} className="text-teal-400" />
           Creative Mix
-          <span className="text-gray-500 text-xs font-normal">— choose images vs videos</span>
         </h3>
-        <span className="text-xs text-gray-500">{total} total creatives</span>
+        <span className="text-xs text-gray-500">{total} variations</span>
       </div>
 
       {/* Presets */}
@@ -59,7 +60,6 @@ function CreativeMix({ total, imageCount, videoCount, onChange }) {
             {p.label}
           </button>
         ))}
-        <span className="px-3 py-1.5 text-xs text-gray-600">or custom:</span>
       </div>
 
       {/* Custom counters */}
@@ -72,27 +72,21 @@ function CreativeMix({ total, imageCount, videoCount, onChange }) {
             </div>
             <div>
               <p className="text-white text-sm font-semibold">Images</p>
-              <p className="text-gray-500 text-xs">Flux Pro 1.1</p>
+              <p className="text-gray-500 text-xs">Flux Pro Ultra · ~10s</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setImages(imageCount - 1)}
-              disabled={imageCount === 0}
-              className="w-8 h-8 rounded-xl bg-gray-700 hover:bg-gray-600 text-white flex items-center justify-center transition-colors disabled:opacity-30"
-            >
+            <button onClick={() => setImages(imageCount - 1)} disabled={imageCount === 0}
+              className="w-8 h-8 rounded-xl bg-gray-700 hover:bg-gray-600 text-white flex items-center justify-center transition-colors disabled:opacity-30">
               <Minus size={14} />
             </button>
             <span className="text-3xl font-bold text-white w-10 text-center">{imageCount}</span>
-            <button
-              onClick={() => setImages(imageCount + 1)}
-              disabled={imageCount === total}
-              className="w-8 h-8 rounded-xl bg-gray-700 hover:bg-gray-600 text-white flex items-center justify-center transition-colors disabled:opacity-30"
-            >
+            <button onClick={() => setImages(imageCount + 1)} disabled={imageCount === total}
+              className="w-8 h-8 rounded-xl bg-gray-700 hover:bg-gray-600 text-white flex items-center justify-center transition-colors disabled:opacity-30">
               <Plus size={14} />
             </button>
           </div>
-          <p className="text-gray-600 text-xs">~$0.05 each · ~10s</p>
+          <p className="text-gray-600 text-xs">~$0.06 each</p>
         </div>
 
         {/* Videos */}
@@ -103,27 +97,33 @@ function CreativeMix({ total, imageCount, videoCount, onChange }) {
             </div>
             <div>
               <p className="text-white text-sm font-semibold">Videos</p>
-              <p className="text-gray-500 text-xs">Kling 1.6 · 5 sec</p>
+              <p className="text-gray-500 text-xs">{currentModel.sublabel}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setVideos(videoCount - 1)}
-              disabled={videoCount === 0}
-              className="w-8 h-8 rounded-xl bg-gray-700 hover:bg-gray-600 text-white flex items-center justify-center transition-colors disabled:opacity-30"
-            >
+            <button onClick={() => setVideos(videoCount - 1)} disabled={videoCount === 0}
+              className="w-8 h-8 rounded-xl bg-gray-700 hover:bg-gray-600 text-white flex items-center justify-center transition-colors disabled:opacity-30">
               <Minus size={14} />
             </button>
             <span className="text-3xl font-bold text-white w-10 text-center">{videoCount}</span>
-            <button
-              onClick={() => setVideos(videoCount + 1)}
-              disabled={videoCount === total}
-              className="w-8 h-8 rounded-xl bg-gray-700 hover:bg-gray-600 text-white flex items-center justify-center transition-colors disabled:opacity-30"
-            >
+            <button onClick={() => setVideos(videoCount + 1)} disabled={videoCount === total}
+              className="w-8 h-8 rounded-xl bg-gray-700 hover:bg-gray-600 text-white flex items-center justify-center transition-colors disabled:opacity-30">
               <Plus size={14} />
             </button>
           </div>
-          <p className="text-gray-600 text-xs">~$0.28 each · ~90s</p>
+          {/* Video model selector */}
+          <div className="relative">
+            <select
+              value={videoModelId}
+              onChange={(e) => onModelChange(e.target.value)}
+              className="w-full appearance-none bg-gray-700 border border-gray-600 text-white text-xs rounded-lg px-2.5 py-1.5 pr-6 cursor-pointer focus:outline-none focus:border-teal-500"
+            >
+              {Object.values(VIDEO_MODELS).map((m) => (
+                <option key={m.id} value={m.id}>{m.label} — {m.sublabel}</option>
+              ))}
+            </select>
+            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          </div>
         </div>
       </div>
 
@@ -131,16 +131,12 @@ function CreativeMix({ total, imageCount, videoCount, onChange }) {
       {total > 0 && (
         <div className="space-y-1">
           <div className="flex rounded-full overflow-hidden h-2 bg-gray-800">
-            {imageCount > 0 && (
-              <div className="bg-blue-500 transition-all duration-300" style={{ width: `${(imageCount / total) * 100}%` }} />
-            )}
-            {videoCount > 0 && (
-              <div className="bg-teal-500 transition-all duration-300" style={{ width: `${(videoCount / total) * 100}%` }} />
-            )}
+            {imageCount > 0 && <div className="bg-blue-500 transition-all duration-300" style={{ width: `${(imageCount / total) * 100}%` }} />}
+            {videoCount > 0 && <div className="bg-teal-500 transition-all duration-300" style={{ width: `${(videoCount / total) * 100}%` }} />}
           </div>
           <div className="flex justify-between text-xs text-gray-500">
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />{imageCount} images</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-500 inline-block" />{videoCount} videos</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />{imageCount} images · Flux Ultra</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-500 inline-block" />{videoCount} videos · {currentModel.label}</span>
           </div>
         </div>
       )}
@@ -170,6 +166,7 @@ export default function VariationManager() {
   const [bulkDone, setBulkDone]       = useState(0)
   const [bulkTotal, setBulkTotal]     = useState(0)
   const [showMixer, setShowMixer]     = useState(false)
+  const [videoModelId, setVideoModelId] = useState('kling3')
 
   // Creative mix
   const targets = selectedVariations.length > 0
@@ -212,6 +209,7 @@ export default function VariationManager() {
     try {
       const result = await generateAdVideo({
         variation: v, brandContext, format: v.format || 'feed',
+        videoModelId,
         onProgress: (label) => setCard(v.id, { type: 'video', label }),
       })
       updateVariation(v.id, { videoUrl: result.videoUrl, imageUrl: null, creativePrompt: result.creativePrompt })
@@ -262,6 +260,7 @@ export default function VariationManager() {
       try {
         const result = await generateAdVideo({
           variation: v, brandContext, format: v.format || 'feed',
+          videoModelId,
           onProgress: (label) => log(`   ${label}`),
         })
         updateVariation(v.id, { videoUrl: result.videoUrl, imageUrl: null, creativePrompt: result.creativePrompt })
@@ -350,7 +349,9 @@ export default function VariationManager() {
             total={effectiveTotal}
             imageCount={clampedImages}
             videoCount={clampedVideos}
+            videoModelId={videoModelId}
             onChange={(m) => setMix(m)}
+            onModelChange={setVideoModelId}
           />
         )}
 
