@@ -715,244 +715,297 @@ COMPETITOR INTELLIGENCE — use to position us as the superior choice:
   const textColor    = pc.textColor || '#f1f5f9'
   const mutedColor   = pc.light ? '#64748b' : '#94a3b8'
   const borderColor  = pc.light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.07)'
+  const dangerColor  = '#ef4444'
 
-  const prompt = `You are the world's best conversion-focused landing page developer. Your pages look like they were built by a $200k/year agency and consistently hit 10-18% conversion rates. You write copy that makes people feel understood and creates unstoppable urgency to act. You are about to build a complete, breathtaking, professional HTML landing page.
+  const prompt = `You are a senior product designer and direct-response copywriter. You have strong opinions about craft. You do not use AI landing page templates. Every page you build has a specific point of view — real copy, deliberate layout choices, sections that feel different from each other. Build a complete, single-file HTML landing page now.
 
-════════════════════════════════════════════
-CONTEXT — READ CAREFULLY
-════════════════════════════════════════════
+NON-NEGOTIABLE RULES (these separate real design from AI slop):
+— Hero text is LEFT-ALIGNED with a 2-column layout (text left, visual right). Never centered.
+— "THE PROBLEM" / "THE SOLUTION" / "SOCIAL PROOF" label pills appear on 2 sections MAX. Headlines carry the meaning everywhere else.
+— Not every section is "centred headline + 3 identical cards". Vary layouts deliberately.
+— Write copy specific to this product and this audience. No "Transform your workflow." No "All-in-one solution." No filler.
+— Testimonials: one large featured blockquote (font-size 26px, italic, max-width 820px, full-width card) comes first, then two regular cards below in a 2-col grid.
+— Stats: a single bordered horizontal row split into 4 cells by vertical dividers. Not four separate cards.
+— Comparison uses a real styled <table> element. Not a CSS grid approximation.
+— FAQ: accordion items only. No section header decoration, no label pill, no intro card.
+— NEVER set opacity:0 on anything. NEVER use IntersectionObserver. All content visible on load.
+— Each section must feel visually distinct from adjacent ones (vary background, layout, and typographic approach).
+
+CAMPAIGN CONTEXT
 Brand: ${brand}
-Product/Service: ${brandContext.product}
-Target audience: ${audience}
-Website: ${brandContext.website || ctaUrl}
+Product: ${brandContext.product}
+Audience: ${audience}
 ${tagline ? `Tagline: "${tagline}"` : ''}
-
-AD TO MATCH (message-match is the #1 conversion lever):
-  Headline: "${variation.headline}"
-  Body copy: "${variation.primaryText}"
-  CTA text: "${variation.cta || 'Get Started'}"
-  Ad angle: ${variation.angle || 'general'}
-  CTA URL (ALL buttons link here): ${ctaUrl}
-
-SOCIAL PROOF METRIC: "${trustMetric}"
-
-AUDIENCE PAIN POINTS: ${painPoints.join(' · ')}
-DESIRED OUTCOMES: ${outcomes.join(' · ')}
-OBJECTIONS TO HANDLE: ${objections.join(' · ')}
-${triggers.length ? `RESONANT PHRASES: ${triggers.join(', ')}` : ''}
+Hero H1 must mirror: "${variation.headline}"
+Ad body copy: "${variation.primaryText}"
+CTA button text: "${variation.cta || 'Get Started'}"
+Every button and link goes to: ${ctaUrl}
+Ad angle: ${variation.angle || 'general'}
+Social proof stat: "${trustMetric}"
+Pain points: ${painPoints.join(' · ')}
+Desired outcomes: ${outcomes.join(' · ')}
+Objections to handle: ${objections.join(' · ')}
+${triggers.length ? `High-resonance phrases: ${triggers.join(', ')}` : ''}
 ${competitorEdge}
 
-════════════════════════════════════════════
-DESIGN SYSTEM — IMPLEMENT EXACTLY
-════════════════════════════════════════════
-Font: Inter from Google Fonts (weights 300,400,500,600,700,800,900)
+DESIGN SYSTEM
+Font: Inter from Google Fonts — weights 300 400 500 600 700 800 900. Load via <link> in <head>.
 
-CSS :root variables (bake these in):
-  --bg:           ${bgColor};
-  --bg2:          ${bg2Color};
-  --bg3:          ${bg3Color};
-  --border:       ${borderColor};
-  --accent:       ${accentColor};
-  --accent2:      ${accent2Color};
-  --accent-glow:  ${accentGlow};
-  --text:         ${textColor};
-  --muted:        ${mutedColor};
-  --success:      #10b981;
-  --warn:         #f59e0b;
-  --danger:       #ef4444;
+:root {
+  --bg:      ${bgColor};
+  --bg2:     ${bg2Color};
+  --bg3:     ${bg3Color};
+  --accent:  ${accentColor};
+  --accent2: ${accent2Color};
+  --text:    ${textColor};
+  --muted:   ${mutedColor};
+  --border:  ${borderColor};
+  --success: #10b981;
+  --danger:  ${dangerColor};
+}
 
-LOGO HTML — use exactly in navbar and footer: ${logoHtml}
+LOGO (use this exact HTML in navbar and footer): ${logoHtml}
 
-COMPONENT PATTERNS — use these throughout:
+REUSABLE CSS — define once in <style>, reference everywhere:
 
-/* Gradient text (use on hero H1 partial words or stats numbers) */
-.grad { background: linear-gradient(135deg, ${textColor} 30%, ${accentColor} 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+/* Gradient accent — wrap 1–3 hero headline words in <span class="g"> */
+.g { background: linear-gradient(135deg, ${accentColor}, ${accent2Color}); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
 
-/* Glass card */
-.glass { background: linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%); backdrop-filter: blur(12px); border: 1px solid ${borderColor}; border-radius: 20px; }
-
-/* Card hover lift */
-.card-hover { transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease; }
-.card-hover:hover { transform: translateY(-5px); box-shadow: 0 24px 48px rgba(0,0,0,0.35); border-color: ${accentColor}44; }
-
-/* Gradient button */
-.btn-grad { background: linear-gradient(135deg, ${accentColor} 0%, ${accent2Color} 100%); color: #fff; font-weight: 700; padding: 15px 36px; border-radius: 14px; border: none; cursor: pointer; font-size: 15px; letter-spacing: -0.01em; transition: all 0.25s ease; box-shadow: 0 4px 20px ${accentGlow}; }
-.btn-grad:hover { transform: translateY(-2px); box-shadow: 0 8px 32px ${accentColor}55; filter: brightness(1.08); }
+/* Primary button */
+.btn { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, ${accentColor}, ${accent2Color}); color: #fff; font-weight: 700; font-size: 15px; padding: 14px 30px; border-radius: 12px; border: none; cursor: pointer; text-decoration: none; transition: filter .2s, transform .2s, box-shadow .2s; box-shadow: 0 4px 20px ${accentColor}40; }
+.btn:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 8px 32px ${accentColor}55; }
 
 /* Ghost button */
-.btn-ghost { background: transparent; color: ${textColor}; font-weight: 600; padding: 15px 36px; border-radius: 14px; border: 1.5px solid ${borderColor}; cursor: pointer; font-size: 15px; transition: all 0.2s; }
-.btn-ghost:hover { border-color: ${textColor}60; background: rgba(255,255,255,0.04); }
+.btn-o { display: inline-flex; align-items: center; gap: 8px; background: transparent; color: ${textColor}; font-weight: 600; font-size: 15px; padding: 14px 30px; border-radius: 12px; border: 1.5px solid ${borderColor}; cursor: pointer; text-decoration: none; transition: border-color .2s, background .2s; }
+.btn-o:hover { border-color: ${accentColor}; background: ${accentColor}10; }
 
-/* Section label pill */
-.label-pill { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: ${accentColor}; background: ${accentColor}18; border: 1px solid ${accentColor}35; padding: 5px 14px; border-radius: 100px; margin-bottom: 20px; }
+/* Card */
+.card { background: ${bg3Color}; border: 1px solid ${borderColor}; border-radius: 16px; transition: border-color .2s, transform .22s, box-shadow .22s; }
+.card:hover { border-color: ${accentColor}30; transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.22); }
 
-/* Announcement pill (hero) */
-.announce { display: inline-flex; align-items: center; gap: 8px; background: ${accentColor}12; border: 1px solid ${accentColor}30; padding: 7px 16px; border-radius: 100px; font-size: 13px; color: ${mutedColor}; margin-bottom: 32px; }
-.announce-dot { width: 7px; height: 7px; border-radius: 50%; background: ${accentColor}; box-shadow: 0 0 8px ${accentColor}; flex-shrink: 0; }
+/* Small label pill — use sparingly, max 2 sections */
+.pill { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: ${accentColor}; background: ${accentColor}15; border: 1px solid ${accentColor}30; padding: 5px 14px; border-radius: 100px; margin-bottom: 18px; }
 
-/* Section spacing */
-section { padding: 110px 0; }
-.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
-.section-center { text-align: center; max-width: 720px; margin: 0 auto 64px; }
+/* Layout */
+.wrap { max-width: 1100px; margin: 0 auto; padding: 0 28px; }
+section { padding: 100px 0; }
 
-/* Typography */
-h1 { font-size: clamp(42px, 6vw, 78px); font-weight: 900; line-height: 1.05; letter-spacing: -0.03em; color: ${textColor}; }
-h2 { font-size: clamp(32px, 4vw, 52px); font-weight: 800; line-height: 1.1; letter-spacing: -0.025em; color: ${textColor}; margin-bottom: 20px; }
-p.lead { font-size: 19px; line-height: 1.65; color: ${mutedColor}; }
+SECTIONS — BUILD ALL IN ORDER
 
-NEVER use opacity:0. NEVER hide content. Everything visible immediately on load.
+SECTION 1 — NAVBAR
+Fixed top bar. height:64px; background:${bgColor}ee; backdrop-filter:blur(20px); border-bottom:1px solid ${borderColor}; z-index:999.
+.wrap inside: display:flex; align-items:center; justify-content:space-between; height:100%.
+  LEFT: LOGO HTML + <span style="font-size:16px;font-weight:700;color:${textColor};margin-left:10px">${brand}</span>
+  CENTER: <nav> 4 links — "Features" "How it works" "Results" "FAQ" — 14px, color:${mutedColor}, hover:${textColor}, no underline, gap:32px
+  RIGHT: <a class="btn" href="${ctaUrl}" style="font-size:14px;padding:10px 22px">${variation.cta || 'Get Started'}</a>
+JS: on scroll > 60px add box-shadow:0 4px 24px rgba(0,0,0,0.3) to navbar element.
 
-════════════════════════════════════════════
-BUILD ALL 12 SECTIONS IN EXACT ORDER
-════════════════════════════════════════════
+SECTION 2 — HERO (LEFT-ALIGNED 2-column, never centred)
+<section style="min-height:100vh;display:flex;align-items:center;padding:100px 0 60px;position:relative;overflow:hidden;background:${bgColor}">
+Two decorative blobs (position:absolute, pointer-events:none, z-index:0):
+  Blob A: 600×600px circle, top:-150px, right:-100px, background:radial-gradient(circle,${accentColor}18 0%,transparent 65%)
+  Blob B: 400×400px circle, bottom:-80px, left:5%, background:radial-gradient(circle,${accent2Color}12 0%,transparent 65%)
+.wrap inside (position:relative; z-index:1): CSS Grid — grid-template-columns:1fr 1fr; gap:60px; align-items:center. On mobile: 1 column.
 
-━━━ 1. STICKY NAVBAR ━━━
-- position: fixed; top:0; left:0; right:0; z-index:1000
-- background: ${bgColor}dd; backdrop-filter: blur(20px) saturate(180%); border-bottom: 1px solid ${borderColor}
-- Inner flex: logo+name LEFT | nav links CENTER (Features, How it works, Testimonials) | CTA button RIGHT
-- Logo: use LOGO HTML above exactly + brand name "${brand}" in ${textColor} font-weight:700 font-size:16px
-- CTA button: .btn-grad style, text "${variation.cta || 'Get Started'}", links to ${ctaUrl}
-- JS: on scroll past 80px, add box-shadow: 0 4px 30px rgba(0,0,0,0.4) to navbar
+  LEFT COLUMN — text-align:LEFT (do not centre):
+    Pill: display:inline-flex; align-items:center; gap:8px; background:${accentColor}15; border:1px solid ${accentColor}35; padding:7px 18px; border-radius:100px; font-size:13px; color:${accentColor}; margin-bottom:26px.
+      Inside: <span style="width:7px;height:7px;border-radius:50%;background:${accentColor};display:inline-block"></span> "⚡ [Write one specific concrete benefit for ${brandContext.product} — 7 words max]"
+    <h1 style="font-size:clamp(38px,5.5vw,70px);font-weight:900;line-height:1.06;letter-spacing:-0.035em;color:${textColor};margin:0 0 22px">
+      Mirror "${variation.headline}" closely. Wrap 2–3 key words in <span class="g">. Use a <br> for rhythm.
+    </h1>
+    <p style="font-size:19px;line-height:1.65;color:${mutedColor};max-width:500px;margin:0 0 36px">
+      2 sentences: expand the ad promise, then name the core pain from "${variation.primaryText}". Specific, not generic.
+    </p>
+    Buttons: display:flex; gap:14px; flex-wrap:wrap; align-items:center.
+      <a class="btn" href="${ctaUrl}">${variation.cta || 'Get Started'} →</a>
+      <a class="btn-o" href="#how">See how it works</a>
+    Social proof row (margin-top:26px; display:flex; align-items:center; gap:12px):
+      5 avatar circles (36px, border-radius:50%, background:linear-gradient(135deg,${accentColor},${accent2Color}), border:2px solid ${bgColor}, -10px overlap via negative margin):
+        Each shows 2 white initials, font-size:11px, font-weight:700
+      <span style="font-size:14px;color:${mutedColor}">${trustMetric}</span>
 
-━━━ 2. HERO ━━━
-- min-height: 100vh; display:flex; align-items:center; padding-top:80px (navbar offset)
-- BACKGROUND: position:relative; overflow:hidden
-  Decorative absolute positioned blobs (pointer-events:none, z-index:0):
-    Blob 1: width:700px height:600px rounded-full background:radial-gradient(circle, ${accentColor}20 0%, transparent 70%) top:-200px left:-100px
-    Blob 2: width:500px height:500px rounded-full background:radial-gradient(circle, ${accent2Color}15 0%, transparent 70%) bottom:-100px right:-50px
-  All hero content in a relative z-index:1 container
-- Announcement pill (.announce): "⚡ New · [write a 1-sentence specific benefit based on the product]"
-- H1: MUST closely mirror "${variation.headline}" — can add a line break for emphasis. Apply .grad class to 1-3 key words.
-- Subheadline (p.lead): one punchy sentence expanding on the ad promise, max-width:620px
-- Body: 2 sentences addressing the core pain point from the ad copy
-- Button row (flex gap:16px margin-top:40px): .btn-grad "${variation.cta || 'Get Started'}" href="${ctaUrl}" + .btn-ghost "See how it works →" links to #how
-- SOCIAL PROOF ROW (margin-top:32px): flex align-center gap:12px
-    5 avatar circles (40px, gradient bg, white initials, -8px overlap) + bold text "${trustMetric}" in ${textColor} + muted subtext "and counting"
+  RIGHT COLUMN — product visual (CSS only, no images):
+    Container: background:${bg2Color}; border:1px solid ${borderColor}; border-radius:20px; padding:24px; max-width:460px.
+    Build a convincing mini-dashboard for ${brandContext.product} used by ${audience}:
+      Header row: small ${accentColor} circle + product label (13px bold) + "● Live" badge (${accentColor} bg, white, 10px, border-radius:4px) — flex, justify-between
+      2–3 metric rows (margin-top:16px each): emoji icon + label (13px ${mutedColor}) + value (font-size:22px, font-weight:800, color:${accentColor}) — flex, justify-between, align-center
+      Mini bar chart (margin-top:20px): 5 vertical bars in a flex row, each bar is a div with background:${accentColor}, border-radius:4px 4px 0 0, different heights (e.g. 40%, 65%, 50%, 80%, 70%), bottom-aligned in a flex container (align-items:flex-end; height:60px; gap:6px; background:${bgColor}; padding:8px; border-radius:8px)
+      Recent activity list (margin-top:16px): 3 rows, each row is a flex with a 28px avatar circle + 2 lines of text (name bold 12px + action muted 11px) + timestamp (11px muted) — separated by thin borders
+    The whole visual should feel like a real SaaS product screenshot. Make metrics and activity specific to ${brandContext.product} and ${audience}.
 
-━━━ 2b. HERO VISUAL (right side, or below on mobile) ━━━
-On desktop: make hero a 2-column grid. Right column: a stylized "product dashboard" built entirely in HTML/CSS:
-  A rounded-2xl container (background:${bg2Color}; border:1px solid ${borderColor}; padding:20px; max-width:480px)
-  Inside: fake UI elements relevant to the product — stat cards, a mini bar chart using CSS bars, status indicators.
-  Make it look like an actual product screenshot. Use the brand colors. This replaces any placeholder image.
+SECTION 3 — TRUST STRIP (no label, ultra-minimal)
+background:${bg2Color}; border-top:1px solid ${borderColor}; border-bottom:1px solid ${borderColor}; padding:18px 0.
+.wrap: display:flex; align-items:center; flex-wrap:wrap; gap:0.
+  <span style="font-size:13px;color:${mutedColor};margin-right:28px;white-space:nowrap">Trusted by teams at</span>
+  5 company names (pick names plausible for ${audience}), each: font-size:14px; font-weight:600; color:${textColor}99; margin:0 20px.
+  Between each name: <span style="width:1px;height:14px;background:${borderColor};display:inline-block;vertical-align:middle;margin:0 4px"></span>
 
-━━━ 3. SOCIAL PROOF BAR (trust strip) ━━━
-- background: ${bg2Color}; border-top/bottom: 1px solid ${borderColor}; padding: 22px 0;
-- Flex, centered, gap:48px, flex-wrap:wrap
-- "Trusted by 2,400+ companies including:" in ${mutedColor} + 5 recognizable company NAME ONLY (bold, ${textColor}cc, font-size:15px)
-- Pick names plausible for ${audience}
+SECTION 4 — STATS (single bordered row, NOT separate cards)
+background:${bgColor}; padding:56px 0.
+.wrap: display:grid; grid-template-columns:repeat(4,1fr); border:1px solid ${borderColor}; border-radius:16px; overflow:hidden.
+Each of the 4 cells: padding:28px 24px; border-right:1px solid ${borderColor} (remove on last).
+  <div class="g" style="font-size:48px;font-weight:900;line-height:1;letter-spacing:-0.03em">[STAT NUMBER]</div>
+  <div style="font-size:13px;font-weight:600;color:${textColor};margin-top:8px">[SHORT LABEL]</div>
+  <div style="font-size:12px;color:${mutedColor};margin-top:4px">[ONE CONTEXT LINE]</div>
+Write 4 credible, specific metrics for ${brandContext.product} used by ${audience}. Think: time saved, response rate, ROI, adoption speed. On mobile: 2×2 grid.
 
-━━━ 4. METRICS / STATS (new section) ━━━
-- background: ${bg2Color}
-- 4 stat cards in a CSS grid (4 cols desktop, 2x2 mobile), each card:
-  Big number (56px, font-weight:900, .grad class): invent a believable metric related to the product (e.g. "3×", "47%", "8h", "$12k")
-  Label below (14px, ${mutedColor}): what that number means
-  Small description (12px, ${mutedColor}cc): one extra line of context
-- Cards separated by thin vertical border (hidden on mobile)
-- These stats must be SPECIFIC and CREDIBLE for ${brandContext.product} and ${audience}
+SECTION 5 — PROBLEM (no pill — the headline IS the statement)
+background:${bg2Color}; padding:100px 0.
+.wrap: CSS Grid — grid-template-columns:2fr 3fr; gap:64px; align-items:start. On mobile: 1 col.
+  LEFT:
+    <h2 style="font-size:clamp(32px,3.5vw,48px);font-weight:800;letter-spacing:-0.025em;line-height:1.12;color:${textColor};margin:0 0 20px">
+      Write a headline that IS the pain — not "The problem with X" but the actual frustration ${audience} feels daily. Make it land.
+    </h2>
+    <p style="font-size:17px;line-height:1.75;color:${mutedColor}">
+      One paragraph deepening the pain. Reference: ${painPoints.slice(0,2).join(' and ')}. Conversational, specific.
+    </p>
+  RIGHT: 2 stacked .card elements (margin-bottom:16px each), padding:28px:
+    Each card: flex gap:14px, align-items:flex-start.
+      <span style="font-size:28px;line-height:1;flex-shrink:0">[emoji]</span>
+      <div>
+        <div style="font-size:16px;font-weight:700;color:${textColor};margin-bottom:6px">[Pain title]</div>
+        <div style="font-size:14px;line-height:1.7;color:${mutedColor}">[2 specific sentences for ${audience}]</div>
+      </div>
+    Use the pain points: ${painPoints.slice(0,4).join(' | ')}
 
-━━━ 5. PAIN / PROBLEM SECTION ━━━
-- background: ${bgColor}
-- .label-pill "THE PROBLEM"
-- H2: A bold, personal headline that makes ${audience} feel deeply understood
-- Subheadline: 1 sentence that intensifies the problem
-- 2×2 CSS grid of pain cards (1-col mobile), each .glass .card-hover:
-  Top: emoji icon (2em) + bold title (font-weight:700, 17px)
-  Body: 2 sentences, conversational, specific to this audience
-  Use: ${painPoints.slice(0, 4).join(' | ')}
+SECTION 6 — FEATURES (left-aligned cards, NOT centred content)
+background:${bgColor}; padding:100px 0.
+.wrap:
+  Header (text-align:left; max-width:580px; margin-bottom:52px):
+    <h2 style="font-size:clamp(32px,3.5vw,50px);font-weight:800;letter-spacing:-0.025em;color:${textColor};margin:0 0 14px">
+      Write a bold, specific headline positioning ${brand} as the answer. Not generic.
+    </h2>
+    <p style="font-size:18px;color:${mutedColor};line-height:1.65">One clear promise sentence tied to ${outcomes[0]}.</p>
+  3-col CSS grid (gap:24px; 1-col mobile):
+  Each .card padding:32px text-align:LEFT:
+    Icon block: 52px×52px; border-radius:12px; background:linear-gradient(135deg,${accentColor}22,${accent2Color}15); display:flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:20px; flex-shrink:0.
+    <h3 style="font-size:18px;font-weight:700;color:${textColor};margin:0 0 10px">[Feature name]</h3>
+    <p style="font-size:15px;color:${mutedColor};line-height:1.7;margin:0 0 16px">[3 sentences, benefit-focused, specific]</p>
+    <a href="${ctaUrl}" style="font-size:14px;font-weight:600;color:${accentColor};text-decoration:none">Learn more →</a>
+  Base each feature on the desired outcomes: ${outcomes.join(' · ')}
 
-━━━ 6. SOLUTION / FEATURES ━━━
-- background: ${bg2Color}
-- .label-pill "THE SOLUTION"
-- H2: Position ${brand} as the definitive answer. Bold, specific.
-- Subheadline
-- 3-col CSS grid (1-col mobile), each feature card .glass .card-hover:
-  Icon block: 56px×56px, border-radius:16px, background: linear-gradient(135deg, ${accentColor}33, ${accent2Color}22), emoji inside (font-size:26px), margin-bottom:20px
-  Feature title: 18px, font-weight:700, color:${textColor}
-  Feature body: 3 sentences, benefit-focused, color:${mutedColor}
-  "Learn more →" link: color:${accentColor}, font-weight:600, font-size:14px, no underline, hover underline
-  Use outcomes: ${outcomes.join(' | ')}
+SECTION 7 — HOW IT WORKS (id="how")
+background:${bg2Color}; padding:100px 0.
+.wrap:
+  Header (text-align:center; margin-bottom:60px):
+    <h2 style="font-size:clamp(30px,3.5vw,50px);font-weight:800;letter-spacing:-0.025em;color:${textColor};margin:0 0 14px">
+      Write a specific headline about speed/simplicity for ${brandContext.product}. e.g. "From sign-up to first result in under 10 minutes."
+    </h2>
+    <p style="font-size:18px;color:${mutedColor}">No lengthy onboarding. No technical setup.</p>
+  3-col grid (gap:28px; 1-col mobile):
+  Each step: background:${bgColor}; border:1px solid ${borderColor}; border-radius:16px; padding:36px:
+    <div style="font-size:72px;font-weight:900;color:${accentColor}20;line-height:1;letter-spacing:-0.04em;margin-bottom:16px">01</div> (02, 03)
+    <h3 style="font-size:19px;font-weight:700;color:${textColor};margin:0 0 10px">[Step title]</h3>
+    <p style="font-size:15px;color:${mutedColor};line-height:1.7">2 specific sentences describing this step for ${brandContext.product}.</p>
 
-━━━ 7. HOW IT WORKS ━━━
-- background: ${bgColor}; id="how"
-- .label-pill "HOW IT WORKS"
-- H2: "Up and running in minutes, not months"
-- 3-step horizontal layout desktop (vertical mobile), connected by CSS dashed line:
-  Step number: 80px, font-weight:900, color:${accentColor}22, line-height:1, margin-bottom:8px
-  Step title: 20px font-weight:700, color:${textColor}
-  Step body: 2 sentences describing this step for ${brandContext.product}
+SECTION 8 — TESTIMONIALS (1 featured large + 2 cards)
+background:${bgColor}; padding:100px 0.
+.wrap:
+  Header (text-align:center; margin-bottom:52px):
+    <h2 style="font-size:clamp(30px,3.5vw,50px);font-weight:800;letter-spacing:-0.025em;color:${textColor}">
+      Write a confident results headline — not "What our customers say" but a specific outcome claim.
+    </h2>
+  FEATURED QUOTE — full-width .card padding:48px; margin-bottom:28px; text-align:center:
+    <div style="font-size:72px;line-height:0.6;color:${accentColor}25;font-family:Georgia,serif;margin-bottom:16px">"</div>
+    <blockquote style="font-size:clamp(18px,2vw,26px);font-style:italic;line-height:1.5;color:${textColor};font-weight:500;max-width:800px;margin:0 auto 28px">
+      Write the most powerful testimonial — a specific, vivid quote with a real metric (e.g. "We went from 4% to 23% lead response rate in the first month"). Sounds like a real person.
+    </blockquote>
+    Author row (display:flex; align-items:center; justify-content:center; gap:14px):
+      48px avatar (gradient bg, white initials, font-weight:700, border-radius:50%)
+      <div><strong style="display:block;font-size:15px;color:${textColor}">[Full name]</strong><span style="font-size:13px;color:${mutedColor}">[Job title, Company name]</span></div>
+      <span style="color:#f59e0b;font-size:16px;letter-spacing:2px">★★★★★</span>
+  2-col grid (gap:24px; 1-col mobile): each .card padding:32px:
+    <div style="color:#f59e0b;font-size:15px;letter-spacing:3px;margin-bottom:16px">★★★★★</div>
+    <p style="font-style:italic;font-size:15px;color:${textColor};line-height:1.65;margin-bottom:20px">"[Specific outcome quote with a number]"</p>
+    Author row: 40px avatar + name (14px bold) + role/company (12px muted)
+  FABRICATE 3 different realistic ${audience} people. Every quote has a specific metric. No generic praise.
 
-━━━ 8. TESTIMONIALS ━━━
-- background: ${bg2Color}
-- .label-pill "SOCIAL PROOF"
-- H2: "Results from real ${audience}"
-- 3-col grid (1-col mobile), each card .glass .card-hover padding:36px:
-  Stars row: "★★★★★" color:#f59e0b, font-size:18px, letter-spacing:2px
-  Quote: font-style:italic; font-size:16px; line-height:1.65; color:${textColor}; margin:20px 0; must be SPECIFIC with real numbers
-  Author row: 48px avatar (gradient bg, initials in white, font-weight:700) + Name (bold, 15px) + Role + Company
-  FABRICATE 3 different realistic people from ${audience} — make each quote tell a mini success story with numbers
+SECTION 9 — COMPARISON (real <table>, properly styled)
+background:${bg2Color}; padding:100px 0.
+.wrap:
+  Header (text-align:left; margin-bottom:44px):
+    <h2 style="font-size:clamp(30px,3.5vw,48px);font-weight:800;letter-spacing:-0.025em;color:${textColor};margin:0 0 12px">
+      Write a specific headline about what ${audience} is missing with current solutions.
+    </h2>
+    <p style="font-size:17px;color:${mutedColor}">Make the comparison fair but damning for alternatives.</p>
+  <table style="width:100%;max-width:740px;border-collapse:collapse;font-size:15px">
+    <colgroup><col style="width:40%"><col style="width:30%"><col style="width:30%"></colgroup>
+    <thead>
+      <tr>
+        <th style="text-align:left;padding:14px 18px;font-size:12px;font-weight:600;color:${mutedColor};text-transform:uppercase;letter-spacing:.07em;border-bottom:2px solid ${borderColor}">Feature</th>
+        <th style="text-align:center;padding:14px 18px;background:${accentColor}12;border-top:2px solid ${accentColor};border-bottom:2px solid ${borderColor};color:${accentColor};font-weight:700">
+          ${brand} <span style="background:${accentColor};color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;margin-left:6px">BEST</span>
+        </th>
+        <th style="text-align:center;padding:14px 18px;font-weight:600;color:${mutedColor};border-bottom:2px solid ${borderColor}">Others</th>
+      </tr>
+    </thead>
+    <tbody>
+      [5 rows — alternate tr background: transparent / ${bgColor}30]
+      Each <tr>:
+        <td style="padding:14px 18px;border-bottom:1px solid ${borderColor};color:${textColor}">[Specific meaningful feature for ${audience}]</td>
+        <td style="padding:14px 18px;border-bottom:1px solid ${borderColor};text-align:center;background:${accentColor}06;color:${accentColor};font-size:20px;font-weight:700">✓</td>
+        <td style="padding:14px 18px;border-bottom:1px solid ${borderColor};text-align:center;color:${dangerColor};font-size:20px;font-weight:700">✗</td>
+    </tbody>
+  </table>
+  <a class="btn" href="${ctaUrl}" style="margin-top:32px;display:inline-flex">${variation.cta || 'Get Started'} →</a>
 
-━━━ 9. COMPARISON ━━━
-- background: ${bgColor}
-- .label-pill "WHY ${brand.toUpperCase()}"
-- H2: "Everything your current solution is missing"
-- Styled comparison grid (NOT a plain HTML table — use CSS grid with alternating row bg):
-  Header row: Feature (left) | ${brand} (center, with gradient background + "✦ Best Choice" badge) | Alternatives (right)
-  5 feature rows: each row has Feature name + ✓ in ${accentColor} for us + ✗ in ${dangerColor || '#ef444480'} for them
-  Make features specific and meaningful for ${audience}
-  Bottom row: CTA button spanning full width, .btn-grad
+SECTION 10 — FAQ (no decoration, just the accordion)
+background:${bgColor}; padding:100px 0.
+.wrap style="max-width:720px;margin:0 auto":
+  <h2 style="font-size:clamp(28px,3vw,44px);font-weight:800;letter-spacing:-0.025em;color:${textColor};text-align:center;margin-bottom:48px">Common questions</h2>
+  5 .faq-item divs, each: border-bottom:1px solid ${borderColor}:
+    .faq-q (display:flex; justify-content:space-between; align-items:center; padding:22px 0; cursor:pointer; gap:20px):
+      <span style="font-size:16px;font-weight:600;color:${textColor};flex:1">[Question]</span>
+      <span class="chev" style="font-size:22px;color:${mutedColor};transition:transform .25s;flex-shrink:0;line-height:1">+</span>
+    .faq-a (max-height:0; overflow:hidden; transition:max-height .35s ease):
+      <p style="font-size:15px;color:${mutedColor};line-height:1.78;padding:0 0 22px">Answer text.</p>
+  CSS: .faq-item.open .faq-a { max-height: 500px } .faq-item.open .chev { transform: rotate(45deg); color: ${accentColor}; }
+  Answer: ${objections.join(' | ')} + "How do I get started?" + one more relevant question.
 
-━━━ 10. FAQ ━━━
-- background: ${bg2Color}
-- .label-pill "FAQ"
-- H2: "Everything you need to know"
-- 5 FAQ items, each: border-bottom:1px solid ${borderColor}; padding:24px 0;
-  Question row: flex between, question text (17px, font-weight:600, color:${textColor}) + chevron div (rotate 0/180 on open)
-  Answer: div with max-height:0/300px transition, overflow:hidden; content: 16px ${mutedColor}
-  Cover: ${objections.join(' | ')} + one "How do I get started?" question
-  JS: toggle .open class on click, rotate chevron, expand/collapse max-height
+SECTION 11 — FINAL CTA (bold, full-bleed, no label pill)
+<section style="padding:120px 0;text-align:center;position:relative;overflow:hidden;
+  background:radial-gradient(ellipse 100% 80% at 50% 110%,${accentColor}25,transparent),
+             radial-gradient(ellipse 70% 50% at 50% -10%,${accent2Color}18,transparent),
+             ${bg2Color}">
+Two blobs (position:absolute, pointer-events:none, z-index:0): same pattern as hero blobs, one top-left, one bottom-right.
+.wrap style="position:relative;z-index:1":
+  <h2 style="font-size:clamp(36px,5vw,64px);font-weight:900;letter-spacing:-0.035em;line-height:1.05;color:${textColor};max-width:760px;margin:0 auto 20px">
+    Wrap 2–3 words in <span class="g">. Write a specific, urgent headline tied to "${variation.headline}" and angle ${variation.angle}.
+  </h2>
+  <p style="font-size:19px;color:${mutedColor};max-width:500px;margin:0 auto 44px;line-height:1.6">
+    What happens after they click. Be concrete and reassuring. 2 sentences max.
+  </p>
+  display:flex; justify-content:center; gap:16px; flex-wrap:wrap:
+    <a class="btn" href="${ctaUrl}" style="font-size:17px;padding:16px 40px">${variation.cta || 'Get Started'} →</a>
+    <a class="btn-o" href="${ctaUrl}" style="font-size:17px;padding:16px 40px">Book a demo</a>
+  <p style="margin-top:22px;font-size:13px;color:${mutedColor}60">No credit card required · Cancel anytime · ${trustMetric}</p>
 
-━━━ 11. FINAL CTA ━━━
-- background: ${bgColor}; position:relative; overflow:hidden; text-align:center; padding:120px 0
-- Background decorative: two giant blurred circles (absolute positioned, z-index:0), same technique as hero
-- All text in z-index:1 container
-- .label-pill "GET STARTED TODAY"
-- H2: Urgent, specific headline tied to the ad's promise — make them feel like they'll miss out if they don't act now
-- p.lead: what happens after clicking — be specific and reassuring
-- .btn-grad (min-width:280px, height:62px, font-size:17px) + .btn-ghost side by side
-- Trust line: "No credit card required · Takes 2 minutes to set up · Cancel anytime"
-- Repeat social proof: "${trustMetric} · 4.9★ average rating"
+SECTION 12 — FOOTER
+<footer style="background:${bg2Color};border-top:1px solid ${borderColor};padding:52px 0 32px">
+.wrap: CSS Grid 3 cols (gap:32px; 1-col mobile):
+  Col 1: LOGO HTML + <strong style="font-size:16px;color:${textColor};margin-left:8px">${brand}</strong> (flex row)
+          <p style="font-size:13px;color:${mutedColor};margin-top:10px;line-height:1.6">${tagline || 'Built for results'}</p>
+  Col 2: <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${mutedColor};margin-bottom:14px">Product</div>
+         Links stacked (each 14px, color:${mutedColor}, hover:${textColor}, no underline, display:block, margin-bottom:10px): Features · How it works · Results · FAQ
+  Col 3: style="text-align:right" <p style="font-size:13px;color:${mutedColor}80">© ${new Date().getFullYear()} ${brand}. All rights reserved.</p>
+         <p style="font-size:12px;color:${mutedColor}50;margin-top:8px">Privacy · Terms</p>
 
-━━━ 12. FOOTER ━━━
-- background: ${bg2Color}; border-top:1px solid ${borderColor}; padding:60px 0 40px
-- 3-column grid:
-  Left: LOGO HTML + "${brand}" bold + tagline "${tagline || 'The smarter way forward'}" in ${mutedColor}
-  Center: Links grid — Features, How it works, Testimonials, FAQ, Contact — in ${mutedColor}, hover:${textColor}
-  Right: "© ${new Date().getFullYear()} ${brand}. All rights reserved." + privacy/terms links in ${mutedColor}cc
-- Bottom strip: thin border-top, centered text in ${mutedColor}66 font-size:12px "Built with ❤️ for ${audience}"
+JAVASCRIPT — one <script> before </body>:
+1. FAQ: document.querySelectorAll('.faq-item').forEach(el => el.querySelector('.faq-q').addEventListener('click', () => el.classList.toggle('open')))
+2. Navbar shadow: const nb = document.querySelector('nav'); window.addEventListener('scroll', () => { nb.style.boxShadow = scrollY > 60 ? '0 4px 24px rgba(0,0,0,0.35)' : 'none' })
+3. Smooth scroll: document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); document.querySelector(a.getAttribute('href'))?.scrollIntoView({behavior:'smooth'}) }))
+NEVER opacity:0. NEVER IntersectionObserver.
 
-════════════════════════════════════════════
-JAVASCRIPT (one <script> tag before </body>)
-════════════════════════════════════════════
-1. FAQ accordion: document.querySelectorAll('.faq-item') click handler — toggle .open class, rotate chevron, expand answer via max-height
-2. Navbar scroll shadow: window.addEventListener('scroll', ...) — add/remove class with box-shadow at >80px
-3. Smooth scroll for anchor links
-ABSOLUTELY NO opacity:0 on any element. ABSOLUTELY NO IntersectionObserver. Everything is visible by default.
-
-════════════════════════════════════════════
-FINAL OUTPUT RULES
-════════════════════════════════════════════
-- Start IMMEDIATELY with <!DOCTYPE html> — zero preamble, zero explanation, zero markdown fences
-- Single <style> tag in <head> (complete CSS)
-- Single <script> tag before </body> (complete JS)
-- Load Inter: <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-- ALL buttons and CTAs link to: ${ctaUrl}
-- page title: "${brand} — ${variation.headline?.substring(0, 50)}"
-- meta description: relevant to the ad copy
-- Full mobile responsive with @media (max-width: 768px)
-- The hero headline MUST closely mirror: "${variation.headline}"
-- Tone throughout MUST match angle: ${variation.angle || 'general'}
-- NO external images. NO placeholder divs labeled "image goes here". Use CSS-only visuals.
-- This page must look indistinguishable from a page built by a world-class agency charging $200k+`
+OUTPUT RULES:
+- Start with <!DOCTYPE html> — zero preamble, no markdown, no explanation
+- One <style> in <head>. One <script> before </body>.
+- <link> for Inter (weights 300–900) in <head>
+- Page <title>: "${brand} — ${variation.headline?.substring(0, 50)}"
+- All buttons and links → ${ctaUrl}
+- @media (max-width:768px): 1-col grids, stack buttons, reduce font sizes
+- Tone matches ad angle: ${variation.angle || 'general'}
+- Copy is specific, human, and written for ${audience} — not generic marketing filler
+- This is a real, complete, shippable HTML page`
 
   // Use higher token limit for landing pages
   const raw = await callClaudeLarge(key, prompt)
