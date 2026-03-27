@@ -10,14 +10,14 @@ import { useAdStore } from '../store/adStore'
 import { generateLandingPage } from '../lib/api'
 
 const THEMES = [
-  { id: 'dark_pro',    label: 'Dark Pro',      bg: '#080c14', surface: '#0d1422', accent: '#6c63ff', accent2: '#8b5cf6', text: '#f1f5f9', preview: '#6c63ff' },
-  { id: 'midnight',    label: 'Midnight Blue',  bg: '#060d1f', surface: '#0b1530', accent: '#3b82f6', accent2: '#6366f1', text: '#e2e8f0', preview: '#3b82f6' },
-  { id: 'forest',      label: 'Forest',         bg: '#040d0a', surface: '#071510', accent: '#10b981', accent2: '#059669', text: '#ecfdf5', preview: '#10b981' },
-  { id: 'amber',       label: 'Amber Fire',     bg: '#0c0800', surface: '#150f00', accent: '#f59e0b', accent2: '#d97706', text: '#fffbeb', preview: '#f59e0b' },
-  { id: 'crimson',     label: 'Crimson',        bg: '#0f0507', surface: '#180609', accent: '#ef4444', accent2: '#dc2626', text: '#fef2f2', preview: '#ef4444' },
-  { id: 'rose_gold',   label: 'Rose Gold',      bg: '#0f0810', surface: '#160d18', accent: '#ec4899', accent2: '#db2777', text: '#fdf2f8', preview: '#ec4899' },
-  { id: 'cyber',       label: 'Cyber',          bg: '#02050f', surface: '#060b1a', accent: '#22d3ee', accent2: '#06b6d4', text: '#ecfeff', preview: '#22d3ee' },
-  { id: 'light_clean', label: 'Light Clean',    bg: '#ffffff', surface: '#f8fafc', accent: '#6c63ff', accent2: '#8b5cf6', text: '#0f172a', preview: '#6c63ff', light: true },
+  { id: 'dark_pro',    label: 'Dark Pro',      bg: '#080c14', surface: '#0d1422', bg3: '#131929', accent: '#6c63ff', accent2: '#8b5cf6', text: '#f1f5f9', preview: '#6c63ff' },
+  { id: 'midnight',    label: 'Midnight Blue',  bg: '#060d1f', surface: '#0b1530', bg3: '#101e3a', accent: '#3b82f6', accent2: '#6366f1', text: '#e2e8f0', preview: '#3b82f6' },
+  { id: 'forest',      label: 'Forest',         bg: '#040d0a', surface: '#071510', bg3: '#0b1f18', accent: '#10b981', accent2: '#059669', text: '#ecfdf5', preview: '#10b981' },
+  { id: 'amber',       label: 'Amber Fire',     bg: '#0c0800', surface: '#150f00', bg3: '#1c1400', accent: '#f59e0b', accent2: '#d97706', text: '#fffbeb', preview: '#f59e0b' },
+  { id: 'crimson',     label: 'Crimson',        bg: '#0f0507', surface: '#180609', bg3: '#1f0b10', accent: '#ef4444', accent2: '#dc2626', text: '#fef2f2', preview: '#ef4444' },
+  { id: 'rose_gold',   label: 'Rose Gold',      bg: '#0f0810', surface: '#160d18', bg3: '#1e1222', accent: '#ec4899', accent2: '#db2777', text: '#fdf2f8', preview: '#ec4899' },
+  { id: 'cyber',       label: 'Cyber',          bg: '#02050f', surface: '#060b1a', bg3: '#0a1224', accent: '#22d3ee', accent2: '#06b6d4', text: '#ecfeff', preview: '#22d3ee' },
+  { id: 'light_clean', label: 'Light Clean',    bg: '#ffffff', surface: '#f8fafc', bg3: '#f1f5f9', accent: '#6c63ff', accent2: '#8b5cf6', text: '#0f172a', preview: '#6c63ff', light: true },
 ]
 
 const LOADING_MESSAGES = [
@@ -89,16 +89,17 @@ export default function LandingPageGenerator() {
 
   const buildPageConfig = () => ({
     themeId,
-    bg: selectedTheme.bg,
-    surface: selectedTheme.surface,
-    accent: effectiveAccent,
-    accent2: selectedTheme.accent2,
+    bg:        selectedTheme.bg,
+    surface:   selectedTheme.surface,
+    bg3:       selectedTheme.bg3,
+    accent:    effectiveAccent,
+    accent2:   selectedTheme.accent2,
     textColor: selectedTheme.text,
-    light: selectedTheme.light || false,
-    logoSrc: logoSrc || null,
+    light:     selectedTheme.light || false,
+    logoSrc:   logoSrc || null,
     companyName: companyName || brandContext.brandName || '',
     tagline,
-    ctaUrl: ctaUrl || brandContext.landingPageUrl || '',
+    ctaUrl:    ctaUrl || brandContext.landingPageUrl || '',
     trustMetric: trustMetric || '2,400+ customers',
   })
 

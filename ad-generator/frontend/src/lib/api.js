@@ -766,6 +766,13 @@ Font: Inter from Google Fonts — weights 300 400 500 600 700 800 900. Load via 
 
 LOGO (use this exact HTML in navbar and footer): ${logoHtml}
 
+BASE CSS — always include at the top of your <style> block:
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+html { scroll-behavior: smooth }
+body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; line-height: 1.6 }
+img { max-width: 100%; display: block }
+a { color: inherit }
+
 REUSABLE CSS — define once in <style>, reference everywhere:
 
 /* Gradient accent — wrap 1–3 hero headline words in <span class="g"> */
@@ -824,14 +831,29 @@ Two decorative blobs (position:absolute, pointer-events:none, z-index:0):
         Each shows 2 white initials, font-size:11px, font-weight:700
       <span style="font-size:14px;color:${mutedColor}">${trustMetric}</span>
 
-  RIGHT COLUMN — product visual (CSS only, no images):
-    Container: background:${bg2Color}; border:1px solid ${borderColor}; border-radius:20px; padding:24px; max-width:460px.
-    Build a convincing mini-dashboard for ${brandContext.product} used by ${audience}:
-      Header row: small ${accentColor} circle + product label (13px bold) + "● Live" badge (${accentColor} bg, white, 10px, border-radius:4px) — flex, justify-between
-      2–3 metric rows (margin-top:16px each): emoji icon + label (13px ${mutedColor}) + value (font-size:22px, font-weight:800, color:${accentColor}) — flex, justify-between, align-center
-      Mini bar chart (margin-top:20px): 5 vertical bars in a flex row, each bar is a div with background:${accentColor}, border-radius:4px 4px 0 0, different heights (e.g. 40%, 65%, 50%, 80%, 70%), bottom-aligned in a flex container (align-items:flex-end; height:60px; gap:6px; background:${bgColor}; padding:8px; border-radius:8px)
-      Recent activity list (margin-top:16px): 3 rows, each row is a flex with a 28px avatar circle + 2 lines of text (name bold 12px + action muted 11px) + timestamp (11px muted) — separated by thin borders
-    The whole visual should feel like a real SaaS product screenshot. Make metrics and activity specific to ${brandContext.product} and ${audience}.
+  RIGHT COLUMN — hero visual (CSS only, reliable, looks great):
+    Outer container: background:${bg2Color}; border:1px solid ${borderColor}; border-radius:20px; padding:28px; max-width:460px; width:100%.
+
+    TOP METRICS BLOCK (background:${bgColor}; border-radius:14px; padding:20px; margin-bottom:16px):
+      Label row: <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${mutedColor}">Live Results</span>
+                 <span style="background:${accentColor}20;color:${accentColor};font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;margin-left:8px">● Active</span>
+      3 metric rows (margin-top:16px; each row: display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid ${borderColor}):
+        <span style="font-size:13px;color:${mutedColor}">[Metric label specific to ${brandContext.product}]</span>
+        <span style="font-size:18px;font-weight:800;color:${accentColor}">[Credible metric value]</span>
+      Remove border-bottom from last row.
+      Write metrics that are concrete results ${audience} would care about.
+
+    MINI BAR CHART (background:${bgColor}; border-radius:14px; padding:16px; margin-bottom:16px):
+      Label: <span style="font-size:11px;color:${mutedColor};font-weight:600">Performance (last 7 days)</span>
+      Bar row (display:flex; align-items:flex-end; gap:6px; height:52px; margin-top:10px):
+        7 bars: each a div with background:${accentColor}; border-radius:3px 3px 0 0; flex:1.
+        Heights (vary them realistically): 35%, 55%, 42%, 70%, 58%, 82%, 90%.
+        Last bar (today) gets background:linear-gradient(to top,${accentColor},${accent2Color}).
+
+    TESTIMONIAL SNIPPET (background:${bgColor}; border-radius:14px; padding:16px):
+      Stars: <span style="color:#f59e0b;font-size:12px;letter-spacing:2px">★★★★★</span>
+      Quote: <p style="font-size:13px;font-style:italic;color:${textColor};margin:8px 0;line-height:1.5">"[12-word specific result quote from a ${audience} member]"</p>
+      Author: <span style="font-size:11px;color:${mutedColor}">— [Name], [Role]</span>
 
 SECTION 3 — TRUST STRIP (no label, ultra-minimal)
 background:${bg2Color}; border-top:1px solid ${borderColor}; border-bottom:1px solid ${borderColor}; padding:18px 0.
@@ -998,8 +1020,8 @@ NEVER opacity:0. NEVER IntersectionObserver.
 
 OUTPUT RULES:
 - Start with <!DOCTYPE html> — zero preamble, no markdown, no explanation
-- One <style> in <head>. One <script> before </body>.
-- <link> for Inter (weights 300–900) in <head>
+- <head> must include: charset utf-8, <meta name="viewport" content="width=device-width,initial-scale=1">, page title, Inter font link, one <style> block
+- One <script> before </body>
 - Page <title>: "${brand} — ${variation.headline?.substring(0, 50)}"
 - All buttons and links → ${ctaUrl}
 - @media (max-width:768px): 1-col grids, stack buttons, reduce font sizes
