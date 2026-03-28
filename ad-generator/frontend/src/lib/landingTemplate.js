@@ -60,7 +60,7 @@ export function renderLandingPage(content, pc) {
 
   // ── Stats row ──────────────────────────────────────────────────
   const statsHtml = stats.map((s, i) =>
-    `<div style="padding:32px 24px;text-align:center;${i > 0 ? `border-left:1px solid ${border};` : ''}">
+    `<div class="sc" style="padding:32px 24px;text-align:center;${i > 0 ? `border-left:1px solid ${border};` : ''}">
       <div style="font-size:clamp(28px,4vw,44px);font-weight:900;color:${accent};letter-spacing:-0.03em;line-height:1;">${s.value}</div>
       <div style="font-size:14px;font-weight:700;color:${text};margin-top:6px;">${s.label}</div>
       <div style="font-size:12px;color:${muted};margin-top:3px;">${s.sub || ''}</div>
@@ -91,8 +91,8 @@ export function renderLandingPage(content, pc) {
 
   // ── How it works steps ─────────────────────────────────────────
   const stepsHtml = steps.map((s, i) =>
-    `<div style="flex:1;${i < steps.length - 1 ? 'padding-right:40px;' : ''}position:relative;">
-      ${i < steps.length - 1 ? `<div style="position:absolute;top:22px;right:0;width:28px;height:1px;background:linear-gradient(90deg,${border},${accent}60);"></div>` : ''}
+    `<div class="step-div" style="flex:1;${i < steps.length - 1 ? 'padding-right:40px;' : ''}position:relative;">
+      ${i < steps.length - 1 ? `<div class="step-connector" style="position:absolute;top:22px;right:0;width:28px;height:1px;background:linear-gradient(90deg,${border},${accent}60);"></div>` : ''}
       <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,${accent},${accent2});display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;margin-bottom:18px;">${s.num}</div>
       <div style="font-size:17px;font-weight:700;color:${text};margin-bottom:8px;">${s.headline}</div>
       <div style="font-size:14px;color:${muted};line-height:1.65;">${s.body}</div>
@@ -168,20 +168,46 @@ a{color:inherit;text-decoration:none}
 .btn-ghost:hover{border-color:${accent};background:${accent}10}
 .feat-card:hover{border-color:${accent}45!important;transform:translateY(-4px);box-shadow:0 20px 40px rgba(0,0,0,0.22)!important}
 @media(max-width:768px){
-  .hero-grid{grid-template-columns:1fr!important}
-  .hero-visual{display:none!important}
-  .stats-grid{grid-template-columns:repeat(2,1fr)!important}
-  .pain-grid{grid-template-columns:1fr!important}
-  .feat-grid{grid-template-columns:1fr!important}
-  .steps-row{flex-direction:column!important;gap:32px!important}
-  .steps-row>div{padding-right:0!important}
-  .steps-row>div>div:first-child{display:none!important}
-  .testi-grid{grid-template-columns:1fr!important}
-  .footer-grid{grid-template-columns:1fr!important;text-align:left!important}
-  .footer-grid>div:last-child{text-align:left!important}
+  /* Base */
+  .wrap{padding:0 18px!important}
   .nav-links{display:none!important}
-  .wrap{padding:0 16px}
-  .hero-btns{flex-direction:column!important;align-items:flex-start!important}
+
+  /* Sections — override all inline padding:100px */
+  section{padding:60px 0!important}
+  .sec-hero{padding:96px 0 56px!important;min-height:auto!important}
+
+  /* Hero */
+  .hero-grid{grid-template-columns:1fr!important;gap:40px!important}
+  .hero-visual{display:none!important}
+  .hero-btns{flex-direction:column!important;align-items:stretch!important}
+  .hero-btns .btn,.hero-btns .btn-ghost{width:100%;justify-content:center!important;text-align:center!important}
+
+  /* Stats */
+  .stats-grid{grid-template-columns:repeat(2,1fr)!important}
+  .sc{padding:20px 14px!important}
+
+  /* Pain */
+  .pain-grid{grid-template-columns:1fr!important;gap:32px!important}
+  .pain-l{position:static!important;margin-bottom:4px;}
+
+  /* Features */
+  .feat-grid{grid-template-columns:1fr!important}
+
+  /* Steps */
+  .steps-row{flex-direction:column!important;gap:28px!important}
+  .steps-row .step-div{padding-right:0!important}
+  .step-connector{display:none!important}
+
+  /* Testimonials */
+  .testi-grid{grid-template-columns:1fr!important}
+  .feat-testi{padding:28px!important}
+
+  /* Footer */
+  .footer-grid{grid-template-columns:1fr!important;gap:12px!important}
+  .footer-copy{text-align:left!important}
+
+  /* Buttons standalone */
+  .btn-full{width:100%!important;justify-content:center!important}
 }
 </style>
 </head>
@@ -205,7 +231,7 @@ a{color:inherit;text-decoration:none}
 </header>
 
 <!-- HERO -->
-<section style="min-height:100vh;display:flex;align-items:center;padding:120px 0 80px;position:relative;overflow:hidden;background:${bg};">
+<section class="sec-hero" style="min-height:100vh;display:flex;align-items:center;padding:120px 0 80px;position:relative;overflow:hidden;background:${bg};">
   <div style="position:absolute;top:-150px;right:-120px;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,${accent}1a 0%,transparent 65%);pointer-events:none;z-index:0;"></div>
   <div style="position:absolute;bottom:-100px;left:3%;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,${accent2}12 0%,transparent 65%);pointer-events:none;z-index:0;"></div>
   <div class="wrap" style="position:relative;z-index:1;width:100%;">
@@ -260,9 +286,9 @@ a{color:inherit;text-decoration:none}
 </section>
 
 <!-- TRUST STRIP -->
-<div style="background:${bg2};border-top:1px solid ${border};border-bottom:1px solid ${border};padding:18px 0;">
-  <div class="wrap" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 0;">
-    <span style="font-size:13px;color:${muted};margin-right:28px;white-space:nowrap;">Trusted by teams at</span>
+<div style="background:${bg2};border-top:1px solid ${border};border-bottom:1px solid ${border};padding:18px 0;overflow:hidden;">
+  <div class="wrap" style="display:flex;align-items:center;flex-wrap:wrap;gap:6px 0;">
+    <span style="font-size:13px;color:${muted};margin-right:20px;white-space:nowrap;">Trusted by teams at</span>
     ${trustCoHtml}
   </div>
 </div>
@@ -281,7 +307,7 @@ a{color:inherit;text-decoration:none}
   <div class="wrap">
     <div class="pain-grid" style="display:grid;grid-template-columns:5fr 7fr;gap:80px;align-items:start;">
       <!-- Left: sticky heading -->
-      <div style="position:sticky;top:84px;">
+      <div class="pain-l" style="position:sticky;top:84px;">
         <div style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#ef4444;background:#ef444415;border:1px solid #ef444428;padding:5px 14px;border-radius:100px;margin-bottom:18px;">The Problem</div>
         <h2 style="font-size:clamp(26px,3.5vw,42px);font-weight:900;line-height:1.12;letter-spacing:-0.025em;color:${text};margin-bottom:18px;">${c.painHeadline || 'Something is broken'}</h2>
         <p style="font-size:16px;color:${muted};line-height:1.75;margin-bottom:${c.painQuote ? '28px' : '0'};">${c.painBody || ''}</p>
@@ -317,7 +343,7 @@ a{color:inherit;text-decoration:none}
       ${stepsHtml}
     </div>
     <div style="text-align:center;margin-top:56px;">
-      <a class="btn" href="${ctaUrl}" style="font-size:16px;padding:16px 36px;">${ctaText} →</a>
+      <a class="btn btn-full" href="${ctaUrl}" style="font-size:16px;padding:16px 36px;">${ctaText} →</a>
     </div>
   </div>
 </section>
@@ -326,7 +352,7 @@ a{color:inherit;text-decoration:none}
 <section style="background:${bg};padding:100px 0;">
   <div class="wrap">
     <!-- Featured blockquote -->
-    <div style="background:${bg2};border:1px solid ${border};border-radius:20px;padding:52px;margin-bottom:28px;position:relative;overflow:hidden;">
+    <div class="feat-testi" style="background:${bg2};border:1px solid ${border};border-radius:20px;padding:52px;margin-bottom:28px;position:relative;overflow:hidden;">
       <div style="position:absolute;top:-60px;right:-60px;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,${accent}10 0%,transparent 65%);pointer-events:none;"></div>
       <div style="color:#f59e0b;font-size:14px;letter-spacing:3px;margin-bottom:26px;">★★★★★</div>
       <p style="font-size:clamp(18px,2.5vw,26px);font-style:italic;font-weight:400;line-height:1.5;color:${text};max-width:820px;margin-bottom:30px;">"${c.featuredQuote || 'This completely changed how we approach our work.'}"</p>
@@ -393,7 +419,7 @@ a{color:inherit;text-decoration:none}
       <span style="font-size:15px;font-weight:700;color:${text};margin-left:2px;">${brand}</span>
     </div>
     <p style="font-size:13px;color:${muted};text-align:center;">${c.footerTagline || ''}</p>
-    <p style="font-size:12px;color:${muted}55;text-align:right;">© ${year} ${brand}. All rights reserved.</p>
+    <p class="footer-copy" style="font-size:12px;color:${muted}55;text-align:right;">© ${year} ${brand}. All rights reserved.</p>
   </div>
 </footer>
 
