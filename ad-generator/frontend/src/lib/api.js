@@ -1,5 +1,6 @@
 import { getKey } from './keys'
 import { v4 as uuidv4 } from 'uuid'
+import { renderLandingPage } from './landingTemplate'
 
 // ── Perplexity — audience research ───────────────────────────
 export async function researchAudience({ product, targetAudience, brandName }) {
@@ -670,6 +671,15 @@ export async function generateLandingPage({ variation, brandContext, insights, c
   const key = getKey('anthropic')
   if (!key) throw new Error('Add your Anthropic key in Settings to generate landing pages')
 
+  // ── Extract context ──────────────────────────────────────────
+  const pc = pageConfig || {}
+  const brand    = pc.companyName || brandContext.brandName || 'Our Solution'
+  const audience = variation.targetSegment || brandContext.targetAudience || 'professionals'
+  const ctaText  = variation.cta || 'Get Started'
+  const ctaUrl   = pc.ctaUrl || brandContext.landingPageUrl || '#'
+  const tagline  = pc.tagline || ''
+  const trust    = pc.trustMetric || '2,400+ customers'
+
   const painPoints = insights?.painPoints?.slice(0, 4).map((p) => p.text) || [
     `Wasting hours on ${brandContext.product} with no results`,
     `No idea which approach actually converts`,
@@ -677,369 +687,152 @@ export async function generateLandingPage({ variation, brandContext, insights, c
     `Falling behind while competitors scale`,
   ]
   const outcomes = insights?.desiredOutcomes?.slice(0, 3).map((o) => o.text) || [
-    `Get measurable results fast`,
-    `Know exactly what works before spending big`,
-    `Scale confidently`,
+    'Get measurable results fast',
+    'Know exactly what works before spending big',
+    'Scale confidently',
   ]
   const objections = insights?.objections?.slice(0, 3) || [
-    `Is this right for my situation?`,
-    `How long does it take to see results?`,
-    `What if it doesn't work for me?`,
+    'Is this right for my situation?',
+    'How long does it take to see results?',
+    'What if it doesn\'t work for me?',
   ]
-  const triggers = insights?.triggerPhrases?.slice(0, 4) || []
 
-  const competitorEdge = competitorIntel ? `
-COMPETITOR INTELLIGENCE — use to position us as the superior choice:
-- Market gaps our page should exploit: ${competitorIntel.gapOpportunities?.join('; ')}
-- Our differentiators to highlight prominently: ${competitorIntel.suggestedDifferentiators?.join('; ')}
-- Competitor weaknesses to contrast against: ${competitorIntel.competitors?.map((c) => c.weaknesses).filter(Boolean).join('; ')}` : ''
+  const competitorEdge = competitorIntel
+    ? `Competitor intel — position us as superior:
+- Market gaps to exploit: ${competitorIntel.gapOpportunities?.join('; ')}
+- Our differentiators: ${competitorIntel.suggestedDifferentiators?.join('; ')}
+- Competitor weaknesses: ${competitorIntel.competitors?.map((c) => c.weaknesses).filter(Boolean).join('; ')}`
+    : ''
 
-  // Use pageConfig values if provided, otherwise fall back to brandContext
-  const pc = pageConfig || {}
-  const ctaUrl = pc.ctaUrl || brandContext.landingPageUrl || '#'
-  const brand = pc.companyName || brandContext.brandName || 'Our Solution'
-  const audience = variation.targetSegment || brandContext.targetAudience || 'professionals'
-  const tagline = pc.tagline || ''
-  const trustMetric = pc.trustMetric || '2,400+ customers'
-  const logoHtml = pc.logoSrc
-    ? `<img src="${pc.logoSrc}" alt="${brand}" style="height:32px;object-fit:contain;" />`
-    : `<div style="width:32px;height:32px;border-radius:8px;background:var(--accent);display:inline-block;"></div>`
+  // ── Content generation prompt ────────────────────────────────
+  // Claude generates ONLY the content JSON — not HTML.
+  // The pre-built template handles all design.
+  const prompt = `You are a direct-response copywriter. Write landing page content for the product below.
+Return ONLY a valid JSON object — no markdown, no explanation, no code fences.
 
-  // Design system from theme
-  const bgColor    = pc.bg      || '#080c14'
-  const bg2Color   = pc.surface || '#0d1422'
-  const bg3Color   = pc.bg3     || (pc.light ? '#f1f5f9' : '#131929')
-  const accentColor  = pc.accent  || '#6c63ff'
-  const accent2Color = pc.accent2 || '#8b5cf6'
-  const accentGlow   = accentColor + '40'
-  const textColor    = pc.textColor || '#f1f5f9'
-  const mutedColor   = pc.light ? '#64748b' : '#94a3b8'
-  const borderColor  = pc.light ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.07)'
-  const dangerColor  = '#ef4444'
-
-  const prompt = `You are a senior product designer and direct-response copywriter. You have strong opinions about craft. You do not use AI landing page templates. Every page you build has a specific point of view — real copy, deliberate layout choices, sections that feel different from each other. Build a complete, single-file HTML landing page now.
-
-NON-NEGOTIABLE RULES (these separate real design from AI slop):
-— Hero text is LEFT-ALIGNED with a 2-column layout (text left, visual right). Never centered.
-— "THE PROBLEM" / "THE SOLUTION" / "SOCIAL PROOF" label pills appear on 2 sections MAX. Headlines carry the meaning everywhere else.
-— Not every section is "centred headline + 3 identical cards". Vary layouts deliberately.
-— Write copy specific to this product and this audience. No "Transform your workflow." No "All-in-one solution." No filler.
-— Testimonials: one large featured blockquote (font-size 26px, italic, max-width 820px, full-width card) comes first, then two regular cards below in a 2-col grid.
-— Stats: a single bordered horizontal row split into 4 cells by vertical dividers. Not four separate cards.
-— Comparison uses a real styled <table> element. Not a CSS grid approximation.
-— FAQ: accordion items only. No section header decoration, no label pill, no intro card.
-— NEVER set opacity:0 on anything. NEVER use IntersectionObserver. All content visible on load.
-— Each section must feel visually distinct from adjacent ones (vary background, layout, and typographic approach).
-
-CAMPAIGN CONTEXT
+PRODUCT & AUDIENCE
 Brand: ${brand}
 Product: ${brandContext.product}
 Audience: ${audience}
-${tagline ? `Tagline: "${tagline}"` : ''}
-Hero H1 must mirror: "${variation.headline}"
+Ad headline (mirror this closely): "${variation.headline}"
 Ad body copy: "${variation.primaryText}"
-CTA button text: "${variation.cta || 'Get Started'}"
-Every button and link goes to: ${ctaUrl}
-Ad angle: ${variation.angle || 'general'}
-Social proof stat: "${trustMetric}"
+CTA button text: "${ctaText}"
+${tagline ? `Tagline: "${tagline}"` : ''}
+Social proof: "${trust}"
 Pain points: ${painPoints.join(' · ')}
 Desired outcomes: ${outcomes.join(' · ')}
 Objections to handle: ${objections.join(' · ')}
-${triggers.length ? `High-resonance phrases: ${triggers.join(', ')}` : ''}
 ${competitorEdge}
 
-DESIGN SYSTEM
-Font: Inter from Google Fonts — weights 300 400 500 600 700 800 900. Load via <link> in <head>.
+WRITING RULES — non-negotiable:
+- Every line of copy must be specific to this product and this audience. No filler. No "transform your workflow."
+- Stats, metrics, and testimonials should be plausible and concrete — include real numbers.
+- Testimonial quotes must sound like actual people, not marketing copy.
+- The hero headline must closely mirror the ad headline. Wrap 1–3 key words with <span class="g"> for gradient styling.
+- Pain points should articulate the exact frustration ${audience} feel — visceral, not generic.
+- Features should describe what the product actually does, not abstract benefits.
+- FAQ answers should be reassuring and direct — handle the real objections listed above.
 
-:root {
-  --bg:      ${bgColor};
-  --bg2:     ${bg2Color};
-  --bg3:     ${bg3Color};
-  --accent:  ${accentColor};
-  --accent2: ${accent2Color};
-  --text:    ${textColor};
-  --muted:   ${mutedColor};
-  --border:  ${borderColor};
-  --success: #10b981;
-  --danger:  ${dangerColor};
-}
+Return this exact JSON shape (fill every field, no nulls):
+{
+  "pageTitle": "${brand} — [headline, max 50 chars]",
+  "headlinePlain": "[headline without HTML tags]",
+  "headlineHtml": "[headline with <span class=\\"g\\">key words</span> and optional <br> for rhythm]",
+  "heroPill": "⚡ [one specific concrete benefit — 8 words max]",
+  "subheadline": "[2 sentences. Expand the ad promise, name the core pain. Specific.]",
+  "ctaText": "${ctaText}",
+  "avatarInitials": ["AB","CD","EF","GH","IJ"],
+  "heroMetrics": [
+    {"label": "[metric label for ${brandContext.product}]", "value": "[number]"},
+    {"label": "[metric label]", "value": "[number]"},
+    {"label": "[metric label]", "value": "[number]"}
+  ],
+  "heroQuote": "[12-word specific result quote from a ${audience} member]",
+  "heroQuoteAuthor": "[First Last, Role]",
+  "trustCompanies": ["Co1","Co2","Co3","Co4","Co5"],
+  "stats": [
+    {"value": "[number+unit]", "label": "[short label]", "sub": "[context, 4 words max]"},
+    {"value": "[number+unit]", "label": "[short label]", "sub": "[context]"},
+    {"value": "[number+unit]", "label": "[short label]", "sub": "[context]"},
+    {"value": "[number+unit]", "label": "[short label]", "sub": "[context]"}
+  ],
+  "painHeadline": "[headline that IS the pain — what ${audience} feels daily, not 'The problem with X']",
+  "painBody": "[1-2 sentences deepening the pain. Conversational, specific to ${audience}.]",
+  "painQuote": "[A frustrated-customer quote that encapsulates the problem. Optional but powerful.]",
+  "painItems": [
+    {"headline": "[pain title]", "body": "[1-2 specific sentences for ${audience}]"},
+    {"headline": "[pain title]", "body": "[1-2 specific sentences]"},
+    {"headline": "[pain title]", "body": "[1-2 specific sentences]"}
+  ],
+  "featuresHeadline": "[bold specific headline positioning ${brand} as the answer]",
+  "featuresSub": "[one clear promise sentence tied to the top desired outcome]",
+  "features": [
+    {"icon": "[emoji]", "headline": "[feature name]", "body": "[2-3 sentences, benefit-focused, specific]"},
+    {"icon": "[emoji]", "headline": "[feature name]", "body": "[2-3 sentences]"},
+    {"icon": "[emoji]", "headline": "[feature name]", "body": "[2-3 sentences]"},
+    {"icon": "[emoji]", "headline": "[feature name]", "body": "[2-3 sentences]"},
+    {"icon": "[emoji]", "headline": "[feature name]", "body": "[2-3 sentences]"},
+    {"icon": "[emoji]", "headline": "[feature name]", "body": "[2-3 sentences]"}
+  ],
+  "howItWorksHeadline": "[specific headline about speed/simplicity — e.g. 'From sign-up to first result in 10 minutes']",
+  "howItWorksSub": "[One concrete reassurance sentence]",
+  "steps": [
+    {"num": "01", "headline": "[step title]", "body": "[2 sentences describing this step]"},
+    {"num": "02", "headline": "[step title]", "body": "[2 sentences]"},
+    {"num": "03", "headline": "[step title]", "body": "[2 sentences]"}
+  ],
+  "featuredQuote": "[The most powerful testimonial — specific metric, vivid, sounds like a real person]",
+  "featuredAuthor": "[Full Name]",
+  "featuredRole": "[Job Title at Company]",
+  "testimonials": [
+    {"quote": "[specific outcome quote with a number]", "author": "[Name]", "role": "[Title]", "initials": "[AB]"},
+    {"quote": "[specific outcome quote with a number]", "author": "[Name]", "role": "[Title]", "initials": "[CD]"}
+  ],
+  "comparisonHeadline": "[What ${audience} is missing with current solutions — specific]",
+  "comparisonOurLabel": "${brand}",
+  "comparisonThemLabel": "The old way",
+  "comparisonRows": [
+    {"aspect": "[meaningful feature]", "us": "[our answer]", "them": "[their limitation]"},
+    {"aspect": "[meaningful feature]", "us": "[our answer]", "them": "[their limitation]"},
+    {"aspect": "[meaningful feature]", "us": "[our answer]", "them": "[their limitation]"},
+    {"aspect": "[meaningful feature]", "us": "[our answer]", "them": "[their limitation]"},
+    {"aspect": "[meaningful feature]", "us": "[our answer]", "them": "[their limitation]"}
+  ],
+  "faqHeadline": "Common questions",
+  "faqItems": [
+    {"q": "[question from objections list]", "a": "[direct, reassuring 2-3 sentence answer]"},
+    {"q": "[question]", "a": "[answer]"},
+    {"q": "[question]", "a": "[answer]"},
+    {"q": "[question]", "a": "[answer]"},
+    {"q": "How do I get started?", "a": "[clear next steps, reference ${ctaText}]"}
+  ],
+  "ctaHeadline": "[urgent, specific headline tied to the ad angle. Wrap 2-3 words in <span class=\\"g\\">.]",
+  "ctaBody": "[What happens after they click. Concrete and reassuring. 2 sentences max.]",
+  "footerTagline": "[Short brand tagline — 6 words max]"
+}`
 
-LOGO (use this exact HTML in navbar and footer): ${logoHtml}
-
-BASE CSS — always include at the top of your <style> block:
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
-html { scroll-behavior: smooth }
-body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; line-height: 1.6 }
-img { max-width: 100%; display: block }
-a { color: inherit }
-
-REUSABLE CSS — define once in <style>, reference everywhere:
-
-/* Gradient accent — wrap 1–3 hero headline words in <span class="g"> */
-.g { background: linear-gradient(135deg, ${accentColor}, ${accent2Color}); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-
-/* Primary button */
-.btn { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, ${accentColor}, ${accent2Color}); color: #fff; font-weight: 700; font-size: 15px; padding: 14px 30px; border-radius: 12px; border: none; cursor: pointer; text-decoration: none; transition: filter .2s, transform .2s, box-shadow .2s; box-shadow: 0 4px 20px ${accentColor}40; }
-.btn:hover { filter: brightness(1.1); transform: translateY(-2px); box-shadow: 0 8px 32px ${accentColor}55; }
-
-/* Ghost button */
-.btn-o { display: inline-flex; align-items: center; gap: 8px; background: transparent; color: ${textColor}; font-weight: 600; font-size: 15px; padding: 14px 30px; border-radius: 12px; border: 1.5px solid ${borderColor}; cursor: pointer; text-decoration: none; transition: border-color .2s, background .2s; }
-.btn-o:hover { border-color: ${accentColor}; background: ${accentColor}10; }
-
-/* Card */
-.card { background: ${bg3Color}; border: 1px solid ${borderColor}; border-radius: 16px; transition: border-color .2s, transform .22s, box-shadow .22s; }
-.card:hover { border-color: ${accentColor}30; transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.22); }
-
-/* Small label pill — use sparingly, max 2 sections */
-.pill { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: ${accentColor}; background: ${accentColor}15; border: 1px solid ${accentColor}30; padding: 5px 14px; border-radius: 100px; margin-bottom: 18px; }
-
-/* Layout */
-.wrap { max-width: 1100px; margin: 0 auto; padding: 0 28px; }
-section { padding: 100px 0; }
-
-SECTIONS — BUILD ALL IN ORDER
-
-SECTION 1 — NAVBAR
-Fixed top bar. height:64px; background:${bgColor}ee; backdrop-filter:blur(20px); border-bottom:1px solid ${borderColor}; z-index:999.
-.wrap inside: display:flex; align-items:center; justify-content:space-between; height:100%.
-  LEFT: LOGO HTML + <span style="font-size:16px;font-weight:700;color:${textColor};margin-left:10px">${brand}</span>
-  CENTER: <nav> 4 links — "Features" "How it works" "Results" "FAQ" — 14px, color:${mutedColor}, hover:${textColor}, no underline, gap:32px
-  RIGHT: <a class="btn" href="${ctaUrl}" style="font-size:14px;padding:10px 22px">${variation.cta || 'Get Started'}</a>
-JS: on scroll > 60px add box-shadow:0 4px 24px rgba(0,0,0,0.3) to navbar element.
-
-SECTION 2 — HERO (LEFT-ALIGNED 2-column, never centred)
-<section style="min-height:100vh;display:flex;align-items:center;padding:100px 0 60px;position:relative;overflow:hidden;background:${bgColor}">
-Two decorative blobs (position:absolute, pointer-events:none, z-index:0):
-  Blob A: 600×600px circle, top:-150px, right:-100px, background:radial-gradient(circle,${accentColor}18 0%,transparent 65%)
-  Blob B: 400×400px circle, bottom:-80px, left:5%, background:radial-gradient(circle,${accent2Color}12 0%,transparent 65%)
-.wrap inside (position:relative; z-index:1): CSS Grid — grid-template-columns:1fr 1fr; gap:60px; align-items:center. On mobile: 1 column.
-
-  LEFT COLUMN — text-align:LEFT (do not centre):
-    Pill: display:inline-flex; align-items:center; gap:8px; background:${accentColor}15; border:1px solid ${accentColor}35; padding:7px 18px; border-radius:100px; font-size:13px; color:${accentColor}; margin-bottom:26px.
-      Inside: <span style="width:7px;height:7px;border-radius:50%;background:${accentColor};display:inline-block"></span> "⚡ [Write one specific concrete benefit for ${brandContext.product} — 7 words max]"
-    <h1 style="font-size:clamp(38px,5.5vw,70px);font-weight:900;line-height:1.06;letter-spacing:-0.035em;color:${textColor};margin:0 0 22px">
-      Mirror "${variation.headline}" closely. Wrap 2–3 key words in <span class="g">. Use a <br> for rhythm.
-    </h1>
-    <p style="font-size:19px;line-height:1.65;color:${mutedColor};max-width:500px;margin:0 0 36px">
-      2 sentences: expand the ad promise, then name the core pain from "${variation.primaryText}". Specific, not generic.
-    </p>
-    Buttons: display:flex; gap:14px; flex-wrap:wrap; align-items:center.
-      <a class="btn" href="${ctaUrl}">${variation.cta || 'Get Started'} →</a>
-      <a class="btn-o" href="#how">See how it works</a>
-    Social proof row (margin-top:26px; display:flex; align-items:center; gap:12px):
-      5 avatar circles (36px, border-radius:50%, background:linear-gradient(135deg,${accentColor},${accent2Color}), border:2px solid ${bgColor}, -10px overlap via negative margin):
-        Each shows 2 white initials, font-size:11px, font-weight:700
-      <span style="font-size:14px;color:${mutedColor}">${trustMetric}</span>
-
-  RIGHT COLUMN — hero visual (CSS only, reliable, looks great):
-    Outer container: background:${bg2Color}; border:1px solid ${borderColor}; border-radius:20px; padding:28px; max-width:460px; width:100%.
-
-    TOP METRICS BLOCK (background:${bgColor}; border-radius:14px; padding:20px; margin-bottom:16px):
-      Label row: <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:${mutedColor}">Live Results</span>
-                 <span style="background:${accentColor}20;color:${accentColor};font-size:10px;font-weight:700;padding:3px 8px;border-radius:4px;margin-left:8px">● Active</span>
-      3 metric rows (margin-top:16px; each row: display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid ${borderColor}):
-        <span style="font-size:13px;color:${mutedColor}">[Metric label specific to ${brandContext.product}]</span>
-        <span style="font-size:18px;font-weight:800;color:${accentColor}">[Credible metric value]</span>
-      Remove border-bottom from last row.
-      Write metrics that are concrete results ${audience} would care about.
-
-    MINI BAR CHART (background:${bgColor}; border-radius:14px; padding:16px; margin-bottom:16px):
-      Label: <span style="font-size:11px;color:${mutedColor};font-weight:600">Performance (last 7 days)</span>
-      Bar row (display:flex; align-items:flex-end; gap:6px; height:52px; margin-top:10px):
-        7 bars: each a div with background:${accentColor}; border-radius:3px 3px 0 0; flex:1.
-        Heights (vary them realistically): 35%, 55%, 42%, 70%, 58%, 82%, 90%.
-        Last bar (today) gets background:linear-gradient(to top,${accentColor},${accent2Color}).
-
-    TESTIMONIAL SNIPPET (background:${bgColor}; border-radius:14px; padding:16px):
-      Stars: <span style="color:#f59e0b;font-size:12px;letter-spacing:2px">★★★★★</span>
-      Quote: <p style="font-size:13px;font-style:italic;color:${textColor};margin:8px 0;line-height:1.5">"[12-word specific result quote from a ${audience} member]"</p>
-      Author: <span style="font-size:11px;color:${mutedColor}">— [Name], [Role]</span>
-
-SECTION 3 — TRUST STRIP (no label, ultra-minimal)
-background:${bg2Color}; border-top:1px solid ${borderColor}; border-bottom:1px solid ${borderColor}; padding:18px 0.
-.wrap: display:flex; align-items:center; flex-wrap:wrap; gap:0.
-  <span style="font-size:13px;color:${mutedColor};margin-right:28px;white-space:nowrap">Trusted by teams at</span>
-  5 company names (pick names plausible for ${audience}), each: font-size:14px; font-weight:600; color:${textColor}99; margin:0 20px.
-  Between each name: <span style="width:1px;height:14px;background:${borderColor};display:inline-block;vertical-align:middle;margin:0 4px"></span>
-
-SECTION 4 — STATS (single bordered row, NOT separate cards)
-background:${bgColor}; padding:56px 0.
-.wrap: display:grid; grid-template-columns:repeat(4,1fr); border:1px solid ${borderColor}; border-radius:16px; overflow:hidden.
-Each of the 4 cells: padding:28px 24px; border-right:1px solid ${borderColor} (remove on last).
-  <div class="g" style="font-size:48px;font-weight:900;line-height:1;letter-spacing:-0.03em">[STAT NUMBER]</div>
-  <div style="font-size:13px;font-weight:600;color:${textColor};margin-top:8px">[SHORT LABEL]</div>
-  <div style="font-size:12px;color:${mutedColor};margin-top:4px">[ONE CONTEXT LINE]</div>
-Write 4 credible, specific metrics for ${brandContext.product} used by ${audience}. Think: time saved, response rate, ROI, adoption speed. On mobile: 2×2 grid.
-
-SECTION 5 — PROBLEM (no pill — the headline IS the statement)
-background:${bg2Color}; padding:100px 0.
-.wrap: CSS Grid — grid-template-columns:2fr 3fr; gap:64px; align-items:start. On mobile: 1 col.
-  LEFT:
-    <h2 style="font-size:clamp(32px,3.5vw,48px);font-weight:800;letter-spacing:-0.025em;line-height:1.12;color:${textColor};margin:0 0 20px">
-      Write a headline that IS the pain — not "The problem with X" but the actual frustration ${audience} feels daily. Make it land.
-    </h2>
-    <p style="font-size:17px;line-height:1.75;color:${mutedColor}">
-      One paragraph deepening the pain. Reference: ${painPoints.slice(0,2).join(' and ')}. Conversational, specific.
-    </p>
-  RIGHT: 2 stacked .card elements (margin-bottom:16px each), padding:28px:
-    Each card: flex gap:14px, align-items:flex-start.
-      <span style="font-size:28px;line-height:1;flex-shrink:0">[emoji]</span>
-      <div>
-        <div style="font-size:16px;font-weight:700;color:${textColor};margin-bottom:6px">[Pain title]</div>
-        <div style="font-size:14px;line-height:1.7;color:${mutedColor}">[2 specific sentences for ${audience}]</div>
-      </div>
-    Use the pain points: ${painPoints.slice(0,4).join(' | ')}
-
-SECTION 6 — FEATURES (left-aligned cards, NOT centred content)
-background:${bgColor}; padding:100px 0.
-.wrap:
-  Header (text-align:left; max-width:580px; margin-bottom:52px):
-    <h2 style="font-size:clamp(32px,3.5vw,50px);font-weight:800;letter-spacing:-0.025em;color:${textColor};margin:0 0 14px">
-      Write a bold, specific headline positioning ${brand} as the answer. Not generic.
-    </h2>
-    <p style="font-size:18px;color:${mutedColor};line-height:1.65">One clear promise sentence tied to ${outcomes[0]}.</p>
-  3-col CSS grid (gap:24px; 1-col mobile):
-  Each .card padding:32px text-align:LEFT:
-    Icon block: 52px×52px; border-radius:12px; background:linear-gradient(135deg,${accentColor}22,${accent2Color}15); display:flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:20px; flex-shrink:0.
-    <h3 style="font-size:18px;font-weight:700;color:${textColor};margin:0 0 10px">[Feature name]</h3>
-    <p style="font-size:15px;color:${mutedColor};line-height:1.7;margin:0 0 16px">[3 sentences, benefit-focused, specific]</p>
-    <a href="${ctaUrl}" style="font-size:14px;font-weight:600;color:${accentColor};text-decoration:none">Learn more →</a>
-  Base each feature on the desired outcomes: ${outcomes.join(' · ')}
-
-SECTION 7 — HOW IT WORKS (id="how")
-background:${bg2Color}; padding:100px 0.
-.wrap:
-  Header (text-align:center; margin-bottom:60px):
-    <h2 style="font-size:clamp(30px,3.5vw,50px);font-weight:800;letter-spacing:-0.025em;color:${textColor};margin:0 0 14px">
-      Write a specific headline about speed/simplicity for ${brandContext.product}. e.g. "From sign-up to first result in under 10 minutes."
-    </h2>
-    <p style="font-size:18px;color:${mutedColor}">No lengthy onboarding. No technical setup.</p>
-  3-col grid (gap:28px; 1-col mobile):
-  Each step: background:${bgColor}; border:1px solid ${borderColor}; border-radius:16px; padding:36px:
-    <div style="font-size:72px;font-weight:900;color:${accentColor}20;line-height:1;letter-spacing:-0.04em;margin-bottom:16px">01</div> (02, 03)
-    <h3 style="font-size:19px;font-weight:700;color:${textColor};margin:0 0 10px">[Step title]</h3>
-    <p style="font-size:15px;color:${mutedColor};line-height:1.7">2 specific sentences describing this step for ${brandContext.product}.</p>
-
-SECTION 8 — TESTIMONIALS (1 featured large + 2 cards)
-background:${bgColor}; padding:100px 0.
-.wrap:
-  Header (text-align:center; margin-bottom:52px):
-    <h2 style="font-size:clamp(30px,3.5vw,50px);font-weight:800;letter-spacing:-0.025em;color:${textColor}">
-      Write a confident results headline — not "What our customers say" but a specific outcome claim.
-    </h2>
-  FEATURED QUOTE — full-width .card padding:48px; margin-bottom:28px; text-align:center:
-    <div style="font-size:72px;line-height:0.6;color:${accentColor}25;font-family:Georgia,serif;margin-bottom:16px">"</div>
-    <blockquote style="font-size:clamp(18px,2vw,26px);font-style:italic;line-height:1.5;color:${textColor};font-weight:500;max-width:800px;margin:0 auto 28px">
-      Write the most powerful testimonial — a specific, vivid quote with a real metric (e.g. "We went from 4% to 23% lead response rate in the first month"). Sounds like a real person.
-    </blockquote>
-    Author row (display:flex; align-items:center; justify-content:center; gap:14px):
-      48px avatar (gradient bg, white initials, font-weight:700, border-radius:50%)
-      <div><strong style="display:block;font-size:15px;color:${textColor}">[Full name]</strong><span style="font-size:13px;color:${mutedColor}">[Job title, Company name]</span></div>
-      <span style="color:#f59e0b;font-size:16px;letter-spacing:2px">★★★★★</span>
-  2-col grid (gap:24px; 1-col mobile): each .card padding:32px:
-    <div style="color:#f59e0b;font-size:15px;letter-spacing:3px;margin-bottom:16px">★★★★★</div>
-    <p style="font-style:italic;font-size:15px;color:${textColor};line-height:1.65;margin-bottom:20px">"[Specific outcome quote with a number]"</p>
-    Author row: 40px avatar + name (14px bold) + role/company (12px muted)
-  FABRICATE 3 different realistic ${audience} people. Every quote has a specific metric. No generic praise.
-
-SECTION 9 — COMPARISON (real <table>, properly styled)
-background:${bg2Color}; padding:100px 0.
-.wrap:
-  Header (text-align:left; margin-bottom:44px):
-    <h2 style="font-size:clamp(30px,3.5vw,48px);font-weight:800;letter-spacing:-0.025em;color:${textColor};margin:0 0 12px">
-      Write a specific headline about what ${audience} is missing with current solutions.
-    </h2>
-    <p style="font-size:17px;color:${mutedColor}">Make the comparison fair but damning for alternatives.</p>
-  <table style="width:100%;max-width:740px;border-collapse:collapse;font-size:15px">
-    <colgroup><col style="width:40%"><col style="width:30%"><col style="width:30%"></colgroup>
-    <thead>
-      <tr>
-        <th style="text-align:left;padding:14px 18px;font-size:12px;font-weight:600;color:${mutedColor};text-transform:uppercase;letter-spacing:.07em;border-bottom:2px solid ${borderColor}">Feature</th>
-        <th style="text-align:center;padding:14px 18px;background:${accentColor}12;border-top:2px solid ${accentColor};border-bottom:2px solid ${borderColor};color:${accentColor};font-weight:700">
-          ${brand} <span style="background:${accentColor};color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;margin-left:6px">BEST</span>
-        </th>
-        <th style="text-align:center;padding:14px 18px;font-weight:600;color:${mutedColor};border-bottom:2px solid ${borderColor}">Others</th>
-      </tr>
-    </thead>
-    <tbody>
-      [5 rows — alternate tr background: transparent / ${bgColor}30]
-      Each <tr>:
-        <td style="padding:14px 18px;border-bottom:1px solid ${borderColor};color:${textColor}">[Specific meaningful feature for ${audience}]</td>
-        <td style="padding:14px 18px;border-bottom:1px solid ${borderColor};text-align:center;background:${accentColor}06;color:${accentColor};font-size:20px;font-weight:700">✓</td>
-        <td style="padding:14px 18px;border-bottom:1px solid ${borderColor};text-align:center;color:${dangerColor};font-size:20px;font-weight:700">✗</td>
-    </tbody>
-  </table>
-  <a class="btn" href="${ctaUrl}" style="margin-top:32px;display:inline-flex">${variation.cta || 'Get Started'} →</a>
-
-SECTION 10 — FAQ (no decoration, just the accordion)
-background:${bgColor}; padding:100px 0.
-.wrap style="max-width:720px;margin:0 auto":
-  <h2 style="font-size:clamp(28px,3vw,44px);font-weight:800;letter-spacing:-0.025em;color:${textColor};text-align:center;margin-bottom:48px">Common questions</h2>
-  5 .faq-item divs, each: border-bottom:1px solid ${borderColor}:
-    .faq-q (display:flex; justify-content:space-between; align-items:center; padding:22px 0; cursor:pointer; gap:20px):
-      <span style="font-size:16px;font-weight:600;color:${textColor};flex:1">[Question]</span>
-      <span class="chev" style="font-size:22px;color:${mutedColor};transition:transform .25s;flex-shrink:0;line-height:1">+</span>
-    .faq-a (max-height:0; overflow:hidden; transition:max-height .35s ease):
-      <p style="font-size:15px;color:${mutedColor};line-height:1.78;padding:0 0 22px">Answer text.</p>
-  CSS: .faq-item.open .faq-a { max-height: 500px } .faq-item.open .chev { transform: rotate(45deg); color: ${accentColor}; }
-  Answer: ${objections.join(' | ')} + "How do I get started?" + one more relevant question.
-
-SECTION 11 — FINAL CTA (bold, full-bleed, no label pill)
-<section style="padding:120px 0;text-align:center;position:relative;overflow:hidden;
-  background:radial-gradient(ellipse 100% 80% at 50% 110%,${accentColor}25,transparent),
-             radial-gradient(ellipse 70% 50% at 50% -10%,${accent2Color}18,transparent),
-             ${bg2Color}">
-Two blobs (position:absolute, pointer-events:none, z-index:0): same pattern as hero blobs, one top-left, one bottom-right.
-.wrap style="position:relative;z-index:1":
-  <h2 style="font-size:clamp(36px,5vw,64px);font-weight:900;letter-spacing:-0.035em;line-height:1.05;color:${textColor};max-width:760px;margin:0 auto 20px">
-    Wrap 2–3 words in <span class="g">. Write a specific, urgent headline tied to "${variation.headline}" and angle ${variation.angle}.
-  </h2>
-  <p style="font-size:19px;color:${mutedColor};max-width:500px;margin:0 auto 44px;line-height:1.6">
-    What happens after they click. Be concrete and reassuring. 2 sentences max.
-  </p>
-  display:flex; justify-content:center; gap:16px; flex-wrap:wrap:
-    <a class="btn" href="${ctaUrl}" style="font-size:17px;padding:16px 40px">${variation.cta || 'Get Started'} →</a>
-    <a class="btn-o" href="${ctaUrl}" style="font-size:17px;padding:16px 40px">Book a demo</a>
-  <p style="margin-top:22px;font-size:13px;color:${mutedColor}60">No credit card required · Cancel anytime · ${trustMetric}</p>
-
-SECTION 12 — FOOTER
-<footer style="background:${bg2Color};border-top:1px solid ${borderColor};padding:52px 0 32px">
-.wrap: CSS Grid 3 cols (gap:32px; 1-col mobile):
-  Col 1: LOGO HTML + <strong style="font-size:16px;color:${textColor};margin-left:8px">${brand}</strong> (flex row)
-          <p style="font-size:13px;color:${mutedColor};margin-top:10px;line-height:1.6">${tagline || 'Built for results'}</p>
-  Col 2: <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${mutedColor};margin-bottom:14px">Product</div>
-         Links stacked (each 14px, color:${mutedColor}, hover:${textColor}, no underline, display:block, margin-bottom:10px): Features · How it works · Results · FAQ
-  Col 3: style="text-align:right" <p style="font-size:13px;color:${mutedColor}80">© ${new Date().getFullYear()} ${brand}. All rights reserved.</p>
-         <p style="font-size:12px;color:${mutedColor}50;margin-top:8px">Privacy · Terms</p>
-
-JAVASCRIPT — one <script> before </body>:
-1. FAQ: document.querySelectorAll('.faq-item').forEach(el => el.querySelector('.faq-q').addEventListener('click', () => el.classList.toggle('open')))
-2. Navbar shadow: const nb = document.querySelector('nav'); window.addEventListener('scroll', () => { nb.style.boxShadow = scrollY > 60 ? '0 4px 24px rgba(0,0,0,0.35)' : 'none' })
-3. Smooth scroll: document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => { e.preventDefault(); document.querySelector(a.getAttribute('href'))?.scrollIntoView({behavior:'smooth'}) }))
-NEVER opacity:0. NEVER IntersectionObserver.
-
-OUTPUT RULES:
-- Start with <!DOCTYPE html> — zero preamble, no markdown, no explanation
-- <head> must include: charset utf-8, <meta name="viewport" content="width=device-width,initial-scale=1">, page title, Inter font link, one <style> block
-- One <script> before </body>
-- Page <title>: "${brand} — ${variation.headline?.substring(0, 50)}"
-- All buttons and links → ${ctaUrl}
-- @media (max-width:768px): 1-col grids, stack buttons, reduce font sizes
-- Tone matches ad angle: ${variation.angle || 'general'}
-- Copy is specific, human, and written for ${audience} — not generic marketing filler
-- This is a real, complete, shippable HTML page`
-
-  // Use higher token limit for landing pages
   const raw = await callClaudeLarge(key, prompt)
 
-  // Robustly extract the HTML — find the actual <!DOCTYPE start, strip any preamble or markdown fences
-  let html = raw
-  const doctypeIdx = raw.toLowerCase().indexOf('<!doctype')
-  if (doctypeIdx > 0) html = raw.slice(doctypeIdx)
-  // Strip trailing markdown fences if present
-  html = html.replace(/\n?```\s*$/i, '').trim()
-  return html
+  // Parse the content JSON
+  let content
+  try {
+    const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim()
+    content = JSON.parse(cleaned)
+  } catch (e) {
+    // Try extracting JSON from within the response
+    const match = raw.match(/\{[\s\S]*\}/)
+    if (!match) throw new Error('Failed to parse landing page content from Claude response')
+    try {
+      content = JSON.parse(match[0])
+    } catch {
+      throw new Error('Invalid JSON in Claude response for landing page content')
+    }
+  }
+
+  // Render the page using the pre-built template
+  return renderLandingPage(content, pc)
 }
+
 
 // ── Claude helpers ────────────────────────────────────────────
 async function callClaude(key, prompt) {
