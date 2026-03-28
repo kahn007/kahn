@@ -725,30 +725,26 @@ Objections to handle: ${objections.join(' · ')}
 ${competitorEdge}
 
 WRITING RULES — non-negotiable:
-- Every line of copy must be specific to this product and this audience. No filler. No "transform your workflow."
-- Stats, metrics, and testimonials should be plausible and concrete — include real numbers.
-- Testimonial quotes must sound like actual people, not marketing copy.
-- The hero headline must closely mirror the ad headline. Wrap 1–3 key words with <span class="g"> for gradient styling.
-- Pain points should articulate the exact frustration ${audience} feel — visceral, not generic.
-- Features should describe what the product actually does, not abstract benefits.
-- FAQ answers should be reassuring and direct — handle the real objections listed above.
+- Every line of copy must be specific to this product and this audience. No filler. No "transform your workflow." No "all-in-one solution."
+- Write like a real person who understands the problem — not like a marketer.
+- Stats and metrics must be concrete and plausible. Real numbers only.
+- Testimonial quotes must sound like actual people. Include a specific outcome or number in every quote.
+- Hero headline must closely mirror the ad headline. Wrap 1–3 key words in <span class="g"> for gradient styling.
+- Pain items should articulate exact frustrations ${audience} feel daily — visceral and specific, not vague.
+- Feature descriptions: what it actually does, not abstract benefits.
+- FAQ answers: direct and reassuring — handle real objections listed above.
+- heroPill: a short, concrete label (no exclamation marks, no fluff) — 6 words max, uppercase style.
+- ctaHeadline: confident and specific. Wrap 2–3 words in <span class="g">.
 
 Return this exact JSON shape (fill every field, no nulls):
 {
-  "pageTitle": "${brand} — [headline, max 50 chars]",
+  "pageTitle": "${brand} — [headline text, max 50 chars]",
   "headlinePlain": "[headline without HTML tags]",
-  "headlineHtml": "[headline with <span class=\\"g\\">key words</span> and optional <br> for rhythm]",
-  "heroPill": "⚡ [one specific concrete benefit — 8 words max]",
-  "subheadline": "[2 sentences. Expand the ad promise, name the core pain. Specific.]",
+  "headlineHtml": "[headline with <span class=\\"g\\">key words</span> and a <br> for rhythm where natural]",
+  "heroPill": "[SHORT UPPERCASE LABEL — e.g. 'For Real Estate Agents' or 'Response Time Guaranteed']",
+  "subheadline": "[2 sentences. Expand the ad promise then name the core pain. Specific, not generic.]",
   "ctaText": "${ctaText}",
   "avatarInitials": ["AB","CD","EF","GH","IJ"],
-  "heroMetrics": [
-    {"label": "[metric label for ${brandContext.product}]", "value": "[number]"},
-    {"label": "[metric label]", "value": "[number]"},
-    {"label": "[metric label]", "value": "[number]"}
-  ],
-  "heroQuote": "[12-word specific result quote from a ${audience} member]",
-  "heroQuoteAuthor": "[First Last, Role]",
   "trustCompanies": ["Co1","Co2","Co3","Co4","Co5"],
   "stats": [
     {"value": "[number+unit]", "label": "[short label]", "sub": "[context, 4 words max]"},
@@ -756,59 +752,59 @@ Return this exact JSON shape (fill every field, no nulls):
     {"value": "[number+unit]", "label": "[short label]", "sub": "[context]"},
     {"value": "[number+unit]", "label": "[short label]", "sub": "[context]"}
   ],
-  "painHeadline": "[headline that IS the pain — what ${audience} feels daily, not 'The problem with X']",
-  "painBody": "[1-2 sentences deepening the pain. Conversational, specific to ${audience}.]",
-  "painQuote": "[A frustrated-customer quote that encapsulates the problem. Optional but powerful.]",
+  "painHeadline": "[The actual frustration ${audience} feels — not 'The problem with X', the raw feeling itself]",
+  "painBody": "[1-2 sentences. Conversational, specific. Like you've lived it.]",
+  "painQuote": "[A frustrated-customer quote that captures the feeling in one sentence]",
   "painItems": [
     {"headline": "[pain title]", "body": "[1-2 specific sentences for ${audience}]"},
     {"headline": "[pain title]", "body": "[1-2 specific sentences]"},
     {"headline": "[pain title]", "body": "[1-2 specific sentences]"}
   ],
-  "featuresHeadline": "[bold specific headline positioning ${brand} as the answer]",
-  "featuresSub": "[one clear promise sentence tied to the top desired outcome]",
+  "featuresHeadline": "[Bold, specific headline that positions ${brand} as the answer to the pain above]",
+  "featuresSub": "[One clear, concrete promise sentence]",
   "features": [
-    {"icon": "[emoji]", "headline": "[feature name]", "body": "[2-3 sentences, benefit-focused, specific]"},
-    {"icon": "[emoji]", "headline": "[feature name]", "body": "[2-3 sentences]"},
-    {"icon": "[emoji]", "headline": "[feature name]", "body": "[2-3 sentences]"},
-    {"icon": "[emoji]", "headline": "[feature name]", "body": "[2-3 sentences]"},
-    {"icon": "[emoji]", "headline": "[feature name]", "body": "[2-3 sentences]"},
-    {"icon": "[emoji]", "headline": "[feature name]", "body": "[2-3 sentences]"}
+    {"headline": "[feature name]", "body": "[2-3 sentences, what it does and why it matters for ${audience}]"},
+    {"headline": "[feature name]", "body": "[2-3 sentences]"},
+    {"headline": "[feature name]", "body": "[2-3 sentences]"},
+    {"headline": "[feature name]", "body": "[2-3 sentences]"},
+    {"headline": "[feature name]", "body": "[2-3 sentences]"},
+    {"headline": "[feature name]", "body": "[2-3 sentences]"}
   ],
-  "howItWorksHeadline": "[specific headline about speed/simplicity — e.g. 'From sign-up to first result in 10 minutes']",
-  "howItWorksSub": "[One concrete reassurance sentence]",
+  "howItWorksHeadline": "[Specific headline about speed/simplicity, e.g. 'From sign-up to your first result in under 10 minutes']",
+  "howItWorksSub": "[One concrete reassurance. No jargon.]",
   "steps": [
-    {"num": "01", "headline": "[step title]", "body": "[2 sentences describing this step]"},
+    {"num": "01", "headline": "[step title]", "body": "[2 sentences. What happens and why it matters.]"},
     {"num": "02", "headline": "[step title]", "body": "[2 sentences]"},
     {"num": "03", "headline": "[step title]", "body": "[2 sentences]"}
   ],
-  "featuredQuote": "[The most powerful testimonial — specific metric, vivid, sounds like a real person]",
+  "featuredQuote": "[The strongest testimonial. A specific outcome with a real number. Sounds like a real person.]",
   "featuredAuthor": "[Full Name]",
-  "featuredRole": "[Job Title at Company]",
+  "featuredRole": "[Job Title, Company Name]",
   "testimonials": [
-    {"quote": "[specific outcome quote with a number]", "author": "[Name]", "role": "[Title]", "initials": "[AB]"},
-    {"quote": "[specific outcome quote with a number]", "author": "[Name]", "role": "[Title]", "initials": "[CD]"}
+    {"quote": "[specific outcome with a number]", "author": "[Name]", "role": "[Title]", "initials": "[AB]"},
+    {"quote": "[specific outcome with a number]", "author": "[Name]", "role": "[Title]", "initials": "[CD]"}
   ],
-  "comparisonHeadline": "[What ${audience} is missing with current solutions — specific]",
+  "comparisonHeadline": "[What ${audience} loses by staying with current solutions — frame it as a cost]",
   "comparisonOurLabel": "${brand}",
-  "comparisonThemLabel": "The old way",
+  "comparisonThemLabel": "Without it",
   "comparisonRows": [
-    {"aspect": "[meaningful feature]", "us": "[our answer]", "them": "[their limitation]"},
-    {"aspect": "[meaningful feature]", "us": "[our answer]", "them": "[their limitation]"},
-    {"aspect": "[meaningful feature]", "us": "[our answer]", "them": "[their limitation]"},
-    {"aspect": "[meaningful feature]", "us": "[our answer]", "them": "[their limitation]"},
-    {"aspect": "[meaningful feature]", "us": "[our answer]", "them": "[their limitation]"}
+    {"aspect": "[meaningful capability]", "us": "[our specific answer]", "them": "[their specific limitation]"},
+    {"aspect": "[meaningful capability]", "us": "[specific answer]", "them": "[limitation]"},
+    {"aspect": "[meaningful capability]", "us": "[specific answer]", "them": "[limitation]"},
+    {"aspect": "[meaningful capability]", "us": "[specific answer]", "them": "[limitation]"},
+    {"aspect": "[meaningful capability]", "us": "[specific answer]", "them": "[limitation]"}
   ],
   "faqHeadline": "Common questions",
   "faqItems": [
-    {"q": "[question from objections list]", "a": "[direct, reassuring 2-3 sentence answer]"},
-    {"q": "[question]", "a": "[answer]"},
-    {"q": "[question]", "a": "[answer]"},
-    {"q": "[question]", "a": "[answer]"},
-    {"q": "How do I get started?", "a": "[clear next steps, reference ${ctaText}]"}
+    {"q": "[real objection from the list above]", "a": "[direct, reassuring 2-3 sentence answer]"},
+    {"q": "[objection]", "a": "[answer]"},
+    {"q": "[objection]", "a": "[answer]"},
+    {"q": "[objection]", "a": "[answer]"},
+    {"q": "How do I get started?", "a": "[clear next steps]"}
   ],
-  "ctaHeadline": "[urgent, specific headline tied to the ad angle. Wrap 2-3 words in <span class=\\"g\\">.]",
-  "ctaBody": "[What happens after they click. Concrete and reassuring. 2 sentences max.]",
-  "footerTagline": "[Short brand tagline — 6 words max]"
+  "ctaHeadline": "[Confident, specific. Wrap 2-3 words in <span class=\\"g\\">. No clichés.]",
+  "ctaBody": "[What happens immediately after clicking. Concrete and reassuring. 1-2 sentences.]",
+  "footerTagline": "[Brand tagline — 5 words max, no punctuation]"
 }`
 
   const raw = await callClaudeLarge(key, prompt)
