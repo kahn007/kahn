@@ -763,12 +763,12 @@ Return this exact JSON shape (fill every field, no nulls):
   "featuresHeadline": "[Bold, specific headline that positions ${brand} as the answer to the pain above]",
   "featuresSub": "[One clear, concrete promise sentence]",
   "features": [
-    {"headline": "[feature name]", "body": "[2-3 sentences, what it does and why it matters for ${audience}]"},
-    {"headline": "[feature name]", "body": "[2-3 sentences]"},
-    {"headline": "[feature name]", "body": "[2-3 sentences]"},
-    {"headline": "[feature name]", "body": "[2-3 sentences]"},
-    {"headline": "[feature name]", "body": "[2-3 sentences]"},
-    {"headline": "[feature name]", "body": "[2-3 sentences]"}
+    {"icon": "[lucide icon name — pick from: zap, shield-check, trending-up, clock, users, target, message-square, check-circle-2, bar-chart-2, settings-2, globe, lock, sparkles, layers, refresh-cw, bell, search, phone, mail, calendar, dollar-sign, cpu, eye, rocket, award, activity, send, timer, bolt]", "headline": "[feature name]", "body": "[2-3 sentences, what it does and why it matters for ${audience}]"},
+    {"icon": "[pick best matching icon]", "headline": "[feature name]", "body": "[2-3 sentences]"},
+    {"icon": "[pick best matching icon]", "headline": "[feature name]", "body": "[2-3 sentences]"},
+    {"icon": "[pick best matching icon]", "headline": "[feature name]", "body": "[2-3 sentences]"},
+    {"icon": "[pick best matching icon]", "headline": "[feature name]", "body": "[2-3 sentences]"},
+    {"icon": "[pick best matching icon]", "headline": "[feature name]", "body": "[2-3 sentences]"}
   ],
   "howItWorksHeadline": "[Specific headline about speed/simplicity, e.g. 'From sign-up to your first result in under 10 minutes']",
   "howItWorksSub": "[One concrete reassurance. No jargon.]",
