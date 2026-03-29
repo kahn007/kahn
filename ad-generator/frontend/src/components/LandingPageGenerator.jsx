@@ -11,12 +11,12 @@ import { generateLandingPage } from '../lib/api'
 
 const THEMES = [
   // ── Black base ──────────────────────────────────────────────────
-  { id: 'noir',     label: 'Noir / Gold',      bg: '#0A0A0A', surface: '#111111', bg3: '#1A1A1A', accent: '#C9A84C', accent2: '#E8C96A', text: '#F5F5F5', muted: '#888888', preview: '#C9A84C' },
+  { id: 'noir',     label: 'Noir / Gold',      bg: '#0A0A0A', surface: '#111111', bg3: '#1A1A1A', accent: '#C9A84C', accent2: '#E8C96A', text: '#F5F5F5', muted: '#888888', preview: '#C9A84C', serif: true },
   { id: 'onyx',     label: 'Onyx / Blue',      bg: '#06080F', surface: '#0D1220', bg3: '#131B2E', accent: '#3B82F6', accent2: '#60A5FA', text: '#F1F5FF', muted: '#8B98A8', preview: '#3B82F6' },
   { id: 'carbon',   label: 'Carbon / Teal',    bg: '#080808', surface: '#0F0F0F', bg3: '#171717', accent: '#0D9488', accent2: '#14B8A6', text: '#F5FAFA', muted: '#7A8A8A', preview: '#0D9488' },
   { id: 'obsidian', label: 'Obsidian / Rose',  bg: '#0A0607', surface: '#120A0E', bg3: '#1B1017', accent: '#D97076', accent2: '#F09BA0', text: '#FDF5F6', muted: '#8A7A7E', preview: '#D97076' },
   // ── White / Light base ──────────────────────────────────────────
-  { id: 'ivory',    label: 'Ivory / Gold',     bg: '#FEFCF6', surface: '#F7F2E4', bg3: '#EDE5CC', accent: '#B8930A', accent2: '#D4A812', text: '#111111', muted: '#6B6050', preview: '#B8930A', light: true },
+  { id: 'ivory',    label: 'Ivory / Gold',     bg: '#FEFCF6', surface: '#F7F2E4', bg3: '#EDE5CC', accent: '#B8930A', accent2: '#D4A812', text: '#111111', muted: '#6B6050', preview: '#B8930A', light: true, serif: true },
   { id: 'paper',    label: 'Paper / Black',    bg: '#FAFAFA', surface: '#F2F2F2', bg3: '#E8E8E8', accent: '#111111', accent2: '#333333', text: '#0A0A0A', muted: '#666666', preview: '#111111', light: true },
   { id: 'cloud',    label: 'Cloud / Sapphire', bg: '#FFFFFF', surface: '#F5F8FF', bg3: '#EAF0FF', accent: '#1D4ED8', accent2: '#2563EB', text: '#0F172A', muted: '#5A6A8A', preview: '#1D4ED8', light: true },
   { id: 'linen',    label: 'Linen / Emerald',  bg: '#FAFDF8', surface: '#F0F7EC', bg3: '#E2EDDB', accent: '#1A6B3C', accent2: '#22854A', text: '#0D1F0D', muted: '#4A6B4A', preview: '#1A6B3C', light: true },
@@ -99,6 +99,7 @@ export default function LandingPageGenerator() {
     textColor: selectedTheme.text,
     mutedColor: selectedTheme.muted,
     light:     selectedTheme.light || false,
+    serif:     selectedTheme.serif || false,
     logoSrc:   logoSrc || null,
     companyName: companyName || brandContext.brandName || '',
     tagline,
