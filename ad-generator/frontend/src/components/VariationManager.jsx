@@ -173,6 +173,7 @@ export default function VariationManager() {
   const [viewMode, setViewMode]       = useState('grid')
   const [editingId, setEditingId]     = useState(null)
   const [filterAngle, setFilterAngle] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [previewId, setPreviewId]     = useState(null)
 
   // Per-card loading states
@@ -199,7 +200,15 @@ export default function VariationManager() {
   const clampedImages  = Math.min(mix.images, effectiveTotal)
   const clampedVideos  = Math.min(mix.videos, effectiveTotal - clampedImages)
 
-  const filtered = filterAngle === 'all' ? variations : variations.filter((v) => v.angle === filterAngle)
+  const filtered = variations
+    .filter((v) => filterAngle === 'all' || v.angle === filterAngle)
+    .filter((v) => {
+      if (!searchQuery.trim()) return true
+      const q = searchQuery.toLowerCase()
+      return (v.headline || '').toLowerCase().includes(q) ||
+             (v.primaryText || '').toLowerCase().includes(q) ||
+             (v.angle || '').toLowerCase().includes(q)
+    })
   const allAngles = ['all', ...new Set(variations.map((v) => v.angle))]
 
   const handleDuplicate = (v) => {
@@ -210,6 +219,28 @@ export default function VariationManager() {
 
   const setCard = (id, status) => setCardStatus((s) => ({ ...s, [id]: status }))
   const clearCard = (id) => setCardStatus((s) => { const n = { ...s }; delete n[id]; return n })
+
+  // CSV export
+  const exportCsv = () => {
+    const toExport = selectedVariations.length > 0
+      ? variations.filter((v) => selectedVariations.includes(v.id))
+      : variations
+    if (!toExport.length) { toast.error('No variations to export'); return }
+
+    const esc = (s) => `"${String(s || '').replace(/"/g, '""')}"`
+    const headers = ['#', 'Headline', 'Primary Text', 'Description', 'CTA', 'Angle', 'Format', 'Score', 'Status', 'Facebook Ad ID', 'Created At']
+    const rows = toExport.map((v, i) => [
+      v.index || i + 1, esc(v.headline), esc(v.primaryText), esc(v.description),
+      v.cta, v.angle, v.format, v.score || '', v.status, v.facebookAdId || '',
+      v.createdAt ? new Date(v.createdAt).toLocaleDateString() : '',
+    ])
+    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+    a.download = `brayne-ads-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    toast.success(`Exported ${toExport.length} variations to CSV`)
+  }
 
   // Single card image
   const handleGenImage = async (v) => {
@@ -378,6 +409,16 @@ export default function VariationManager() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Search */}
+          <div className="relative">
+            <input
+              className="input text-sm pl-8 w-52"
+              placeholder="Search variations…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </div>
           {/* Angle filter */}
           <div className="flex items-center gap-1 bg-surface-900 border border-white/[0.06] rounded-xl p-1">
             {allAngles.map((angle) => (
@@ -396,9 +437,13 @@ export default function VariationManager() {
             {selectedVariations.length === variations.length ? <CheckSquare size={14} /> : <Square size={14} />}
             {selectedVariations.length === variations.length ? 'Deselect All' : 'Select All'}
           </button>
+          <button className="btn-ghost text-sm" onClick={exportCsv} title="Export to CSV">
+            <Download size={14} />
+            CSV
+          </button>
           <div className="flex bg-surface-900 border border-white/[0.06] rounded-xl overflow-hidden">
-            <button onClick={() => setViewMode('grid')} className={`p-2.5 ${viewMode === 'grid' ? 'bg-gray-700 text-white' : 'text-zinc-500 hover:text-white'}`}><LayoutGrid size={14} /></button>
-            <button onClick={() => setViewMode('list')} className={`p-2.5 ${viewMode === 'list' ? 'bg-gray-700 text-white' : 'text-zinc-500 hover:text-white'}`}><List size={14} /></button>
+            <button onClick={() => setViewMode('grid')} className={`p-2.5 ${viewMode === 'grid' ? 'bg-surface-700 text-white' : 'text-zinc-500 hover:text-white'}`}><LayoutGrid size={14} /></button>
+            <button onClick={() => setViewMode('list')} className={`p-2.5 ${viewMode === 'list' ? 'bg-surface-700 text-white' : 'text-zinc-500 hover:text-white'}`}><List size={14} /></button>
           </div>
         </div>
       </div>
@@ -470,6 +515,16 @@ export default function VariationManager() {
           </div>
         )}
       </div>
+
+      {/* No results */}
+      {filtered.length === 0 && variations.length > 0 && (
+        <div className="card">
+          <div className="empty-state">
+            <p className="empty-title">No matches</p>
+            <p className="empty-body">Try a different search or angle filter</p>
+          </div>
+        </div>
+      )}
 
       {/* Grid */}
       {viewMode === 'grid' ? (

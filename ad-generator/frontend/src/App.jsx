@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
 import {
   Zap, Search, Wand2, LayoutGrid, Upload, BarChart3,
-  Settings, Globe, ExternalLink, ChevronRight,
+  Settings, Globe, ExternalLink, ChevronRight, X,
+  Key, BookOpen, Sparkles, ArrowRight,
 } from 'lucide-react'
 import { useAdStore } from './store/adStore'
+import { getKey } from './lib/keys'
 import ResearchPanel from './components/ResearchPanel'
 import CopyGenerator from './components/CopyGenerator'
 import VariationManager from './components/VariationManager'
@@ -21,12 +23,104 @@ const NAV = [
   { id: 'landing',    label: 'Landing Pages', icon: Globe,     hint: 'Generate funnels' },
 ]
 
+// ── Onboarding modal ──────────────────────────────────────────
+function OnboardingModal({ onDismiss }) {
+  const STEPS = [
+    {
+      icon: Key,
+      color: 'text-brand-400',
+      bg: 'bg-brand-500/10',
+      title: 'Add your API keys',
+      body: 'Go to Settings and paste your Anthropic key (required) and optionally Perplexity + fal.ai for research and creatives.',
+    },
+    {
+      icon: Search,
+      color: 'text-green-400',
+      bg: 'bg-green-500/10',
+      title: 'Research your audience',
+      body: 'Enter your product and target audience. Perplexity scans Reddit & YouTube to surface real pain points and trigger phrases.',
+    },
+    {
+      icon: Wand2,
+      color: 'text-purple-400',
+      bg: 'bg-purple-500/10',
+      title: 'Generate ad variations',
+      body: 'Pick a count (5–100), formats, and let Claude write your headlines, primary copy, and descriptions across 6 angles.',
+    },
+    {
+      icon: Sparkles,
+      color: 'text-teal-400',
+      bg: 'bg-teal-500/10',
+      title: 'Add creatives & publish',
+      body: 'Generate AI images or videos per variation using fal.ai, then push the whole batch as paused drafts to your Facebook Ad Account.',
+    },
+  ]
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+      <div className="bg-surface-900 border border-white/[0.08] rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden">
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 border-b border-white/[0.06]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-brand-500 flex items-center justify-center glow-brand">
+                <Zap size={14} className="text-white" strokeWidth={2.5} />
+              </div>
+              <div>
+                <p className="text-white font-bold text-sm">Welcome to Brayne AI</p>
+                <p className="text-zinc-500 text-xs">Get running in 4 steps</p>
+              </div>
+            </div>
+            <button onClick={onDismiss} className="text-zinc-500 hover:text-white transition-colors p-1">
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+
+        {/* Steps */}
+        <div className="p-6 space-y-3">
+          {STEPS.map(({ icon: Icon, color, bg, title, body }, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <div className={`w-8 h-8 rounded-xl ${bg} flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                <Icon size={14} className={color} />
+              </div>
+              <div>
+                <p className="text-white text-sm font-semibold leading-snug">
+                  <span className="text-zinc-600 mr-1.5 font-normal">0{i + 1}.</span>
+                  {title}
+                </p>
+                <p className="text-zinc-500 text-xs mt-0.5 leading-relaxed">{body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 pb-6 flex gap-3">
+          <button className="btn-primary flex-1" onClick={onDismiss}>
+            Get Started <ArrowRight size={14} />
+          </button>
+          <button className="btn-ghost text-sm" onClick={onDismiss}>
+            Skip
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
-  const { activeTab, setActiveTab, variations } = useAdStore()
+  const { activeTab, setActiveTab, variations, hasOnboarded, setHasOnboarded } = useAdStore()
   const [collapsed, setCollapsed] = useState(false)
+
+  // Show onboarding on first visit — detect if no API keys configured yet
+  const noKeysConfigured = !getKey('anthropic') && !getKey('perplexity') && !getKey('falai')
+  const showOnboarding = !hasOnboarded && noKeysConfigured
 
   return (
     <div className="min-h-screen bg-surface-950 flex">
+
+      {showOnboarding && <OnboardingModal onDismiss={() => setHasOnboarded(true)} />}
 
       {/* ── Sidebar ──────────────────────────────────────────── */}
       <aside

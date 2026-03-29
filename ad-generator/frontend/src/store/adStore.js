@@ -164,6 +164,17 @@ export const useAdStore = create(
         set((s) => ({ savedPages: s.savedPages.filter((p) => p.id !== id) })),
 
       setActiveTab: (tab) => set({ activeTab: tab }),
+
+      // Onboarding
+      hasOnboarded: false,
+      setHasOnboarded: (v) => set({ hasOnboarded: v }),
+
+      // Clear all data (reset)
+      clearAll: () => set({
+        variations: [], selectedVariations: [], uploadResults: [],
+        researchSessions: [], activeResearchId: null, competitorSwipeFile: null,
+        hookLibrary: [], savedPages: [], analytics: [],
+      }),
     }),
     {
       name: 'brayne-ai-store',
@@ -180,6 +191,7 @@ export const useAdStore = create(
         competitorSwipeFile:  s.competitorSwipeFile,
         landingPageConfig:    s.landingPageConfig,
         savedPages:           s.savedPages,
+        hasOnboarded:         s.hasOnboarded,
       }),
     }
   )
