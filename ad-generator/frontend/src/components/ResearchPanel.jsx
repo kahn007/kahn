@@ -13,7 +13,7 @@ const EMOTION_COLORS = {
   exhausted:  'bg-purple-900/40 text-purple-300 border-purple-800',
   excited:    'bg-blue-900/40 text-blue-300 border-blue-800',
   regretful:  'bg-pink-900/40 text-pink-300 border-pink-800',
-  disappointed: 'bg-gray-800 text-gray-300 border-gray-700',
+  disappointed: 'bg-gray-800 text-zinc-300 border-gray-700',
 }
 
 const FREQ_COLORS = {
@@ -104,10 +104,8 @@ export default function ResearchPanel() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Research</h2>
-          <p className="text-gray-400 mt-1 text-sm">
-            Audience insights and competitor ad intelligence.
-          </p>
+          <h2 className="page-title">Research</h2>
+          <p className="page-subtitle">Audience insights and competitor ad intelligence.</p>
         </div>
         {activeTab === 'audience' && (
           <button
@@ -121,19 +119,19 @@ export default function ResearchPanel() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
+      <div className="tab-group w-fit">
         <button
           onClick={() => setLocalTab('audience')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'audience' ? 'bg-brand-500 text-white' : 'text-gray-400 hover:text-white'}`}
+          className={`tab flex items-center gap-2 ${activeTab === 'audience' ? 'tab-active' : 'tab-inactive'}`}
         >
           <Search size={13} /> Audience Research
         </button>
         <button
           onClick={() => setLocalTab('competitor')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'competitor' ? 'bg-brand-500 text-white' : 'text-gray-400 hover:text-white'}`}
+          className={`tab flex items-center gap-2 ${activeTab === 'competitor' ? 'tab-active' : 'tab-inactive'}`}
         >
           <Eye size={13} /> Competitor Spy
-          {competitorSwipeFile && <span className="w-2 h-2 rounded-full bg-green-500" />}
+          {competitorSwipeFile && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />}
         </button>
       </div>
 
@@ -145,10 +143,10 @@ export default function ResearchPanel() {
               <ShieldAlert size={16} className="text-red-400" />
               Competitor Ad Intelligence
             </h3>
-            <p className="text-gray-400 text-sm">Perplexity scans the Facebook Ad Library and marketing content to surface what competitors are running.</p>
+            <p className="text-zinc-400 text-sm">Perplexity scans the Facebook Ad Library and marketing content to surface what competitors are running.</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Product / Service</label>
+                <label className="text-xs text-zinc-400 mb-1.5 block">Product / Service</label>
                 <input
                   className="input"
                   placeholder={brandContext.product || 'e.g. AI SMS follow-up system'}
@@ -157,7 +155,7 @@ export default function ResearchPanel() {
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Target Audience</label>
+                <label className="text-xs text-zinc-400 mb-1.5 block">Target Audience</label>
                 <input
                   className="input"
                   placeholder={brandContext.targetAudience || 'e.g. real estate agents'}
@@ -166,7 +164,7 @@ export default function ResearchPanel() {
                 />
               </div>
               <div className="md:col-span-2">
-                <label className="text-xs text-gray-400 mb-1.5 block">Specific competitors to spy on (optional)</label>
+                <label className="text-xs text-zinc-400 mb-1.5 block">Specific competitors to spy on (optional)</label>
                 <input
                   className="input"
                   placeholder="e.g. CompanyA, CompanyB, CompanyC"
@@ -193,7 +191,7 @@ export default function ResearchPanel() {
         {/* ── Saved sessions sidebar ── */}
         {researchSessions.length > 0 && (
           <div className="w-64 flex-shrink-0 space-y-2">
-            <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold px-1 flex items-center gap-1.5">
+            <p className="text-xs text-zinc-500 uppercase tracking-wide font-semibold px-1 flex items-center gap-1.5">
               <BookOpen size={11} /> Saved Research ({researchSessions.length})
             </p>
 
@@ -203,14 +201,14 @@ export default function ResearchPanel() {
                 onClick={() => { setActiveResearchId(session.id); setCreating(false) }}
                 className={`group relative p-3 rounded-xl border cursor-pointer transition-all ${
                   activeResearchId === session.id && !creating
-                    ? 'bg-brand-500/10 border-brand-500/50 text-white'
-                    : 'bg-gray-900 border-gray-800 hover:border-gray-600 text-gray-300'
+                    ? 'bg-brand-500/10 border-brand-500/30 text-white'
+                    : 'bg-surface-900 border-white/[0.06] hover:border-white/[0.12] text-zinc-300'
                 }`}
               >
                 <p className="text-sm font-medium leading-snug line-clamp-2 pr-5">{session.name}</p>
                 <div className="flex items-center gap-2 mt-1.5">
-                  <Clock size={10} className="text-gray-600" />
-                  <span className="text-xs text-gray-600">{formatDate(session.createdAt)}</span>
+                  <Clock size={10} className="text-zinc-600" />
+                  <span className="text-xs text-zinc-600">{formatDate(session.createdAt)}</span>
                   {session.mock && <span className="text-xs text-yellow-600">demo</span>}
                 </div>
 
@@ -221,7 +219,7 @@ export default function ResearchPanel() {
 
                 {/* Delete button */}
                 <button
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-900/30 text-gray-600 hover:text-red-400 transition-all"
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-red-900/30 text-zinc-600 hover:text-red-400 transition-all"
                   onClick={(e) => { e.stopPropagation(); handleDelete(session.id) }}
                 >
                   <Trash2 size={12} />
@@ -243,7 +241,7 @@ export default function ResearchPanel() {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block">Product / Service</label>
+                  <label className="text-xs text-zinc-400 mb-1.5 block">Product / Service</label>
                   <input
                     className="input"
                     placeholder="e.g. AI SMS follow-up system"
@@ -252,7 +250,7 @@ export default function ResearchPanel() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block">Target Audience</label>
+                  <label className="text-xs text-zinc-400 mb-1.5 block">Target Audience</label>
                   <input
                     className="input"
                     placeholder="e.g. real estate agents, contractors"
@@ -287,9 +285,12 @@ export default function ResearchPanel() {
 
           {/* Empty state */}
           {!creating && !activeSession && (
-            <div className="card text-center py-20">
-              <Search size={40} className="text-gray-700 mx-auto mb-4" />
-              <p className="text-gray-500">No research yet — click "New Research" to start</p>
+            <div className="card">
+              <div className="empty-state">
+                <div className="empty-icon"><Search size={18} /></div>
+                <p className="empty-title">No research yet</p>
+                <p className="empty-body">Click "New Research" to scan audience insights</p>
+              </div>
             </div>
           )}
         </div>
@@ -327,18 +328,18 @@ function SwipeFile({ data }) {
           </div>
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <p className="text-gray-500 mb-1.5 font-medium">Hooks they use</p>
+              <p className="text-zinc-500 mb-1.5 font-medium">Hooks they use</p>
               <ul className="space-y-1">
                 {c.hooks?.map((h, j) => (
-                  <li key={j} className="text-gray-300 flex items-start gap-1.5"><span className="text-brand-400 mt-0.5">•</span>{h}</li>
+                  <li key={j} className="text-zinc-300 flex items-start gap-1.5"><span className="text-brand-400 mt-0.5">•</span>{h}</li>
                 ))}
               </ul>
             </div>
             <div>
-              <p className="text-gray-500 mb-1.5 font-medium">Themes</p>
+              <p className="text-zinc-500 mb-1.5 font-medium">Themes</p>
               <div className="flex flex-wrap gap-1">
                 {c.themes?.map((t, j) => (
-                  <span key={j} className="px-2 py-0.5 bg-gray-800 text-gray-300 rounded-lg text-xs">{t}</span>
+                  <span key={j} className="px-2 py-0.5 bg-gray-800 text-zinc-300 rounded-lg text-xs">{t}</span>
                 ))}
               </div>
             </div>
@@ -372,7 +373,7 @@ function SwipeFile({ data }) {
             </h4>
             <ul className="space-y-1">
               {gapOpportunities.map((g, i) => (
-                <li key={i} className="text-gray-300 text-xs flex items-start gap-1.5"><span className="text-yellow-400 mt-0.5">→</span>{g}</li>
+                <li key={i} className="text-zinc-300 text-xs flex items-start gap-1.5"><span className="text-yellow-400 mt-0.5">→</span>{g}</li>
               ))}
             </ul>
           </div>
@@ -384,7 +385,7 @@ function SwipeFile({ data }) {
             </h4>
             <ul className="space-y-1">
               {suggestedDifferentiators.map((d, i) => (
-                <li key={i} className="text-gray-300 text-xs flex items-start gap-1.5"><span className="text-brand-400 mt-0.5">✓</span>{d}</li>
+                <li key={i} className="text-zinc-300 text-xs flex items-start gap-1.5"><span className="text-brand-400 mt-0.5">✓</span>{d}</li>
               ))}
             </ul>
           </div>
@@ -402,7 +403,7 @@ function InsightsView({ session, onUseForGeneration }) {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold text-white">{session.name}</h3>
-          <p className="text-xs text-gray-500 mt-0.5">{formatDate(session.createdAt)}{session.mock ? ' · demo data' : ' · live data'}</p>
+          <p className="text-xs text-zinc-500 mt-0.5">{formatDate(session.createdAt)}{session.mock ? ' · demo data' : ' · live data'}</p>
         </div>
         <button className="btn-primary text-sm" onClick={onUseForGeneration}>
           <Zap size={14} />
@@ -420,7 +421,7 @@ function InsightsView({ session, onUseForGeneration }) {
         </h3>
         <div className="space-y-2">
           {insights.painPoints?.map((p, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 bg-gray-800/50 rounded-xl">
+            <div key={i} className="flex items-start gap-3 p-3 bg-surface-800/50 rounded-xl">
               <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${FREQ_COLORS[p.frequency] || 'bg-gray-500'}`} />
               <div className="flex-1 min-w-0">
                 <p className="text-gray-200 text-sm">{p.text}</p>
@@ -428,8 +429,8 @@ function InsightsView({ session, onUseForGeneration }) {
                   <span className={`badge border ${EMOTION_COLORS[p.emotion] || 'bg-gray-800 text-gray-400 border-gray-700'}`}>
                     {p.emotion}
                   </span>
-                  <span className="text-xs text-gray-500">{p.source}</span>
-                  <span className="text-xs text-gray-500 capitalize">{p.frequency} frequency</span>
+                  <span className="text-xs text-zinc-500">{p.source}</span>
+                  <span className="text-xs text-zinc-500 capitalize">{p.frequency} frequency</span>
                 </div>
               </div>
             </div>
@@ -445,7 +446,7 @@ function InsightsView({ session, onUseForGeneration }) {
           </h3>
           <ul className="space-y-2">
             {insights.desiredOutcomes?.map((o, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+              <li key={i} className="flex items-start gap-2 text-sm text-zinc-300">
                 <span className="text-green-400 mt-0.5">✓</span>{o.text}
               </li>
             ))}
@@ -459,7 +460,7 @@ function InsightsView({ session, onUseForGeneration }) {
           </h3>
           <ul className="space-y-2">
             {insights.objections?.map((o, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-300">
+              <li key={i} className="flex items-start gap-2 text-sm text-zinc-300">
                 <span className="text-yellow-400 mt-0.5">!</span>{o}
               </li>
             ))}
@@ -471,7 +472,7 @@ function InsightsView({ session, onUseForGeneration }) {
         <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
           <Zap size={16} className="text-brand-500" />
           Trigger Phrases
-          <span className="text-xs text-gray-500">— use these in your ad copy</span>
+          <span className="text-xs text-zinc-500">— use these in your ad copy</span>
         </h3>
         <div className="flex flex-wrap gap-2">
           {insights.triggerPhrases?.map((phrase, i) => (
@@ -485,13 +486,13 @@ function InsightsView({ session, onUseForGeneration }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card">
           <h3 className="font-semibold text-white mb-2 text-sm">Tone Insights</h3>
-          <p className="text-gray-400 text-sm">{insights.toneInsights}</p>
+          <p className="text-zinc-400 text-sm">{insights.toneInsights}</p>
         </div>
         <div className="card">
           <h3 className="font-semibold text-white mb-2 text-sm">Top Keywords</h3>
           <div className="flex flex-wrap gap-1.5">
             {insights.topKeywords?.map((kw, i) => (
-              <span key={i} className="px-2 py-1 bg-gray-800 text-gray-300 rounded-lg text-xs">{kw}</span>
+              <span key={i} className="px-2 py-1 bg-gray-800 text-zinc-300 rounded-lg text-xs">{kw}</span>
             ))}
           </div>
         </div>

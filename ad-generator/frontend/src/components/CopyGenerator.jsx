@@ -138,10 +138,8 @@ export default function CopyGenerator() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-white">Generate Ad Copy</h2>
-        <p className="text-gray-400 mt-1">
-          Claude reads your audience insights and bulk-generates headlines + body copy across multiple angles.
-        </p>
+        <h2 className="page-title">Generate Ad Copy</h2>
+        <p className="page-subtitle">Claude reads your audience insights and bulk-generates headlines + body copy across multiple angles.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -151,7 +149,7 @@ export default function CopyGenerator() {
             <h3 className="font-semibold text-white text-sm">Brand Context</h3>
 
             <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">Product / Service</label>
+              <label className="text-xs text-zinc-400 mb-1.5 block">Product / Service</label>
               <input
                 className="input"
                 placeholder="AI-powered Facebook ad generator"
@@ -160,7 +158,7 @@ export default function CopyGenerator() {
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">Target Audience</label>
+              <label className="text-xs text-zinc-400 mb-1.5 block">Target Audience</label>
               <input
                 className="input"
                 placeholder="e-commerce entrepreneurs, coaches"
@@ -170,7 +168,7 @@ export default function CopyGenerator() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">CTA Button</label>
+                <label className="text-xs text-zinc-400 mb-1.5 block">CTA Button</label>
                 <select
                   className="input"
                   value={brandContext.cta}
@@ -182,7 +180,7 @@ export default function CopyGenerator() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Landing Page URL</label>
+                <label className="text-xs text-zinc-400 mb-1.5 block">Landing Page URL</label>
                 <input
                   className="input"
                   placeholder="https://brayneai.com"
@@ -198,17 +196,13 @@ export default function CopyGenerator() {
 
             {/* Count */}
             <div>
-              <label className="text-xs text-gray-400 mb-2 block">Number of Variations</label>
-              <div className="flex gap-2 flex-wrap">
+              <label className="label">Number of Variations</label>
+              <div className="tab-group w-fit flex-wrap">
                 {COUNTS.map((n) => (
                   <button
                     key={n}
                     onClick={() => setCount(n)}
-                    className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-                      count === n
-                        ? 'bg-brand-500 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
-                    }`}
+                    className={`tab ${count === n ? 'tab-active' : 'tab-inactive'}`}
                   >
                     {n}
                   </button>
@@ -218,17 +212,13 @@ export default function CopyGenerator() {
 
             {/* Formats */}
             <div>
-              <label className="text-xs text-gray-400 mb-2 block">Ad Formats</label>
-              <div className="flex gap-2 flex-wrap">
+              <label className="label">Ad Formats</label>
+              <div className="tab-group w-fit">
                 {FORMATS.map(({ id, label }) => (
                   <button
                     key={id}
                     onClick={() => toggleFormat(id)}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                      formats.includes(id)
-                        ? 'bg-brand-500/20 border border-brand-500/50 text-brand-400'
-                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white border border-transparent'
-                    }`}
+                    className={`tab ${formats.includes(id) ? 'tab-active' : 'tab-inactive'}`}
                   >
                     {label}
                   </button>
@@ -239,7 +229,7 @@ export default function CopyGenerator() {
             {/* Research session picker */}
             {researchSessions.length > 0 ? (
               <div className="space-y-1.5">
-                <label className="text-xs text-gray-400 block">Research to use</label>
+                <label className="text-xs text-zinc-400 block">Research to use</label>
                 <select
                   className="input text-sm"
                   value={activeResearchId || ''}
@@ -258,8 +248,7 @@ export default function CopyGenerator() {
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-xs text-yellow-400 bg-yellow-900/20 border border-yellow-900/40 rounded-xl px-3 py-2">
-                <span>!</span>
+              <div className="warn-box">
                 No research yet — run Research first for better copy
               </div>
             )}
@@ -267,7 +256,7 @@ export default function CopyGenerator() {
             {/* Hook inject picker */}
             {hookLibrary.length > 0 && (
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block flex items-center gap-1">
+                <label className="text-xs text-zinc-400 mb-1.5 block flex items-center gap-1">
                   <BookMarked size={11} /> Inject winning hook
                 </label>
                 <select
@@ -289,13 +278,13 @@ export default function CopyGenerator() {
                 competitorSwipeFile
                   ? useCompetitorIntel
                     ? 'bg-orange-900/15 border-orange-700/60 cursor-pointer'
-                    : 'bg-gray-800/40 border-gray-700 opacity-60 cursor-pointer'
-                  : 'bg-gray-800/20 border-gray-800 opacity-50 cursor-default'
+                    : 'bg-surface-800/40 border-white/[0.07] opacity-60 cursor-pointer'
+                  : 'bg-surface-800/20 border-white/[0.04] opacity-50 cursor-default'
               }`}
               onClick={() => competitorSwipeFile && setUseCompetitorIntel((v) => !v)}
             >
               <div className={`w-4 h-4 rounded flex-shrink-0 mt-0.5 flex items-center justify-center border transition-colors ${
-                competitorSwipeFile && useCompetitorIntel ? 'bg-orange-500 border-orange-500' : 'border-gray-600'
+                competitorSwipeFile && useCompetitorIntel ? 'bg-orange-500 border-orange-500' : 'border-white/20'
               }`}>
                 {competitorSwipeFile && useCompetitorIntel && <span className="text-white text-[10px] font-bold">✓</span>}
               </div>
@@ -307,11 +296,11 @@ export default function CopyGenerator() {
                   )}
                 </p>
                 {competitorSwipeFile ? (
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-xs text-zinc-400 mt-0.5">
                     Exploiting {competitorSwipeFile.gapOpportunities?.length || 0} market gaps · Winning angles: {competitorSwipeFile.winningAngles?.slice(0,3).join(', ')}
                   </p>
                 ) : (
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-zinc-500 mt-0.5">
                     Run Competitor Spy in Research first to unlock this
                   </p>
                 )}
@@ -321,13 +310,10 @@ export default function CopyGenerator() {
             {/* Generate button */}
             {isGenerating ? (
               <div className="space-y-2">
-                <div className="w-full bg-gray-800 rounded-full h-2">
-                  <div
-                    className="bg-brand-500 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${progress}%` }}
-                  />
+                <div className="progress-track">
+                  <div className="progress-fill" style={{ width: `${progress}%` }} />
                 </div>
-                <p className="text-xs text-gray-400 text-center">Generating {count} variations with Claude AI…</p>
+                <p className="text-xs text-zinc-500 text-center">Generating {count} variations with Claude AI…</p>
               </div>
             ) : (
               <button className="btn-primary w-full" onClick={handleGenerate}>
@@ -338,7 +324,7 @@ export default function CopyGenerator() {
 
             {/* Extra action buttons */}
             {variations.length > 0 && !isGenerating && (
-              <div className="flex gap-2 flex-wrap pt-1 border-t border-gray-800">
+              <div className="flex gap-2 flex-wrap pt-1 border-t border-white/[0.06]">
                 <button
                   className="btn-secondary text-sm flex-1"
                   onClick={handleScoreAll}
@@ -365,20 +351,20 @@ export default function CopyGenerator() {
               <h3 className="font-semibold text-white text-sm flex items-center gap-2">
                 <Star size={14} className="text-yellow-400" />
                 Copy Scores
-                <span className="text-xs text-gray-500 font-normal">— click a variation to edit</span>
+                <span className="text-xs text-zinc-500 font-normal">— click a variation to edit</span>
               </h3>
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                 {variations.map((v) => {
                   const s = scores[v.id]
                   if (!s) return null
                   return (
-                    <div key={v.id} className="flex items-start gap-3 p-2.5 rounded-xl bg-gray-800/50">
+                    <div key={v.id} className="flex items-start gap-3 p-2.5 rounded-xl bg-surface-800/50">
                       <span className={`badge border text-xs font-bold flex-shrink-0 ${SCORE_COLOR(s.score)}`}>
                         {s.score}/10
                       </span>
                       <div className="min-w-0">
                         <p className="text-white text-xs font-medium truncate">{v.headline}</p>
-                        {s.rationale && <p className="text-gray-500 text-xs mt-0.5">{s.rationale}</p>}
+                        {s.rationale && <p className="text-zinc-500 text-xs mt-0.5">{s.rationale}</p>}
                       </div>
                     </div>
                   )
@@ -414,7 +400,7 @@ export default function CopyGenerator() {
             <h3 className="font-semibold text-white text-sm flex items-center gap-2">
               <BookMarked size={14} className="text-brand-500" />
               Hook Library
-              <span className="text-xs text-gray-500 font-normal">— save winning headlines</span>
+              <span className="text-xs text-zinc-500 font-normal">— save winning headlines</span>
             </h3>
             <div className="flex gap-2">
               <input
@@ -432,18 +418,18 @@ export default function CopyGenerator() {
             {hookLibrary.length > 0 ? (
               <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                 {hookLibrary.map((h) => (
-                  <div key={h.id} className="flex items-start gap-2 p-2.5 rounded-xl bg-gray-800/50 group">
-                    <p className="text-gray-300 text-xs flex-1 leading-relaxed">{h.text}</p>
+                  <div key={h.id} className="flex items-start gap-2 p-2.5 rounded-xl bg-surface-800/50 group">
+                    <p className="text-zinc-300 text-xs flex-1 leading-relaxed">{h.text}</p>
                     <div className="flex gap-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        className="p-1 rounded-lg hover:bg-brand-500/20 text-gray-500 hover:text-brand-400 transition-colors text-xs"
+                        className="p-1 rounded-lg hover:bg-brand-500/20 text-zinc-500 hover:text-brand-400 transition-colors text-xs"
                         onClick={() => setInjectHook(injectHook === h.text ? null : h.text)}
                         title="Inject into next generation"
                       >
                         <Zap size={12} />
                       </button>
                       <button
-                        className="p-1 rounded-lg hover:bg-red-900/30 text-gray-500 hover:text-red-400 transition-colors"
+                        className="p-1 rounded-lg hover:bg-red-900/30 text-zinc-500 hover:text-red-400 transition-colors"
                         onClick={() => removeHook(h.id)}
                       >
                         <Trash2 size={12} />

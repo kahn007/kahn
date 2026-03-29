@@ -103,10 +103,8 @@ export default function FacebookUploader() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-white">Push to Facebook</h2>
-        <p className="text-gray-400 mt-1">
-          Upload your ad variations as paused drafts to your Facebook Ad Account.
-        </p>
+        <h2 className="page-title">Push to Facebook</h2>
+        <p className="page-subtitle">Upload your ad variations as paused drafts to your Facebook Ad Account.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -114,16 +112,11 @@ export default function FacebookUploader() {
         <div className="space-y-4">
           {/* API keys notice */}
           {(!campaign.adAccountId) && (
-            <div className="card border-yellow-800/50 bg-yellow-900/10">
-              <div className="flex items-start gap-3">
-                <AlertTriangle size={16} className="text-yellow-400 mt-0.5 flex-shrink-0" />
-                <div className="text-sm">
-                  <p className="text-yellow-300 font-semibold">Demo Mode</p>
-                  <p className="text-yellow-400/70 mt-0.5">
-                    Without a Facebook Access Token in your backend <code>.env</code>, uploads will return mock Ad IDs.
-                    Add your credentials to <code>ad-generator/backend/.env</code> to go live.
-                  </p>
-                </div>
+            <div className="warn-box flex items-start gap-3">
+              <AlertTriangle size={15} className="text-amber-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="font-semibold mb-0.5">Demo Mode</p>
+                Without a Facebook Access Token, uploads return mock Ad IDs. Add your credentials in Settings to go live.
               </div>
             </div>
           )}
@@ -135,7 +128,7 @@ export default function FacebookUploader() {
             </h3>
 
             <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">Ad Account ID</label>
+              <label className="text-xs text-zinc-400 mb-1.5 block">Ad Account ID</label>
               <div className="flex gap-2">
                 <input
                   className="input"
@@ -154,7 +147,7 @@ export default function FacebookUploader() {
             </div>
 
             <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">Ad Set</label>
+              <label className="text-xs text-zinc-400 mb-1.5 block">Ad Set</label>
               {adSets.length > 0 ? (
                 <select
                   className="input"
@@ -177,7 +170,7 @@ export default function FacebookUploader() {
             </div>
 
             <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">Facebook Page ID</label>
+              <label className="text-xs text-zinc-400 mb-1.5 block">Facebook Page ID</label>
               <input
                 className="input"
                 placeholder="123456789"
@@ -192,21 +185,21 @@ export default function FacebookUploader() {
             <h3 className="font-semibold text-white text-sm mb-3">Upload Summary</h3>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-400">Variations to upload</span>
+                <span className="text-zinc-400">Variations to upload</span>
                 <span className="text-white font-semibold">{toUpload.length}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Selected</span>
+                <span className="text-zinc-400">Selected</span>
                 <span className="text-white">{selectedVariations.length || 'All'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Status</span>
+                <span className="text-zinc-400">Status</span>
                 <span className="text-yellow-400">Will upload as PAUSED</span>
               </div>
               {brandContext.landingPageUrl && (utmConfig.source || utmConfig.medium || utmConfig.campaign) && (
-                <div className="pt-2 border-t border-gray-800">
-                  <p className="text-gray-500 text-xs mb-1">Landing URL (with UTM)</p>
-                  <p className="text-gray-400 text-xs font-mono break-all leading-relaxed">
+                <div className="pt-2 border-t border-white/[0.06]">
+                  <p className="text-zinc-500 text-xs mb-1">Landing URL (with UTM)</p>
+                  <p className="text-zinc-400 text-xs font-mono break-all leading-relaxed">
                     {appendUtm(brandContext.landingPageUrl, utmConfig)}
                   </p>
                 </div>
@@ -218,16 +211,16 @@ export default function FacebookUploader() {
           {isUploading ? (
             <div className="card space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Uploading…</span>
+                <span className="text-zinc-400">Uploading…</span>
                 <span className="text-white">{progress.done} / {progress.total}</span>
               </div>
-              <div className="w-full bg-gray-800 rounded-full h-3">
+              <div className="w-full bg-surface-800 rounded-full h-3">
                 <div
                   className="bg-brand-500 h-3 rounded-full transition-all duration-500"
                   style={{ width: `${(progress.done / progress.total) * 100}%` }}
                 />
               </div>
-              <p className="text-xs text-gray-500 text-center">Respecting Facebook rate limits (100ms/request)</p>
+              <p className="text-xs text-zinc-500 text-center">Respecting Facebook rate limits (100ms/request)</p>
             </div>
           ) : (
             <button
@@ -249,7 +242,7 @@ export default function FacebookUploader() {
             {uploadResults.length === 0 ? (
               <div className="text-center py-12">
                 <Facebook size={36} className="text-gray-700 mx-auto mb-3" />
-                <p className="text-gray-500 text-sm">Results will appear here after upload</p>
+                <p className="text-zinc-500 text-sm">Results will appear here after upload</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
@@ -265,7 +258,7 @@ export default function FacebookUploader() {
                       <p className={r.success ? 'text-green-300' : 'text-red-300'}>
                         {r.success ? `Ad created: ${r.facebookAdId}` : r.error}
                       </p>
-                      <p className="text-gray-500 truncate">Variation: {r.variationId}</p>
+                      <p className="text-zinc-500 truncate">Variation: {r.variationId}</p>
                     </div>
                   </div>
                 ))}
@@ -273,8 +266,8 @@ export default function FacebookUploader() {
             )}
 
             {uploadResults.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-gray-800 flex justify-between text-sm">
-                <span className="text-gray-400">
+              <div className="mt-4 pt-4 border-t border-white/[0.06] flex justify-between text-sm">
+                <span className="text-zinc-400">
                   {uploadResults.filter((r) => r.success).length} success ·{' '}
                   {uploadResults.filter((r) => !r.success).length} failed
                 </span>
@@ -291,7 +284,7 @@ export default function FacebookUploader() {
           {/* Next steps guide */}
           <div className="card">
             <h3 className="font-semibold text-white text-sm mb-3">After Uploading</h3>
-            <ol className="space-y-2 text-xs text-gray-400">
+            <ol className="space-y-2 text-xs text-zinc-400">
               {[
                 'All ads are uploaded as PAUSED — review them in Ads Manager',
                 'Assign a budget to your ad set if you haven\'t already',
@@ -300,7 +293,7 @@ export default function FacebookUploader() {
                 'Kill low performers (CTR < 1%) after 2-3 days',
               ].map((step, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-gray-800 text-gray-500 flex items-center justify-center flex-shrink-0 font-bold">{i + 1}</span>
+                  <span className="w-5 h-5 rounded-full bg-surface-800 text-zinc-500 flex items-center justify-center flex-shrink-0 font-bold">{i + 1}</span>
                   {step}
                 </li>
               ))}

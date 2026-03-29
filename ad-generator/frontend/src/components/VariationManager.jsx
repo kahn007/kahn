@@ -13,7 +13,7 @@ const ANGLE_COLORS = {
   curiosity:    'bg-yellow-900/30 text-yellow-300 border-yellow-800/50',
   authority:    'bg-purple-900/30 text-purple-300 border-purple-800/50',
   fomo:         'bg-orange-900/30 text-orange-300 border-orange-800/50',
-  general:      'bg-gray-800 text-gray-400 border-gray-700',
+  general:      'bg-surface-800 text-zinc-400 border-white/[0.08]',
 }
 
 // ── Creative Mix selector ─────────────────────────────────────
@@ -43,7 +43,7 @@ function CreativeMix({ total, imageCount, videoCount, videoModelId, videoDuratio
           <Sparkles size={14} className="text-teal-400" />
           Creative Mix
         </h3>
-        <span className="text-xs text-gray-500">{total} variations</span>
+        <span className="text-xs text-zinc-500">{total} variations</span>
       </div>
 
       {/* Presets */}
@@ -55,7 +55,7 @@ function CreativeMix({ total, imageCount, videoCount, videoModelId, videoDuratio
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
               imageCount === p.images && videoCount === p.videos
                 ? 'bg-teal-500/20 border-teal-500/50 text-teal-300'
-                : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-600 hover:text-white'
+                : 'bg-surface-800 border-white/[0.08] text-zinc-400 hover:border-gray-600 hover:text-white'
             }`}
           >
             {p.label}
@@ -66,14 +66,14 @@ function CreativeMix({ total, imageCount, videoCount, videoModelId, videoDuratio
       {/* Custom counters */}
       <div className="grid grid-cols-2 gap-4">
         {/* Images */}
-        <div className="bg-gray-800/60 rounded-2xl p-4 space-y-3">
+        <div className="bg-surface-800/60 rounded-2xl p-4 space-y-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-blue-500/20 flex items-center justify-center">
               <Image size={15} className="text-blue-400" />
             </div>
             <div>
               <p className="text-white text-sm font-semibold">Images</p>
-              <p className="text-gray-500 text-xs">Nano Banana Pro · ~10s</p>
+              <p className="text-zinc-500 text-xs">Nano Banana Pro · ~10s</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -87,18 +87,18 @@ function CreativeMix({ total, imageCount, videoCount, videoModelId, videoDuratio
               <Plus size={14} />
             </button>
           </div>
-          <p className="text-gray-600 text-xs">~$0.06 each</p>
+          <p className="text-zinc-600 text-xs">~$0.06 each</p>
         </div>
 
         {/* Videos */}
-        <div className="bg-gray-800/60 rounded-2xl p-4 space-y-3">
+        <div className="bg-surface-800/60 rounded-2xl p-4 space-y-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-teal-500/20 flex items-center justify-center">
               <Video size={15} className="text-teal-400" />
             </div>
             <div>
               <p className="text-white text-sm font-semibold">Videos</p>
-              <p className="text-gray-500 text-xs">{currentModel.sublabel}</p>
+              <p className="text-zinc-500 text-xs">{currentModel.sublabel}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -123,7 +123,7 @@ function CreativeMix({ total, imageCount, videoCount, videoModelId, videoDuratio
                 <option key={m.id} value={m.id}>{m.label} — {m.sublabel}</option>
               ))}
             </select>
-            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
           </div>
           {/* Duration picker */}
           <div className="flex gap-1.5">
@@ -134,7 +134,7 @@ function CreativeMix({ total, imageCount, videoCount, videoModelId, videoDuratio
                 className={`flex-1 py-1 rounded-lg text-xs font-semibold transition-all border ${
                   videoDuration === d.value
                     ? 'bg-teal-500/20 border-teal-500/50 text-teal-300'
-                    : 'bg-gray-700 border-gray-600 text-gray-400 hover:text-white'
+                    : 'bg-gray-700 border-gray-600 text-zinc-400 hover:text-white'
                 }`}
               >
                 {d.label}
@@ -147,11 +147,11 @@ function CreativeMix({ total, imageCount, videoCount, videoModelId, videoDuratio
       {/* Visual bar */}
       {total > 0 && (
         <div className="space-y-1">
-          <div className="flex rounded-full overflow-hidden h-2 bg-gray-800">
+          <div className="flex rounded-full overflow-hidden h-2 bg-surface-800">
             {imageCount > 0 && <div className="bg-blue-500 transition-all duration-300" style={{ width: `${(imageCount / total) * 100}%` }} />}
             {videoCount > 0 && <div className="bg-teal-500 transition-all duration-300" style={{ width: `${(videoCount / total) * 100}%` }} />}
           </div>
-          <div className="flex justify-between text-xs text-gray-500">
+          <div className="flex justify-between text-xs text-zinc-500">
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />{imageCount} images · Nano Banana Pro</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-500 inline-block" />{videoCount} videos · {currentModel.label}</span>
           </div>
@@ -351,13 +351,13 @@ export default function VariationManager() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-white">Variations</h2>
-          <p className="text-gray-400 mt-1">All your generated ad variations will appear here.</p>
+          <h2 className="page-title">Variations</h2>
+          <p className="page-subtitle">All your generated ad variations will appear here.</p>
         </div>
         <div className="card text-center py-20">
           <LayoutGrid size={48} className="text-gray-700 mx-auto mb-4" />
-          <p className="text-gray-400 text-lg font-medium">No variations yet</p>
-          <p className="text-gray-600 text-sm mt-1 mb-6">Go to Generate Copy to create your first batch</p>
+          <p className="text-zinc-400 text-lg font-medium">No variations yet</p>
+          <p className="text-zinc-600 text-sm mt-1 mb-6">Go to Generate Copy to create your first batch</p>
           <button className="btn-primary mx-auto" onClick={() => setActiveTab('generate')}>Generate Ad Copy</button>
         </div>
       </div>
@@ -369,23 +369,23 @@ export default function VariationManager() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-white">
-            Variations <span className="text-lg text-gray-500">{variations.length}</span>
+          <h2 className="page-title">
+            Variations <span className="text-lg text-zinc-500">{variations.length}</span>
           </h2>
-          <p className="text-gray-400 text-sm mt-0.5">
+          <p className="page-subtitle">
             {selectedVariations.length > 0 ? `${selectedVariations.length} selected · ` : ''}
             {withCreatives}/{variations.length} have creatives
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Angle filter */}
-          <div className="flex items-center gap-1 bg-gray-900 border border-gray-800 rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-surface-900 border border-white/[0.06] rounded-xl p-1">
             {allAngles.map((angle) => (
               <button
                 key={angle}
                 onClick={() => setFilterAngle(angle)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${
-                  filterAngle === angle ? 'bg-brand-500 text-white' : 'text-gray-400 hover:text-white'
+                  filterAngle === angle ? 'bg-brand-500 text-white' : 'text-zinc-400 hover:text-white'
                 }`}
               >
                 {angle === 'all' ? `All (${variations.length})` : angle.replace('_', ' ')}
@@ -396,9 +396,9 @@ export default function VariationManager() {
             {selectedVariations.length === variations.length ? <CheckSquare size={14} /> : <Square size={14} />}
             {selectedVariations.length === variations.length ? 'Deselect All' : 'Select All'}
           </button>
-          <div className="flex bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-            <button onClick={() => setViewMode('grid')} className={`p-2.5 ${viewMode === 'grid' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-white'}`}><LayoutGrid size={14} /></button>
-            <button onClick={() => setViewMode('list')} className={`p-2.5 ${viewMode === 'list' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-white'}`}><List size={14} /></button>
+          <div className="flex bg-surface-900 border border-white/[0.06] rounded-xl overflow-hidden">
+            <button onClick={() => setViewMode('grid')} className={`p-2.5 ${viewMode === 'grid' ? 'bg-gray-700 text-white' : 'text-zinc-500 hover:text-white'}`}><LayoutGrid size={14} /></button>
+            <button onClick={() => setViewMode('list')} className={`p-2.5 ${viewMode === 'list' ? 'bg-gray-700 text-white' : 'text-zinc-500 hover:text-white'}`}><List size={14} /></button>
           </div>
         </div>
       </div>
@@ -411,7 +411,7 @@ export default function VariationManager() {
         >
           <Sparkles size={14} className="text-teal-400" />
           Creative Mix — {clampedImages} images + {clampedVideos} videos
-          <span className="text-gray-500 text-xs ml-1">({effectiveTotal} total)</span>
+          <span className="text-zinc-500 text-xs ml-1">({effectiveTotal} total)</span>
         </button>
 
         {showMixer && (
@@ -431,16 +431,16 @@ export default function VariationManager() {
         {isBulkGen ? (
           <div className="card space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-300 font-medium flex items-center gap-2">
+              <span className="text-zinc-300 font-medium flex items-center gap-2">
                 <Loader size={14} className="animate-spin text-teal-400" />
                 Generating creatives…
               </span>
-              <span className="text-gray-400">{bulkDone}/{bulkTotal}</span>
+              <span className="text-zinc-400">{bulkDone}/{bulkTotal}</span>
             </div>
-            <div className="w-full bg-gray-800 rounded-full h-2">
+            <div className="w-full bg-surface-800 rounded-full h-2">
               <div className="bg-teal-500 h-2 rounded-full transition-all duration-500" style={{ width: `${(bulkDone / bulkTotal) * 100}%` }} />
             </div>
-            <div className="bg-gray-800/50 rounded-xl p-3 font-mono text-xs text-gray-400 space-y-0.5 max-h-24 overflow-y-auto">
+            <div className="bg-surface-800/50 rounded-xl p-3 font-mono text-xs text-zinc-400 space-y-0.5 max-h-24 overflow-y-auto">
               {bulkLog.map((l, i) => <p key={i}>{l}</p>)}
             </div>
           </div>
@@ -527,9 +527,9 @@ export default function VariationManager() {
                 <AdPreview variation={v} brandContext={brandContext} format={v.format || 'feed'} />
               )}
               {v.creativePrompt && (
-                <div className="bg-gray-900 border border-gray-800 rounded-xl p-3 max-w-sm">
-                  <p className="text-xs text-gray-500 font-medium mb-1">Creative prompt used</p>
-                  <p className="text-xs text-gray-400 leading-relaxed">{v.creativePrompt}</p>
+                <div className="bg-surface-900 border border-white/[0.06] rounded-xl p-3 max-w-sm">
+                  <p className="text-xs text-zinc-500 font-medium mb-1">Creative prompt used</p>
+                  <p className="text-xs text-zinc-400 leading-relaxed">{v.creativePrompt}</p>
                 </div>
               )}
               <button className="btn-secondary w-full justify-center" onClick={() => setPreviewId(null)}>Close</button>
@@ -577,11 +577,11 @@ function VariationCard({ variation, brandContext, selected, cardStatus, onToggle
   if (editing) {
     return (
       <div className="card border-brand-500/50 space-y-3">
-        <div><label className="text-xs text-gray-400 mb-1 block">Headline</label>
+        <div><label className="text-xs text-zinc-400 mb-1 block">Headline</label>
           <input className="input text-sm" value={draft.headline} onChange={(e) => setDraft((d) => ({ ...d, headline: e.target.value }))} /></div>
-        <div><label className="text-xs text-gray-400 mb-1 block">Primary Text</label>
+        <div><label className="text-xs text-zinc-400 mb-1 block">Primary Text</label>
           <textarea className="textarea text-sm" rows={4} value={draft.primaryText} onChange={(e) => setDraft((d) => ({ ...d, primaryText: e.target.value }))} /></div>
-        <div><label className="text-xs text-gray-400 mb-1 block">Description</label>
+        <div><label className="text-xs text-zinc-400 mb-1 block">Description</label>
           <input className="input text-sm" value={draft.description} onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))} /></div>
         <div className="flex gap-2">
           <button className="btn-primary flex-1 justify-center text-sm" onClick={() => onSave(draft)}>Save</button>
@@ -594,16 +594,16 @@ function VariationCard({ variation, brandContext, selected, cardStatus, onToggle
   return (
     <div className={`card relative flex flex-col transition-all duration-200 hover:border-gray-600 ${selected ? 'border-brand-500/70 bg-brand-500/5' : ''}`}>
       <button className="absolute top-3 left-3 z-10" onClick={onToggle}>
-        {selected ? <CheckSquare size={18} className="text-brand-400" /> : <Square size={18} className="text-gray-600 hover:text-gray-400" />}
+        {selected ? <CheckSquare size={18} className="text-brand-400" /> : <Square size={18} className="text-zinc-600 hover:text-zinc-400" />}
       </button>
-      <div className="absolute top-3 right-3 text-xs text-gray-600 font-mono">#{variation.index}</div>
+      <div className="absolute top-3 right-3 text-xs text-zinc-600 font-mono">#{variation.index}</div>
 
       {/* Creative area */}
       <div className="mt-4 mb-3 relative cursor-pointer" onClick={onPreview}>
         {isLoading ? (
-          <div className="aspect-[1.91/1] rounded-xl bg-gray-800 flex flex-col items-center justify-center gap-2">
+          <div className="aspect-[1.91/1] rounded-xl bg-surface-800 flex flex-col items-center justify-center gap-2">
             <Loader size={20} className="animate-spin text-teal-400" />
-            <p className="text-xs text-gray-400 text-center px-4">{cardStatus.label}</p>
+            <p className="text-xs text-zinc-400 text-center px-4">{cardStatus.label}</p>
           </div>
         ) : variation.videoUrl ? (
           <div className="aspect-[1.91/1] rounded-xl overflow-hidden relative group">
@@ -638,24 +638,24 @@ function VariationCard({ variation, brandContext, selected, cardStatus, onToggle
         {variation.targetSegment && (
           <p className="text-teal-400/70 text-[10px] font-medium truncate">→ {variation.targetSegment}</p>
         )}
-        <p className="text-gray-400 text-xs leading-relaxed line-clamp-2">{variation.primaryText}</p>
+        <p className="text-zinc-400 text-xs leading-relaxed line-clamp-2">{variation.primaryText}</p>
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-800">
+      <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/[0.06]">
         <span className={`badge border text-xs ${ANGLE_COLORS[variation.angle] || ANGLE_COLORS.general}`}>
           {variation.angle?.replace('_', ' ')}
         </span>
         <div className="flex gap-1">
-          <button className={`p-1.5 rounded-lg transition-colors ${variation.imageUrl ? 'text-blue-500 hover:text-blue-400' : 'text-gray-500 hover:text-blue-400'} hover:bg-blue-900/20`} onClick={onGenImage} disabled={isLoading} title="Generate image">
+          <button className={`p-1.5 rounded-lg transition-colors ${variation.imageUrl ? 'text-blue-500 hover:text-blue-400' : 'text-zinc-500 hover:text-blue-400'} hover:bg-blue-900/20`} onClick={onGenImage} disabled={isLoading} title="Generate image">
             {cardStatus?.type === 'image' ? <Loader size={13} className="animate-spin" /> : <Image size={13} />}
           </button>
-          <button className={`p-1.5 rounded-lg transition-colors ${variation.videoUrl ? 'text-teal-500 hover:text-teal-400' : 'text-gray-500 hover:text-teal-400'} hover:bg-teal-900/20`} onClick={onGenVideo} disabled={isLoading} title="Generate video">
+          <button className={`p-1.5 rounded-lg transition-colors ${variation.videoUrl ? 'text-teal-500 hover:text-teal-400' : 'text-zinc-500 hover:text-teal-400'} hover:bg-teal-900/20`} onClick={onGenVideo} disabled={isLoading} title="Generate video">
             {cardStatus?.type === 'video' ? <Loader size={13} className="animate-spin" /> : <Video size={13} />}
           </button>
           {variation.imageUrl && !variation.videoUrl && (
             <button
-              className="p-1.5 rounded-lg transition-colors text-gray-500 hover:text-purple-400 hover:bg-purple-900/20"
+              className="p-1.5 rounded-lg transition-colors text-zinc-500 hover:text-purple-400 hover:bg-purple-900/20"
               onClick={onAnimate}
               disabled={isLoading}
               title="Animate image → video (Kling)"
@@ -665,16 +665,16 @@ function VariationCard({ variation, brandContext, selected, cardStatus, onToggle
           )}
           {hasCreative && (
             <button
-              className={`p-1.5 rounded-lg transition-colors ${showOverlay ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40' : 'text-gray-500 hover:text-yellow-400 hover:bg-yellow-900/20'}`}
+              className={`p-1.5 rounded-lg transition-colors ${showOverlay ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/40' : 'text-zinc-500 hover:text-yellow-400 hover:bg-yellow-900/20'}`}
               onClick={(e) => { e.stopPropagation(); setShowOverlay((s) => !s) }}
               title="Toggle copy overlay"
             >
               <Type size={13} />
             </button>
           )}
-          <button className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-500 hover:text-gray-300" onClick={onEdit} title="Edit"><Edit3 size={13} /></button>
-          <button className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-500 hover:text-gray-300" onClick={onDuplicate} title="Duplicate"><Copy size={13} /></button>
-          <button className="p-1.5 rounded-lg hover:bg-red-900/30 text-gray-500 hover:text-red-400" onClick={onDelete} title="Delete"><Trash2 size={13} /></button>
+          <button className="p-1.5 rounded-lg hover:bg-surface-800 text-zinc-500 hover:text-zinc-300" onClick={onEdit} title="Edit"><Edit3 size={13} /></button>
+          <button className="p-1.5 rounded-lg hover:bg-surface-800 text-zinc-500 hover:text-zinc-300" onClick={onDuplicate} title="Duplicate"><Copy size={13} /></button>
+          <button className="p-1.5 rounded-lg hover:bg-red-900/30 text-zinc-500 hover:text-red-400" onClick={onDelete} title="Delete"><Trash2 size={13} /></button>
         </div>
       </div>
     </div>
@@ -684,20 +684,20 @@ function VariationCard({ variation, brandContext, selected, cardStatus, onToggle
 function ListRow({ variation, selected, cardStatus, onToggle, onDelete, onPreview, onGenImage, onGenVideo }) {
   const isLoading = !!cardStatus
   return (
-    <div className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${selected ? 'bg-brand-500/5 border-brand-500/40' : 'bg-gray-900 border-gray-800 hover:border-gray-700'}`}>
+    <div className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${selected ? 'bg-brand-500/5 border-brand-500/40' : 'bg-surface-900 border-white/[0.06] hover:border-white/[0.08]'}`}>
       <button onClick={onToggle}>
-        {selected ? <CheckSquare size={16} className="text-brand-400" /> : <Square size={16} className="text-gray-600" />}
+        {selected ? <CheckSquare size={16} className="text-brand-400" /> : <Square size={16} className="text-zinc-600" />}
       </button>
-      <span className="text-xs text-gray-600 font-mono w-6">#{variation.index}</span>
+      <span className="text-xs text-zinc-600 font-mono w-6">#{variation.index}</span>
 
       {/* Thumbnail */}
-      <div className="w-14 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-gray-800 flex items-center justify-center">
+      <div className="w-14 h-9 rounded-lg overflow-hidden flex-shrink-0 bg-surface-800 flex items-center justify-center">
         {variation.videoUrl ? (
           <video src={variation.videoUrl} muted loop autoPlay playsInline className="w-full h-full object-cover" />
         ) : variation.imageUrl ? (
           <img src={variation.imageUrl} alt="" className="w-full h-full object-cover" />
         ) : (
-          <span className="text-gray-600 text-xs">none</span>
+          <span className="text-zinc-600 text-xs">none</span>
         )}
       </div>
 
@@ -707,7 +707,7 @@ function ListRow({ variation, selected, cardStatus, onToggle, onDelete, onPrevie
           {variation.videoUrl && <span className="badge bg-teal-900/40 text-teal-300 text-[10px]">VIDEO</span>}
           {variation.imageUrl && <span className="badge bg-blue-900/40 text-blue-300 text-[10px]">IMG</span>}
         </div>
-        <p className="text-gray-500 text-xs truncate mt-0.5">{variation.primaryText?.substring(0, 90)}…</p>
+        <p className="text-zinc-500 text-xs truncate mt-0.5">{variation.primaryText?.substring(0, 90)}…</p>
       </div>
 
       <span className={`badge border text-xs flex-shrink-0 ${ANGLE_COLORS[variation.angle] || ANGLE_COLORS.general}`}>{variation.angle?.replace('_', ' ')}</span>
@@ -716,10 +716,10 @@ function ListRow({ variation, selected, cardStatus, onToggle, onDelete, onPrevie
         {isLoading
           ? <span className="text-xs text-teal-400 flex items-center gap-1"><Loader size={12} className="animate-spin" />{cardStatus.label?.substring(0, 20)}</span>
           : <>
-              <button className={`p-1.5 rounded-lg ${variation.imageUrl ? 'text-blue-500 hover:text-blue-400' : 'text-gray-500 hover:text-blue-400'} hover:bg-blue-900/20`} onClick={onGenImage} title="Image"><Image size={13} /></button>
-              <button className={`p-1.5 rounded-lg ${variation.videoUrl ? 'text-teal-500 hover:text-teal-400' : 'text-gray-500 hover:text-teal-400'} hover:bg-teal-900/20`} onClick={onGenVideo} title="Video"><Video size={13} /></button>
-              <button className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-500 hover:text-gray-300" onClick={onPreview}>👁</button>
-              <button className="p-1.5 rounded-lg hover:bg-red-900/30 text-gray-500 hover:text-red-400" onClick={onDelete}><Trash2 size={13} /></button>
+              <button className={`p-1.5 rounded-lg ${variation.imageUrl ? 'text-blue-500 hover:text-blue-400' : 'text-zinc-500 hover:text-blue-400'} hover:bg-blue-900/20`} onClick={onGenImage} title="Image"><Image size={13} /></button>
+              <button className={`p-1.5 rounded-lg ${variation.videoUrl ? 'text-teal-500 hover:text-teal-400' : 'text-zinc-500 hover:text-teal-400'} hover:bg-teal-900/20`} onClick={onGenVideo} title="Video"><Video size={13} /></button>
+              <button className="p-1.5 rounded-lg hover:bg-surface-800 text-zinc-500 hover:text-zinc-300" onClick={onPreview}>👁</button>
+              <button className="p-1.5 rounded-lg hover:bg-red-900/30 text-zinc-500 hover:text-red-400" onClick={onDelete}><Trash2 size={13} /></button>
             </>
         }
       </div>

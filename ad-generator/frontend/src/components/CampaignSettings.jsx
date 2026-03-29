@@ -13,7 +13,7 @@ const API_CONFIGS = [
     helpLabel: 'console.anthropic.com',
     color: 'text-orange-400',
     bg: 'bg-orange-500/10 border-orange-500/30',
-    icon: '🤖',
+    dot: 'bg-orange-500',
     description: 'Generates your ad headlines and body copy using Claude Sonnet',
     testFn: async (key) => {
       const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -41,7 +41,7 @@ const API_CONFIGS = [
     helpLabel: 'perplexity.ai/settings/api',
     color: 'text-green-400',
     bg: 'bg-green-500/10 border-green-500/30',
-    icon: '🔍',
+    dot: 'bg-green-500',
     description: 'Scans Reddit & YouTube for pain points and audience insights',
     testFn: async (key) => {
       const res = await fetch('https://api.perplexity.ai/chat/completions', {
@@ -64,7 +64,7 @@ const API_CONFIGS = [
     helpLabel: 'developers.facebook.com',
     color: 'text-blue-400',
     bg: 'bg-blue-500/10 border-blue-500/30',
-    icon: '📘',
+    dot: 'bg-blue-500',
     description: 'Pushes ad drafts to your Ad Account and pulls performance analytics',
     testFn: async (key) => {
       const res = await fetch(`https://graph.facebook.com/v19.0/me?access_token=${key}`)
@@ -80,7 +80,7 @@ const API_CONFIGS = [
     helpLabel: 'fal.ai/dashboard/keys',
     color: 'text-teal-400',
     bg: 'bg-teal-500/10 border-teal-500/30',
-    icon: '🎨',
+    dot: 'bg-teal-500',
     description: 'Flux Pro 1.1 for images · Kling 1.6 for short video ads — one key covers both',
     testFn: async (key) => {
       const res = await fetch('https://fal.run/fal-ai/flux-pro/v1.1', {
@@ -151,16 +151,16 @@ export default function CampaignSettings() {
   return (
     <div className="space-y-8 max-w-2xl">
       <div>
-        <h2 className="text-2xl font-bold text-white">Settings</h2>
-        <p className="text-gray-400 mt-1">Enter your API keys once — they're saved in your browser. Nothing is sent to any server.</p>
+        <h2 className="page-title">Settings</h2>
+        <p className="page-subtitle">Enter your API keys once — they're saved in your browser. Nothing is sent to any server.</p>
       </div>
 
       {/* Security note */}
-      <div className="flex items-start gap-3 p-4 bg-brand-500/5 border border-brand-500/20 rounded-2xl">
-        <Shield size={16} className="text-brand-400 mt-0.5 flex-shrink-0" />
-        <div className="text-sm">
-          <p className="text-brand-300 font-semibold">Your keys stay in your browser</p>
-          <p className="text-gray-400 mt-0.5">Keys are stored in <code className="bg-gray-800 px-1 rounded text-gray-300">localStorage</code> and sent directly from your browser to each API. No middleman, no server.</p>
+      <div className="info-box flex items-start gap-3">
+        <Shield size={15} className="text-brand-400 mt-0.5 flex-shrink-0" />
+        <div>
+          <p className="font-semibold text-brand-300 mb-0.5">Your keys stay in your browser</p>
+          <p>Keys are stored in <code className="bg-surface-800 px-1 rounded text-zinc-300">localStorage</code> and sent directly from your browser to each API. No middleman, no server.</p>
         </div>
       </div>
 
@@ -174,18 +174,18 @@ export default function CampaignSettings() {
         {API_CONFIGS.map((cfg) => (
           <div key={cfg.id} className={`card border ${cfg.bg} space-y-3`}>
             <div className="flex items-start justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{cfg.icon}</span>
+              <div className="flex items-center gap-3">
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-0.5 ${cfg.dot}`} />
                 <div>
                   <p className={`font-semibold text-sm ${cfg.color}`}>{cfg.name}</p>
-                  <p className="text-gray-500 text-xs">{cfg.description}</p>
+                  <p className="text-zinc-500 text-xs">{cfg.description}</p>
                 </div>
               </div>
               <a
                 href={cfg.helpUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
               >
                 Get key <ExternalLink size={11} />
               </a>
@@ -201,7 +201,7 @@ export default function CampaignSettings() {
                   onChange={(e) => updateKey(cfg.id, e.target.value)}
                 />
                 <button
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
                   onClick={() => toggleShow(cfg.id)}
                   type="button"
                 >
@@ -240,23 +240,23 @@ export default function CampaignSettings() {
         </h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">Brand Name</label>
+            <label className="text-xs text-zinc-400 mb-1.5 block">Brand Name</label>
             <input className="input" value={brandContext.brandName} onChange={(e) => updateBrand({ brandName: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">Website</label>
+            <label className="text-xs text-zinc-400 mb-1.5 block">Website</label>
             <input className="input" value={brandContext.website} onChange={(e) => updateBrand({ website: e.target.value })} />
           </div>
           <div className="col-span-2">
-            <label className="text-xs text-gray-400 mb-1.5 block">Product / Service</label>
+            <label className="text-xs text-zinc-400 mb-1.5 block">Product / Service</label>
             <textarea className="textarea" rows={2} value={brandContext.product} onChange={(e) => updateBrand({ product: e.target.value })} placeholder="What are you advertising?" />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">Target Audience</label>
+            <label className="text-xs text-zinc-400 mb-1.5 block">Target Audience</label>
             <input className="input" value={brandContext.targetAudience} onChange={(e) => updateBrand({ targetAudience: e.target.value })} placeholder="e.g. coaches, e-commerce founders" />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">Default CTA</label>
+            <label className="text-xs text-zinc-400 mb-1.5 block">Default CTA</label>
             <select className="input" value={brandContext.cta} onChange={(e) => updateBrand({ cta: e.target.value })}>
               {['Learn More', 'Sign Up', 'Get Started', 'Shop Now', 'Download', 'Contact Us'].map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -264,7 +264,7 @@ export default function CampaignSettings() {
             </select>
           </div>
           <div className="col-span-2">
-            <label className="text-xs text-gray-400 mb-1.5 block">Landing Page URL</label>
+            <label className="text-xs text-zinc-400 mb-1.5 block">Landing Page URL</label>
             <input className="input" value={brandContext.landingPageUrl} onChange={(e) => updateBrand({ landingPageUrl: e.target.value })} />
           </div>
         </div>
@@ -278,11 +278,11 @@ export default function CampaignSettings() {
         </h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">Ad Account ID</label>
+            <label className="text-xs text-zinc-400 mb-1.5 block">Ad Account ID</label>
             <input className="input" placeholder="act_123456789" value={campaign.adAccountId} onChange={(e) => updateCampaign({ adAccountId: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">Page ID</label>
+            <label className="text-xs text-zinc-400 mb-1.5 block">Page ID</label>
             <input className="input" placeholder="123456789" value={campaign.pageId} onChange={(e) => updateCampaign({ pageId: e.target.value })} />
           </div>
         </div>
@@ -295,30 +295,30 @@ export default function CampaignSettings() {
             <Link size={14} className="text-brand-500" />
             UTM Parameters
           </h3>
-          <p className="text-xs text-gray-500">Auto-appended to landing URLs when pushing to Facebook</p>
+          <p className="text-xs text-zinc-500">Auto-appended to landing URLs when pushing to Facebook</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">utm_source</label>
+            <label className="text-xs text-zinc-400 mb-1.5 block">utm_source</label>
             <input className="input" placeholder="facebook" value={utmConfig.source} onChange={(e) => setUtmConfig({ source: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">utm_medium</label>
+            <label className="text-xs text-zinc-400 mb-1.5 block">utm_medium</label>
             <input className="input" placeholder="paid_social" value={utmConfig.medium} onChange={(e) => setUtmConfig({ medium: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">utm_campaign</label>
+            <label className="text-xs text-zinc-400 mb-1.5 block">utm_campaign</label>
             <input className="input" placeholder="summer_2025" value={utmConfig.campaign} onChange={(e) => setUtmConfig({ campaign: e.target.value })} />
           </div>
           <div>
-            <label className="text-xs text-gray-400 mb-1.5 block">utm_content</label>
+            <label className="text-xs text-zinc-400 mb-1.5 block">utm_content</label>
             <input className="input" placeholder="ad_variation" value={utmConfig.content} onChange={(e) => setUtmConfig({ content: e.target.value })} />
           </div>
         </div>
         {brandContext.landingPageUrl && (
-          <div className="bg-gray-800/50 rounded-xl p-3">
-            <p className="text-xs text-gray-500 mb-1">Preview URL</p>
-            <p className="text-xs text-gray-300 font-mono break-all">
+          <div className="bg-surface-800/50 rounded-xl p-3">
+            <p className="text-xs text-zinc-500 mb-1">Preview URL</p>
+            <p className="text-xs text-zinc-300 font-mono break-all">
               {buildUtmPreview(brandContext.landingPageUrl, utmConfig)}
             </p>
           </div>
