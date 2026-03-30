@@ -256,8 +256,7 @@ a{color:inherit;text-decoration:none}
               <div style="font-size:20px;font-weight:900;font-family:${displayFont};color:${accent};letter-spacing:${displayTracking};line-height:1;">${s.value}</div>
               <div style="font-size:11px;color:${muted};margin-top:3px;">${s.label}</div>
             </div>`).join('')}
-          </div>`:''}`
-        }
+          </div>`:''}
         </div>
       </div>
 
