@@ -450,11 +450,11 @@ export default function LandingPageGenerator() {
                   {previewWidth === 'mobile' ? (
                     <div className="relative h-full flex flex-col items-center justify-start pt-3">
                       <div className="w-[375px] h-full rounded-2xl overflow-hidden border-2 border-gray-700 relative">
-                        <iframe srcDoc={html} className="w-full h-full" title="Mobile preview" sandbox="allow-same-origin allow-scripts" />
+                        <iframe srcDoc={html} className="w-full h-full" title="Mobile preview" sandbox="allow-scripts" />
                       </div>
                     </div>
                   ) : (
-                    <iframe srcDoc={html} className="w-full h-full" title="Desktop preview" sandbox="allow-same-origin allow-scripts" />
+                    <iframe srcDoc={html} className="w-full h-full" title="Desktop preview" sandbox="allow-scripts" />
                   )}
                 </div>
               ) : (
