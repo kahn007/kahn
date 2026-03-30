@@ -3,6 +3,7 @@ import {
   Zap, Search, Wand2, LayoutGrid, Upload, BarChart3,
   Settings, Globe, ExternalLink, ChevronRight, X,
   Key, Sparkles, ArrowRight, Layers, Mail,
+  Mic2, Anchor, Target, Fingerprint, Phone,
 } from 'lucide-react'
 import { useAdStore } from './store/adStore'
 import { getKey } from './lib/keys'
@@ -15,29 +16,49 @@ import CampaignSettings from './components/CampaignSettings'
 import LandingPageGenerator from './components/LandingPageGenerator'
 import MultiPlatform from './components/MultiPlatform'
 import EmailFlows from './components/EmailFlows'
+import BrandVoice from './components/BrandVoice'
+import VoiceMining from './components/VoiceMining'
+import HookLab from './components/HookLab'
+import AdScorer from './components/AdScorer'
+import VoiceAgentBuilder from './components/VoiceAgentBuilder'
 
 const NAV_GROUPS = [
   {
     label: 'Research',
     items: [
-      { id: 'research',  label: 'Audience',      icon: Search,    hint: 'Pain points & competitors' },
+      { id: 'research',     label: 'Audience',      icon: Search,      hint: 'Pain points & competitors' },
+      { id: 'voice_mining', label: 'Voice Mining',  icon: Mic2,        hint: 'Extract customer language' },
     ],
   },
   {
     label: 'Create',
     items: [
-      { id: 'generate',  label: 'Ad Copy',        icon: Wand2,     hint: 'AI ad variations' },
-      { id: 'variations',label: 'Variations',     icon: LayoutGrid,hint: 'Manage & score' },
-      { id: 'multi',     label: 'Multi-Platform', icon: Layers,    hint: 'Google, TikTok, LinkedIn…' },
-      { id: 'email',     label: 'Email Flows',    icon: Mail,      hint: 'Welcome, nurture, sales' },
-      { id: 'landing',   label: 'Landing Pages',  icon: Globe,     hint: 'Generate funnels' },
+      { id: 'generate',     label: 'Ad Copy',        icon: Wand2,      hint: 'AI ad variations' },
+      { id: 'variations',   label: 'Variations',     icon: LayoutGrid, hint: 'Manage & score' },
+      { id: 'multi',        label: 'Multi-Platform', icon: Layers,     hint: 'Google, TikTok, LinkedIn…' },
+      { id: 'email',        label: 'Email Flows',    icon: Mail,       hint: 'Welcome, nurture, sales' },
+      { id: 'landing',      label: 'Landing Pages',  icon: Globe,      hint: 'Generate funnels' },
+    ],
+  },
+  {
+    label: 'Optimize',
+    items: [
+      { id: 'hooks',        label: 'Hook Lab',       icon: Anchor,     hint: '20+ scroll-stopping hooks' },
+      { id: 'scorer',       label: 'Ad Scorer',      icon: Target,     hint: 'Score & rewrite any ad' },
+      { id: 'brand_voice',  label: 'Brand Voice',    icon: Fingerprint,hint: 'DNA for every generation' },
+    ],
+  },
+  {
+    label: 'Automate',
+    items: [
+      { id: 'voice_agents', label: 'Voice Agents',   icon: Phone,      hint: 'GHL + Twilio AI phone agents' },
     ],
   },
   {
     label: 'Publish',
     items: [
-      { id: 'upload',    label: 'Push to FB',     icon: Upload,    hint: 'Publish drafts' },
-      { id: 'dashboard', label: 'Dashboard',      icon: BarChart3, hint: 'Analytics' },
+      { id: 'upload',       label: 'Push to FB',     icon: Upload,     hint: 'Publish drafts' },
+      { id: 'dashboard',    label: 'Dashboard',      icon: BarChart3,  hint: 'Analytics' },
     ],
   },
 ]
@@ -253,15 +274,20 @@ export default function App() {
 
         {/* Page content */}
         <main className="flex-1 px-6 py-7 max-w-6xl w-full mx-auto">
-          {activeTab === 'research'   && <ResearchPanel />}
-          {activeTab === 'generate'   && <CopyGenerator />}
-          {activeTab === 'variations' && <VariationManager />}
-          {activeTab === 'multi'      && <MultiPlatform />}
-          {activeTab === 'email'      && <EmailFlows />}
-          {activeTab === 'landing'    && <LandingPageGenerator />}
-          {activeTab === 'upload'     && <FacebookUploader />}
-          {activeTab === 'dashboard'  && <TrackingDashboard />}
-          {activeTab === 'settings'   && <CampaignSettings />}
+          {activeTab === 'research'     && <ResearchPanel />}
+          {activeTab === 'voice_mining' && <VoiceMining />}
+          {activeTab === 'generate'     && <CopyGenerator />}
+          {activeTab === 'variations'   && <VariationManager />}
+          {activeTab === 'multi'        && <MultiPlatform />}
+          {activeTab === 'email'        && <EmailFlows />}
+          {activeTab === 'landing'      && <LandingPageGenerator />}
+          {activeTab === 'hooks'        && <HookLab />}
+          {activeTab === 'scorer'       && <AdScorer />}
+          {activeTab === 'brand_voice'  && <BrandVoice />}
+          {activeTab === 'voice_agents' && <VoiceAgentBuilder />}
+          {activeTab === 'upload'       && <FacebookUploader />}
+          {activeTab === 'dashboard'    && <TrackingDashboard />}
+          {activeTab === 'settings'     && <CampaignSettings />}
         </main>
       </div>
     </div>

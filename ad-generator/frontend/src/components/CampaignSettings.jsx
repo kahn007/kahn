@@ -91,6 +91,119 @@ const API_CONFIGS = [
       if (!res.ok) throw new Error(`Status ${res.status}`)
     },
   },
+  {
+    id: 'elevenlabs',
+    name: 'ElevenLabs',
+    placeholder: 'sk_...',
+    helpUrl: 'https://elevenlabs.io/app/settings/api-keys',
+    helpLabel: 'elevenlabs.io',
+    color: 'text-yellow-400',
+    bg: 'bg-yellow-500/10 border-yellow-500/30',
+    dot: 'bg-yellow-500',
+    description: 'Natural TTS voices for Voice Agents',
+    testFn: async (key) => {
+      const res = await fetch('https://api.elevenlabs.io/v1/voices', { headers: { 'xi-api-key': key } })
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+    },
+  },
+  {
+    id: 'cartesia',
+    name: 'Cartesia',
+    placeholder: 'sk_car_...',
+    helpUrl: 'https://play.cartesia.ai/keys',
+    helpLabel: 'play.cartesia.ai',
+    color: 'text-violet-400',
+    bg: 'bg-violet-500/10 border-violet-500/30',
+    dot: 'bg-violet-500',
+    description: 'Ultra-low-latency TTS for real-time voice agents',
+    testFn: async (key) => {
+      const res = await fetch('https://api.cartesia.ai/voices', { headers: { 'X-API-Key': key, 'Cartesia-Version': '2024-06-10' } })
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+    },
+  },
+  {
+    id: 'hume',
+    name: 'Hume AI',
+    placeholder: 'hume-...',
+    helpUrl: 'https://platform.hume.ai/settings/keys',
+    helpLabel: 'platform.hume.ai',
+    color: 'text-rose-400',
+    bg: 'bg-rose-500/10 border-rose-500/30',
+    dot: 'bg-rose-500',
+    description: 'Empathic Voice Interface — detects and mirrors emotion',
+    testFn: async (key) => {
+      const res = await fetch('https://api.hume.ai/v0/evi/configs', { headers: { 'X-Hume-Api-Key': key } })
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+    },
+  },
+  {
+    id: 'deepgram',
+    name: 'Deepgram',
+    placeholder: '...',
+    helpUrl: 'https://console.deepgram.com/project/keys',
+    helpLabel: 'console.deepgram.com',
+    color: 'text-cyan-400',
+    bg: 'bg-cyan-500/10 border-cyan-500/30',
+    dot: 'bg-cyan-500',
+    description: 'Aura TTS + Nova STT — built-in combo for voice agents',
+    testFn: async (key) => {
+      const res = await fetch('https://api.deepgram.com/v1/projects', { headers: { Authorization: `Token ${key}` } })
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+    },
+  },
+  {
+    id: 'twilio_sid',
+    name: 'Twilio Account SID',
+    placeholder: 'ACxxxxxxxx...',
+    helpUrl: 'https://console.twilio.com',
+    helpLabel: 'console.twilio.com',
+    color: 'text-red-400',
+    bg: 'bg-red-500/10 border-red-500/30',
+    dot: 'bg-red-500',
+    description: 'Phone number management for voice agents',
+    testFn: async () => {},
+  },
+  {
+    id: 'twilio_token',
+    name: 'Twilio Auth Token',
+    placeholder: '...',
+    helpUrl: 'https://console.twilio.com',
+    helpLabel: 'console.twilio.com',
+    color: 'text-red-400',
+    bg: 'bg-red-500/10 border-red-500/30',
+    dot: 'bg-red-500',
+    description: 'Twilio Auth Token — kept in browser only',
+    testFn: async () => {},
+  },
+  {
+    id: 'ghl_token',
+    name: 'GoHighLevel Token',
+    placeholder: 'eyJhbGci...',
+    helpUrl: 'https://marketplace.gohighlevel.com/apps/private-integrations',
+    helpLabel: 'marketplace.gohighlevel.com',
+    color: 'text-emerald-400',
+    bg: 'bg-emerald-500/10 border-emerald-500/30',
+    dot: 'bg-emerald-500',
+    description: 'Private Integration Token — contacts, calendars, opportunities',
+    testFn: async (key) => {
+      const res = await fetch('https://services.leadconnectorhq.com/locations/search?limit=1', {
+        headers: { Authorization: `Bearer ${key}`, Version: '2021-07-28' },
+      })
+      if (!res.ok) throw new Error(`GHL ${res.status}`)
+    },
+  },
+  {
+    id: 'ghl_location_id',
+    name: 'GHL Location ID',
+    placeholder: 'xxxxxxxxxxxxxxxxxxxxx',
+    helpUrl: 'https://marketplace.gohighlevel.com/apps/private-integrations',
+    helpLabel: 'marketplace.gohighlevel.com',
+    color: 'text-emerald-400',
+    bg: 'bg-emerald-500/10 border-emerald-500/30',
+    dot: 'bg-emerald-500',
+    description: 'Your GoHighLevel sub-account / location ID',
+    testFn: async () => {},
+  },
 ]
 
 export default function CampaignSettings() {

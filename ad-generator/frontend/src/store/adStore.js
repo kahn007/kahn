@@ -73,6 +73,31 @@ export const useAdStore = create(
       // ── Email sequences ───────────────────────────────────────────
       emailSequences: [],
 
+      // ── Brand Voice DNA ───────────────────────────────────────────
+      brandVoice: {
+        archetype: 'creator',
+        tone: 50,
+        energy: 50,
+        alwaysUse: [],
+        neverUse: [],
+        exampleCopy: '',
+        uniqueMechanism: '',
+        differentiators: '',
+      },
+
+      // ── Voice Mining results ──────────────────────────────────────
+      voiceMiningResults: [],
+
+      // ── Hook Lab results ──────────────────────────────────────────
+      hookLabResults: null,
+
+      // ── Ad Score result ───────────────────────────────────────────
+      adScoreResult: null,
+
+      // ── Voice Agents ──────────────────────────────────────────────
+      voiceAgents: [],
+      activeAgentId: null,
+
       // ── Active tab ────────────────────────────────────────────────
       activeTab: 'research',
 
@@ -180,6 +205,37 @@ export const useAdStore = create(
       deleteEmailSequence: (id) =>
         set((s) => ({ emailSequences: s.emailSequences.filter((e) => e.id !== id) })),
 
+      // Brand Voice DNA
+      setBrandVoice: (updates) =>
+        set((s) => ({ brandVoice: { ...s.brandVoice, ...updates } })),
+
+      // Voice Mining
+      saveVoiceMining: (result) =>
+        set((s) => ({ voiceMiningResults: [result, ...s.voiceMiningResults].slice(0, 10) })),
+      deleteVoiceMining: (id) =>
+        set((s) => ({ voiceMiningResults: s.voiceMiningResults.filter((r) => r.id !== id) })),
+
+      // Hook Lab
+      setHookLabResults: (results) => set({ hookLabResults: results }),
+
+      // Ad Scorer
+      setAdScoreResult: (result) => set({ adScoreResult: result }),
+
+      // Voice Agents
+      saveVoiceAgent: (agent) =>
+        set((s) => ({
+          voiceAgents: [agent, ...s.voiceAgents.filter((a) => a.id !== agent.id)],
+          activeAgentId: agent.id,
+        })),
+      deleteVoiceAgent: (id) =>
+        set((s) => ({
+          voiceAgents: s.voiceAgents.filter((a) => a.id !== id),
+          activeAgentId: s.activeAgentId === id
+            ? (s.voiceAgents.filter((a) => a.id !== id)[0]?.id || null)
+            : s.activeAgentId,
+        })),
+      setActiveAgentId: (id) => set({ activeAgentId: id }),
+
       // Onboarding
       hasOnboarded: false,
       setHasOnboarded: (v) => set({ hasOnboarded: v }),
@@ -208,6 +264,11 @@ export const useAdStore = create(
         savedPages:           s.savedPages,
         platformAdaptations:  s.platformAdaptations,
         emailSequences:       s.emailSequences,
+        brandVoice:           s.brandVoice,
+        voiceMiningResults:   s.voiceMiningResults,
+        hookLabResults:       s.hookLabResults,
+        voiceAgents:          s.voiceAgents,
+        activeAgentId:        s.activeAgentId,
         hasOnboarded:         s.hasOnboarded,
       }),
     }

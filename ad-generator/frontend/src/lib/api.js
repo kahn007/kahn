@@ -1231,3 +1231,485 @@ Return ONLY valid JSON array with exactly ${spec.count} objects:
 }
 
 export { EMAIL_SEQUENCE_SPECS, PLATFORM_SPECS }
+
+// ── Customer Voice Mining ─────────────────────────────────────
+export async function mineCustomerVoice({ text, sourceType, brandContext }) {
+  const key = getKey('anthropic')
+  if (!key) throw new Error('Add your Anthropic key in Settings')
+
+  const prompt = `You are an elite copywriter and customer research analyst.
+Analyze the following customer text (source: ${sourceType}) and extract actionable insights for ad copywriting.
+
+CUSTOMER TEXT:
+"""
+${text.slice(0, 8000)}
+"""
+
+Return ONLY a valid JSON object with this exact structure:
+{
+  "painWords": [{"word": "...", "count": 3}, ...],
+  "goldPhrases": ["exact phrase 1", "exact phrase 2", ...],
+  "emotionalTriggers": ["trigger 1", "trigger 2", ...],
+  "transformations": [{"from": "old state", "to": "new state"}, ...],
+  "jtbd": ["When I ..., I want to ..., so I can ..."],
+  "objections": ["objection 1", "objection 2", ...]
+}
+
+Rules:
+- painWords: top 12 pain/frustration words ranked by implied frequency, each with estimated mention count
+- goldPhrases: 8-12 verbatim phrases so emotionally resonant they could be used as ad copy
+- emotionalTriggers: 6-8 core emotional drivers (fears, desires, aspirations)
+- transformations: 4-6 "went from X to Y" pairs capturing the transformation arc
+- jtbd: 3-5 jobs-to-be-done statements in the format above
+- objections: 4-6 main purchase objections to address in copy
+${brandContext?.product ? `\nProduct context: ${brandContext.product}` : ''}`
+
+  const raw = await callClaude(key, prompt)
+  const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  const analysis = JSON.parse(cleaned)
+  return {
+    id: crypto.randomUUID(),
+    source: sourceType,
+    analysis,
+    createdAt: new Date().toISOString(),
+  }
+}
+
+// ── Hook Lab ──────────────────────────────────────────────────
+export async function generateHooks({ product, targetAudience, platform, frameworks, brandVoice, count = 20 }) {
+  const key = getKey('anthropic')
+  if (!key) throw new Error('Add your Anthropic key in Settings')
+
+  const fwDescriptions = {
+    curiosity:  'Curiosity Gap — open a loop the viewer MUST close (e.g. "The thing no one tells you about X")',
+    contrarian: 'Contrarian — disagree with popular belief (e.g. "Stop doing X. Here\'s why it\'s killing your Y")',
+    big_stat:   'Big Stat — lead with a shocking, specific number (e.g. "87% of X waste money on Y")',
+    question:   'Question — ask the exact question they\'re already asking themselves',
+    threat:     'Threat/Warning — call out a costly mistake they might be making',
+    story:      'Story Open — drop in mid-action, in medias res',
+    social:     'Social Proof — lead with someone else\'s specific result',
+    interrupt:  'Pattern Interrupt — say something unexpected, weird, or counterintuitive',
+  }
+
+  const selectedFw = frameworks.length ? frameworks : Object.keys(fwDescriptions)
+  const fwList = selectedFw.map((f) => `- ${fwDescriptions[f] || f}`).join('\n')
+
+  const platformGuide = {
+    tiktok:   'TikTok/Reels: max 8 words, casual, punchy, no punctuation unless dramatic pause. Start with action word or shocking claim.',
+    reels:    'Instagram Reels: slightly more polished than TikTok but still fast. Can use 2 short sentences.',
+    youtube:  'YouTube: 10-15 words OK. Can be a question or bold statement. Sets up the video promise.',
+    linkedin: 'LinkedIn: professional but still scroll-stopping. Can be 1-2 sentences. Lead with insight or counterintuitive take.',
+    twitter:  'Twitter/X: punchy observation, hot take, or shocking stat. Under 15 words.',
+  }
+
+  const voiceContext = brandVoice ? `\nBrand voice: ${brandVoice.archetype || 'creator'}, ${brandVoice.tone < 40 ? 'formal' : brandVoice.tone > 60 ? 'casual' : 'balanced'} tone.${brandVoice.neverUse?.length ? ` Never use: ${brandVoice.neverUse.join(', ')}.` : ''}` : ''
+
+  const prompt = `You are a world-class scroll-stopping hook writer for ${platform} video content.
+
+Product: ${product}
+Target Audience: ${targetAudience || 'general audience'}
+Platform rules: ${platformGuide[platform] || platformGuide.tiktok}
+${voiceContext}
+
+Generate exactly ${count} hooks using these frameworks:
+${fwList}
+
+Return ONLY a JSON array of hook objects:
+[
+  {
+    "id": "h1",
+    "text": "The exact hook text",
+    "framework": "curiosity",
+    "score": 8,
+    "visualConcept": "Brief visual direction for the video opener"
+  },
+  ...
+]
+
+Scoring (1-10): 10 = stops 95%+ of scrollers, 7 = solid, 5 = generic/forgettable
+Distribute frameworks proportionally. Mix high-scoring and experimental hooks.`
+
+  const raw = await callClaudeLarge(key, prompt)
+  const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  let hooks = JSON.parse(cleaned)
+  if (!Array.isArray(hooks)) hooks = hooks.hooks || []
+  hooks = hooks.map((h, i) => ({ ...h, id: h.id || `h${i}` }))
+  return { hooks, platform, createdAt: new Date().toISOString() }
+}
+
+// ── Ad Score & Optimizer ──────────────────────────────────────
+export async function scoreAdCopy({ headline, body, brandContext, brandVoice }) {
+  const key = getKey('anthropic')
+  if (!key) throw new Error('Add your Anthropic key in Settings')
+
+  const voiceCtx = brandVoice?.uniqueMechanism
+    ? `\nBrand context: ${brandVoice.uniqueMechanism}${brandVoice.differentiators ? '. Differentiators: ' + brandVoice.differentiators : ''}`
+    : brandContext?.product ? `\nProduct: ${brandContext.product}` : ''
+
+  const prompt = `You are a direct-response advertising expert who has reviewed thousands of ads.
+Score and optimize this ad copy.
+
+HEADLINE: ${headline || '(none)'}
+BODY: ${body || '(none)'}
+${voiceCtx}
+
+Return ONLY a valid JSON object:
+{
+  "overall": 72,
+  "grade": "B",
+  "summary": "One-sentence verdict",
+  "dimensions": [
+    {"id": "hook",     "score": 8, "suggestion": "...", "rewrite": "Optional improved version of just this element"},
+    {"id": "specific", "score": 5, "suggestion": "...", "rewrite": "..."},
+    {"id": "emotion",  "score": 7, "suggestion": "...", "rewrite": "..."},
+    {"id": "clarity",  "score": 9, "suggestion": "...", "rewrite": "..."},
+    {"id": "cta",      "score": 6, "suggestion": "...", "rewrite": "..."},
+    {"id": "trust",    "score": 4, "suggestion": "...", "rewrite": "..."}
+  ],
+  "strengths": ["What's working — specific"],
+  "weaknesses": ["Quick win — specific fix"],
+  "improvedCopy": {
+    "headline": "Rewritten headline applying all improvements",
+    "body": "Rewritten body applying all improvements"
+  }
+}
+
+Grade: A=90-100, B=80-89, C=70-79, D=60-69, F<60
+For each dimension: score 1-10, specific suggestion (not generic), rewrite for weak dimensions (score < 7).
+overall = weighted average: hook×25%, specific×15%, emotion×20%, clarity×15%, cta×15%, trust×10%`
+
+  const raw = await callClaude(key, prompt)
+  const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  return JSON.parse(cleaned)
+}
+
+// ── Voice Agent: AI system prompt generator ───────────────────
+export async function generateAgentPrompt({ agentType, callDirection, brandContext, capabilities, agentName }) {
+  const key = getKey('anthropic')
+  if (!key) throw new Error('Add your Anthropic key in Settings')
+
+  const typeGuides = {
+    appointment_setter: 'Book qualified appointments. Qualify the lead, handle objections, and lock in a specific date/time.',
+    lead_qualifier:     'Qualify inbound leads against BANT criteria (Budget, Authority, Need, Timeline). Score them and update CRM.',
+    sales_closer:       'Handle the full sales conversation, overcome objections using feel-felt-found, and close or get a commitment.',
+    customer_support:   'Resolve issues efficiently and empathetically. Escalate when needed. Leave the customer feeling heard.',
+    follow_up:          'Re-engage dormant or cold leads. Acknowledge the gap, re-spark interest, and move them to next step.',
+    survey:             'Collect structured feedback through natural conversation. Keep it brief, warm, and genuinely curious.',
+  }
+
+  const capList = capabilities.join(', ') || 'none'
+  const brand = brandContext?.brandName || 'the company'
+  const product = brandContext?.product || ''
+
+  const prompt = `Generate a complete voice agent system prompt and first message.
+
+Agent name: ${agentName}
+Agent type: ${agentType} — ${typeGuides[agentType] || agentType}
+Call direction: ${callDirection}
+Company: ${brand}
+Product/service: ${product}
+CRM capabilities available: ${capList}
+
+Return ONLY this JSON:
+{
+  "systemPrompt": "Full system prompt (400-600 words). Include: persona, goal, conversation flow (opening → qualification → value → objections → close), tone guidelines, how to use CRM capabilities, when to end the call gracefully.",
+  "firstMessage": "The exact first words the agent says when the call connects (1-2 sentences, warm, clear about who they are and why they're calling)"
+}`
+
+  const raw = await callClaude(key, prompt)
+  const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  return JSON.parse(cleaned)
+}
+
+// ── Voice providers: list voices ──────────────────────────────
+export async function listElevenLabsVoices(apiKey) {
+  const res = await fetch('https://api.elevenlabs.io/v1/voices', {
+    headers: { 'xi-api-key': apiKey },
+  })
+  if (!res.ok) throw new Error(`ElevenLabs ${res.status}`)
+  const data = await res.json()
+  return (data.voices || []).sort((a, b) => a.name.localeCompare(b.name))
+}
+
+export async function listCartesiaVoices(apiKey) {
+  const res = await fetch('https://api.cartesia.ai/voices', {
+    headers: { 'X-API-Key': apiKey, 'Cartesia-Version': '2024-06-10' },
+  })
+  if (!res.ok) throw new Error(`Cartesia ${res.status}`)
+  const data = await res.json()
+  return (Array.isArray(data) ? data : data.voices || []).sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+}
+
+// ── Twilio: list phone numbers ────────────────────────────────
+export async function listTwilioNumbers(accountSid, authToken) {
+  const creds = btoa(`${accountSid}:${authToken}`)
+  const res = await fetch(
+    `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/IncomingPhoneNumbers.json?PageSize=50`,
+    { headers: { Authorization: `Basic ${creds}` } }
+  )
+  if (!res.ok) throw new Error(`Twilio ${res.status}`)
+  const data = await res.json()
+  return data.incoming_phone_numbers || []
+}
+
+// ── GHL: calendars ────────────────────────────────────────────
+const GHL_BASE = 'https://services.leadconnectorhq.com'
+const GHL_VER  = '2021-07-28'
+
+function ghlHeaders(token) {
+  return { Authorization: `Bearer ${token}`, Version: GHL_VER, 'Content-Type': 'application/json' }
+}
+
+export async function fetchGHLCalendars(token, locationId) {
+  const res = await fetch(`${GHL_BASE}/calendars/?locationId=${locationId}`, { headers: ghlHeaders(token) })
+  if (!res.ok) throw new Error(`GHL calendars ${res.status}`)
+  const data = await res.json()
+  return data.calendars || []
+}
+
+export async function fetchGHLPipelines(token, locationId) {
+  const res = await fetch(`${GHL_BASE}/opportunities/pipelines?locationId=${locationId}`, { headers: ghlHeaders(token) })
+  if (!res.ok) throw new Error(`GHL pipelines ${res.status}`)
+  const data = await res.json()
+  return data.pipelines || []
+}
+
+export async function createGHLContact(token, locationId, contactData) {
+  const res = await fetch(`${GHL_BASE}/contacts/`, {
+    method: 'POST',
+    headers: ghlHeaders(token),
+    body: JSON.stringify({ locationId, ...contactData }),
+  })
+  if (!res.ok) throw new Error(`GHL create contact ${res.status}`)
+  return res.json()
+}
+
+export async function bookGHLAppointment(token, locationId, { calendarId, contactId, startTime, endTime, title }) {
+  const res = await fetch(`${GHL_BASE}/calendars/events/appointments`, {
+    method: 'POST',
+    headers: ghlHeaders(token),
+    body: JSON.stringify({ locationId, calendarId, contactId, startTime, endTime, title }),
+  })
+  if (!res.ok) throw new Error(`GHL book appointment ${res.status}`)
+  return res.json()
+}
+
+export async function updateGHLOpportunity(token, opportunityId, updates) {
+  const res = await fetch(`${GHL_BASE}/opportunities/${opportunityId}`, {
+    method: 'PUT',
+    headers: ghlHeaders(token),
+    body: JSON.stringify(updates),
+  })
+  if (!res.ok) throw new Error(`GHL update opportunity ${res.status}`)
+  return res.json()
+}
+
+// ── Voice Agent server code generator ────────────────────────
+export function generateVoiceAgentServerCode({ agent, keys }) {
+  const voiceProviderBlock = {
+    elevenlabs: `
+// ElevenLabs TTS
+async function textToSpeech(text) {
+  const res = await fetch(\`https://api.elevenlabs.io/v1/text-to-speech/\${VOICE_ID}/stream\`, {
+    method: 'POST',
+    headers: { 'xi-api-key': ELEVENLABS_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, model_id: 'eleven_turbo_v2_5', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
+  })
+  if (!res.ok) throw new Error('ElevenLabs TTS failed: ' + res.status)
+  return Buffer.from(await res.arrayBuffer())
+}`,
+    cartesia: `
+// Cartesia TTS
+async function textToSpeech(text) {
+  const res = await fetch('https://api.cartesia.ai/tts/bytes', {
+    method: 'POST',
+    headers: { 'X-API-Key': CARTESIA_KEY, 'Cartesia-Version': '2024-06-10', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model_id: 'sonic-english', transcript: text, voice: { mode: 'id', id: VOICE_ID }, output_format: { container: 'raw', encoding: 'pcm_mulaw', sample_rate: 8000 } }),
+  })
+  if (!res.ok) throw new Error('Cartesia TTS failed: ' + res.status)
+  return Buffer.from(await res.arrayBuffer())
+}`,
+    hume: `
+// Hume EVI TTS (via REST)
+async function textToSpeech(text) {
+  // Hume EVI uses its own WebSocket protocol — see docs.hume.ai/docs/empathic-voice
+  // For REST synthesis, use ElevenLabs or Cartesia as a fallback
+  throw new Error('Hume EVI requires WebSocket — see docs.hume.ai/docs/empathic-voice for full integration')
+}`,
+    deepgram: `
+// Deepgram Aura TTS
+async function textToSpeech(text) {
+  const res = await fetch('https://api.deepgram.com/v1/speak?model=aura-asteria-en', {
+    method: 'POST',
+    headers: { Authorization: \`Token \${DEEPGRAM_KEY}\`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  })
+  if (!res.ok) throw new Error('Deepgram TTS failed: ' + res.status)
+  return Buffer.from(await res.arrayBuffer())
+}`,
+  }
+
+  const llmBlock = {
+    anthropic: `
+// Claude LLM
+async function chat(messages) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: '${agent.llmModel}', max_tokens: 300, system: SYSTEM_PROMPT, messages }),
+  })
+  const data = await res.json()
+  return data.content?.[0]?.text || ''
+}`,
+    openai: `
+// OpenAI LLM
+const OpenAI = require('openai')
+const openai = new OpenAI({ apiKey: OPENAI_KEY })
+async function chat(messages) {
+  const res = await openai.chat.completions.create({
+    model: '${agent.llmModel}', max_tokens: 300,
+    messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
+  })
+  return res.choices[0].message.content || ''
+}`,
+  }
+
+  const llmProvider = LLM_MODELS_MAP[agent.llmModel] || 'anthropic'
+
+  const ghlBlock = agent.ghlCapabilities.length ? `
+// ── GoHighLevel CRM helpers ──────────────────────────────────
+const GHL_TOKEN = process.env.GHL_TOKEN || '${keys.ghl_token || ''}'
+const GHL_LOC   = process.env.GHL_LOCATION_ID || '${keys.ghl_location_id || ''}'
+const GHL_BASE  = 'https://services.leadconnectorhq.com'
+const ghlHeaders = { Authorization: \`Bearer \${GHL_TOKEN}\`, Version: '2021-07-28', 'Content-Type': 'application/json' }
+
+async function findOrCreateContact(phone, name) {
+  const search = await fetch(\`\${GHL_BASE}/contacts/?locationId=\${GHL_LOC}&query=\${encodeURIComponent(phone)}\`, { headers: ghlHeaders })
+  const data = await search.json()
+  if (data.contacts?.length) return data.contacts[0]
+  const create = await fetch(\`\${GHL_BASE}/contacts/\`, {
+    method: 'POST', headers: ghlHeaders,
+    body: JSON.stringify({ locationId: GHL_LOC, phone, name: name || 'Unknown' }),
+  })
+  return (await create.json()).contact
+}
+${agent.ghlCapabilities.includes('calendar') ? `
+async function bookAppointment(contactId, startTime) {
+  await fetch(\`\${GHL_BASE}/calendars/events/appointments\`, {
+    method: 'POST', headers: ghlHeaders,
+    body: JSON.stringify({ locationId: GHL_LOC, calendarId: '${agent.ghlCalendarId || 'YOUR_CALENDAR_ID'}', contactId, startTime, title: 'Call booked via Voice Agent' }),
+  })
+}` : ''}
+${agent.ghlCapabilities.includes('conversations') ? `
+async function logConversation(contactId, message) {
+  await fetch(\`\${GHL_BASE}/conversations/messages\`, {
+    method: 'POST', headers: ghlHeaders,
+    body: JSON.stringify({ type: 'TYPE_CALL', contactId, locationId: GHL_LOC, message }),
+  })
+}` : ''}
+` : ''
+
+  const model = LLM_MODELS_MAP[agent.llmModel] || 'anthropic'
+  const ttsBlock = voiceProviderBlock[agent.voiceProvider] || voiceProviderBlock.elevenlabs
+  const llmCodeBlock = llmBlock[model] || llmBlock.anthropic
+
+  return `// ============================================================
+// Voice Agent Server — Generated by Brayne AI Marketing Suite
+// Agent: ${agent.name} (${agent.type})
+// ============================================================
+// Quick start:
+//   npm install express ws twilio axios
+//   node server.js
+// ============================================================
+
+require('dotenv').config()
+const express    = require('express')
+const twilio     = require('twilio')
+const WebSocket  = require('ws')
+const http       = require('http')
+
+const app    = express()
+const server = http.createServer(app)
+const wss    = new WebSocket.Server({ server })
+
+app.use(express.json())
+app.use(express.urlencoded({ extended: false }))
+
+// ── Config ──────────────────────────────────────────────────
+const PORT          = process.env.PORT || 3000
+const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || \`${(agent.systemPrompt || '').replace(/`/g, '\\`')}\`
+const FIRST_MESSAGE = process.env.FIRST_MESSAGE || \`${(agent.firstMessage || 'Hello, how can I help you today?').replace(/`/g, '\\`')}\`
+const VOICE_ID      = process.env.VOICE_ID || '${agent.voiceId || ''}'
+const TWILIO_SID    = process.env.TWILIO_SID || '${keys.twilio_sid || ''}'
+const TWILIO_TOKEN  = process.env.TWILIO_TOKEN || '${keys.twilio_token || ''}'
+const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY || '${keys.anthropic || ''}'
+const OPENAI_KEY    = process.env.OPENAI_KEY || '${keys.openai || ''}'
+const ELEVENLABS_KEY= process.env.ELEVENLABS_KEY || '${keys.elevenlabs || ''}'
+const CARTESIA_KEY  = process.env.CARTESIA_KEY || '${keys.cartesia || ''}'
+const DEEPGRAM_KEY  = process.env.DEEPGRAM_KEY || '${keys.deepgram || ''}'
+const HUME_KEY      = process.env.HUME_KEY || '${keys.hume || ''}'
+
+// ── Twilio Voice webhook ─────────────────────────────────────
+app.post('/twilio/voice', (req, res) => {
+  const twiml = new twilio.twiml.VoiceResponse()
+  const gather = twiml.connect()
+  gather.stream({ url: \`wss://\${req.headers.host}/stream\`, track: 'both_tracks' })
+  res.type('text/xml').send(twiml.toString())
+})
+${ghlBlock}
+${ttsBlock}
+${llmCodeBlock}
+
+// ── Media Stream handler ─────────────────────────────────────
+wss.on('connection', (ws) => {
+  console.log('Call connected')
+  const history = []
+  let buffer = ''
+  let callSid = null
+
+  ws.on('message', async (raw) => {
+    const msg = JSON.parse(raw)
+
+    if (msg.event === 'start') {
+      callSid = msg.start.callSid
+      console.log('Call started:', callSid)
+      // Send greeting
+      const audio = await textToSpeech(FIRST_MESSAGE).catch(console.error)
+      if (audio) ws.send(JSON.stringify({ event: 'media', streamSid: msg.start.streamSid, media: { payload: audio.toString('base64') } }))
+    }
+
+    if (msg.event === 'media' && msg.media.track === 'inbound') {
+      // Accumulate audio — in production, feed to Deepgram WebSocket STT
+      // For simplicity, this scaffold processes text once you add your STT integration
+      buffer += msg.media.payload
+    }
+
+    if (msg.event === 'stop') {
+      console.log('Call ended:', callSid)
+      ws.close()
+    }
+  })
+
+  // Called by your STT integration with transcript text
+  ws.processTranscript = async (transcript, streamSid) => {
+    console.log('User:', transcript)
+    history.push({ role: 'user', content: transcript })
+    const reply = await chat(history)
+    console.log('Agent:', reply)
+    history.push({ role: 'assistant', content: reply })
+    const audio = await textToSpeech(reply)
+    ws.send(JSON.stringify({ event: 'media', streamSid, media: { payload: audio.toString('base64') } }))
+  }
+})
+
+server.listen(PORT, () => console.log(\`Voice agent running on port \${PORT}\`))
+// Webhook URL for Twilio: https://your-domain.com/twilio/voice
+`
+}
+
+// LLM provider map (used by code generator)
+const LLM_MODELS_MAP = {
+  'claude-sonnet-4-6': 'anthropic', 'claude-opus-4-6': 'anthropic', 'claude-haiku-4-5-20251001': 'anthropic',
+  'gpt-4o': 'openai', 'gpt-4o-mini': 'openai',
+  'gemini-2.0-flash': 'google',
+}
