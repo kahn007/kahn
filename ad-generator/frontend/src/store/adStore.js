@@ -67,6 +67,12 @@ export const useAdStore = create(
       // ── Saved landing pages (history, last 5) ─────────────────────
       savedPages: [],
 
+      // ── Multi-platform adaptations ────────────────────────────────
+      platformAdaptations: null,
+
+      // ── Email sequences ───────────────────────────────────────────
+      emailSequences: [],
+
       // ── Active tab ────────────────────────────────────────────────
       activeTab: 'research',
 
@@ -165,6 +171,15 @@ export const useAdStore = create(
 
       setActiveTab: (tab) => set({ activeTab: tab }),
 
+      // Platform adaptations
+      setPlatformAdaptations: (data) => set({ platformAdaptations: data }),
+
+      // Email sequences
+      saveEmailSequence: (seq) =>
+        set((s) => ({ emailSequences: [seq, ...s.emailSequences.filter((e) => e.id !== seq.id)].slice(0, 20) })),
+      deleteEmailSequence: (id) =>
+        set((s) => ({ emailSequences: s.emailSequences.filter((e) => e.id !== id) })),
+
       // Onboarding
       hasOnboarded: false,
       setHasOnboarded: (v) => set({ hasOnboarded: v }),
@@ -191,6 +206,8 @@ export const useAdStore = create(
         competitorSwipeFile:  s.competitorSwipeFile,
         landingPageConfig:    s.landingPageConfig,
         savedPages:           s.savedPages,
+        platformAdaptations:  s.platformAdaptations,
+        emailSequences:       s.emailSequences,
         hasOnboarded:         s.hasOnboarded,
       }),
     }

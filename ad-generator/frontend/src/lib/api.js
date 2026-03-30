@@ -1036,3 +1036,198 @@ function ctaTypeMap(cta) {
 }
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)) }
+
+// ── Multi-platform adapter ─────────────────────────────────────
+const PLATFORM_SPECS = {
+  google: {
+    name: 'Google Ads',
+    format: `Responsive Search Ad:
+- headline1: max 30 chars (primary benefit)
+- headline2: max 30 chars (differentiator)
+- headline3: max 30 chars (CTA or brand)
+- description1: max 90 chars (problem + solution)
+- description2: max 90 chars (social proof or offer)
+All headlines must work in any combination. Count characters including spaces.`,
+    fields: ['headline1', 'headline2', 'headline3', 'description1', 'description2'],
+  },
+  tiktok: {
+    name: 'TikTok Ad',
+    format: `TikTok video ad script:
+- hook: First 3 seconds — 1-2 punchy sentences that stop the scroll immediately
+- story: 15-20 seconds — problem → solution hint → one proof point (natural, not salesy)
+- cta: Last 5 seconds — one clear action (direct, urgent)
+- caption: 100-130 chars for the post text
+- hashtags: Array of 5 relevant hashtags (strings without #)`,
+    fields: ['hook', 'story', 'cta', 'caption', 'hashtags'],
+  },
+  linkedin: {
+    name: 'LinkedIn Ad',
+    format: `LinkedIn Single Image Ad:
+- headline: max 70 chars — professional, outcome-focused
+- intro: max 150 chars — hook that speaks to a professional pain point
+- body: 200-280 words — professional tone, B2B framing, concrete ROI/outcome language
+- ctaButton: 2-4 words (e.g. "Download Guide", "Get Demo", "Start Free")`,
+    fields: ['headline', 'intro', 'body', 'ctaButton'],
+  },
+  twitter: {
+    name: 'Twitter / X Thread',
+    format: `5-tweet thread (each max 280 chars):
+- tweet1: The bold claim or provocative question — makes them stop
+- tweet2: The problem — make the pain real and specific
+- tweet3: The shift — insight, reframe, or surprising truth
+- tweet4: The proof — specific outcome, social proof, or data point
+- tweet5: The CTA — single clear action with a link placeholder [link]`,
+    fields: ['tweet1', 'tweet2', 'tweet3', 'tweet4', 'tweet5'],
+  },
+  youtube: {
+    name: 'YouTube Pre-Roll',
+    format: `30-second YouTube pre-roll script:
+- hook: 0-5s — must earn the skip (viewer decides before skip button appears)
+- problem: 5-15s — agitate the specific pain; speak directly to them
+- solution: 15-25s — what changes for them; tease the result not the mechanism
+- cta: 25-30s — single action with mild urgency
+- fullScript: Complete word-for-word script with [0s] [5s] [15s] [25s] timestamps`,
+    fields: ['hook', 'problem', 'solution', 'cta', 'fullScript'],
+  },
+}
+
+export async function adaptToPlatform({ variations, brandContext, platform, insights }) {
+  const key = getKey('anthropic')
+  const spec = PLATFORM_SPECS[platform]
+  if (!key) throw new Error('Add your Anthropic key in Settings to use Multi-Platform')
+  if (!spec) throw new Error(`Unknown platform: ${platform}`)
+
+  const items = variations.slice(0, 5)
+  if (!items.length) throw new Error('No variations to adapt — generate some copy first')
+
+  const painPts = insights?.painPoints?.slice(0, 3).map((p) => p.text).join('; ') || ''
+  const triggers = insights?.triggerPhrases?.slice(0, 5).join(', ') || ''
+
+  const prompt = `You are an expert multi-platform ad copywriter. Adapt these Facebook ad variations to ${spec.name} format.
+
+BRAND: ${brandContext.brandName || 'Brand'} | PRODUCT: ${brandContext.product || 'Product'} | AUDIENCE: ${brandContext.targetAudience || 'General'}
+${painPts ? `PAIN POINTS: ${painPts}` : ''}
+${triggers ? `TRIGGER PHRASES: ${triggers}` : ''}
+
+${spec.name.toUpperCase()} FORMAT:
+${spec.format}
+
+SOURCE VARIATIONS:
+${items.map((v, i) => `${i + 1}. Headline: "${v.headline}" | Angle: ${v.angle}
+Copy: "${v.primaryText?.substring(0, 200)}"`).join('\n\n')}
+
+Return ONLY valid JSON array with exactly ${items.length} objects. Each object must have these fields: ${spec.fields.join(', ')}.
+${platform === 'tiktok' ? 'hashtags must be a JSON array of strings.' : ''}
+${platform === 'twitter' ? 'All tweets must be under 280 characters.' : ''}
+${platform === 'google' ? 'All headlines must be under 30 characters. All descriptions under 90 characters.' : ''}`
+
+  const raw = await callClaudeLarge(key, prompt)
+  const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  const parsed = JSON.parse(cleaned)
+  return {
+    adaptations: Array.isArray(parsed) ? parsed : [],
+    platform,
+    platformName: spec.name,
+    fields: spec.fields,
+    sourceVariations: items,
+  }
+}
+
+// ── Email sequence generator ──────────────────────────────────
+const EMAIL_SEQUENCE_SPECS = {
+  welcome: {
+    label: 'Welcome Sequence',
+    count: 3,
+    description: '3 emails for new leads. Deliver value first, introduce the offer last.',
+    plan: `Email 1 (Day 0): Warm welcome. Deliver one immediately useful insight. Zero selling.
+Email 2 (Day 2): Your single best tip for their problem. Pure value, end with a soft mention.
+Email 3 (Day 5): Natural offer introduction. "Here's what I built to solve this..."`,
+  },
+  nurture: {
+    label: 'Nurture Sequence',
+    count: 5,
+    description: '5 emails to warm cold leads over 2 weeks.',
+    plan: `Email 1 (Day 1): Pain point story — they will relate immediately
+Email 2 (Day 3): The #1 mistake they are probably making (and the fix)
+Email 3 (Day 7): A surprising insight that reframes their thinking
+Email 4 (Day 10): Case study — how someone like them got a specific result
+Email 5 (Day 14): Direct soft offer with urgency`,
+  },
+  sales: {
+    label: 'Sales Sequence',
+    count: 5,
+    description: '5-email direct-response sequence with closing urgency.',
+    plan: `Email 1: Problem — make the cost of inaction visceral and real
+Email 2: Agitate — show what happens if they keep doing nothing
+Email 3: Solution — introduce the product as the obvious next step
+Email 4: Proof — specific testimonials, numbers, and outcomes
+Email 5: Close — deadline, scarcity, and final call to action`,
+  },
+  reactivation: {
+    label: 'Reactivation',
+    count: 3,
+    description: '3 emails to re-engage cold or dormant leads.',
+    plan: `Email 1: "We have not heard from you…" — gentle re-engagement, acknowledge time passed, no selling
+Email 2: Something has changed — new feature, fresh case study, or insight they missed
+Email 3: The goodbye email — explicit last-chance that converts through reverse psychology`,
+  },
+}
+
+export async function generateEmailSequence({ type, brandContext, insights }) {
+  const key = getKey('anthropic')
+  if (!key) throw new Error('Add your Anthropic key in Settings to generate email sequences')
+
+  const spec = EMAIL_SEQUENCE_SPECS[type]
+  if (!spec) throw new Error(`Unknown sequence type: ${type}`)
+
+  const painPts = insights?.painPoints?.slice(0, 3).map((p) => p.text).join('; ') || ''
+  const outcomes = insights?.desiredOutcomes?.slice(0, 3).map((o) => o.text).join('; ') || ''
+  const triggers = insights?.triggerPhrases?.slice(0, 6).join(', ') || ''
+  const objections = insights?.objections?.slice(0, 3).join('; ') || ''
+
+  const prompt = `You are a world-class email copywriter. Write a ${spec.label} for the brand below.
+
+BRAND: ${brandContext.brandName || 'Brand'}
+PRODUCT: ${brandContext.product || 'Product'}
+AUDIENCE: ${brandContext.targetAudience || 'Professionals'}
+LANDING URL: ${brandContext.landingPageUrl || 'https://example.com'}
+${painPts   ? `PAIN POINTS: ${painPts}`      : ''}
+${outcomes  ? `DESIRED OUTCOMES: ${outcomes}` : ''}
+${triggers  ? `TRIGGER PHRASES (use these naturally): ${triggers}` : ''}
+${objections ? `OBJECTIONS TO ADDRESS: ${objections}` : ''}
+
+SEQUENCE PLAN:
+${spec.plan}
+
+WRITING RULES:
+- Subject lines: max 48 chars, curiosity-driven, no exclamation marks
+- Preview text: 80-110 chars — adds context without repeating the subject
+- Body: plain conversational prose, short paragraphs (1-3 sentences each), sounds like a real person wrote it
+- No em dashes, no en dashes, no brackets, no ALL CAPS except acronyms
+- Each email ends with exactly ONE link — use the landing URL
+- Sequence must feel cohesive — each email references or builds on the last
+
+Return ONLY valid JSON array with exactly ${spec.count} objects:
+[{
+  "emailNumber": 1,
+  "sendDay": 0,
+  "subject": "...",
+  "previewText": "...",
+  "body": "full email body as plain text with real line breaks using \\n",
+  "cta": { "text": "...", "url": "${brandContext.landingPageUrl || 'https://example.com'}" }
+}]`
+
+  const raw = await callClaudeLarge(key, prompt)
+  const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  const parsed = JSON.parse(cleaned)
+  return {
+    id: crypto.randomUUID(),
+    type,
+    label: spec.label,
+    emails: Array.isArray(parsed) ? parsed : [],
+    product: brandContext.product,
+    createdAt: new Date().toISOString(),
+  }
+}
+
+export { EMAIL_SEQUENCE_SPECS, PLATFORM_SPECS }
