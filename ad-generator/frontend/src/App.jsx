@@ -245,7 +245,7 @@ export default function App() {
               {ALL_NAV.find((t) => t.id === activeTab)?.hint ?? 'Configuration & API keys'}
             </p>
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/8 border border-emerald-500/20 rounded-full">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
             <span className="dot-green" />
             <span className="text-[11px] font-medium text-emerald-400">Live</span>
           </div>

@@ -277,7 +277,7 @@ export default function CopyGenerator() {
               className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${
                 competitorSwipeFile
                   ? useCompetitorIntel
-                    ? 'bg-orange-900/15 border-orange-700/60 cursor-pointer'
+                    ? 'bg-orange-900/10 border-orange-700/60 cursor-pointer'
                     : 'bg-surface-800/40 border-white/[0.07] opacity-60 cursor-pointer'
                   : 'bg-surface-800/20 border-white/[0.04] opacity-50 cursor-default'
               }`}

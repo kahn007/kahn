@@ -109,7 +109,7 @@
            transition-all duration-150 cursor-pointer text-left;
   }
   .nav-active {
-    @apply bg-brand-500/12 text-brand-400 border border-brand-500/20;
+    @apply bg-brand-500/10 text-brand-400 border border-brand-500/20;
   }
   .nav-inactive {
     @apply text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04];
@@ -181,15 +181,15 @@
 
   /* ── Tooltip-style info box ─────────────────────────────────── */
   .info-box {
-    @apply bg-brand-500/8 border border-brand-500/20 rounded-lg p-3
+    @apply bg-brand-500/10 border border-brand-500/20 rounded-lg p-3
            text-xs text-brand-300/80 leading-relaxed;
   }
   .warn-box {
-    @apply bg-amber-500/8 border border-amber-500/20 rounded-lg p-3
+    @apply bg-amber-500/10 border border-amber-500/20 rounded-lg p-3
            text-xs text-amber-300/80 leading-relaxed;
   }
   .error-box {
-    @apply bg-red-500/8 border border-red-500/20 rounded-lg p-3
+    @apply bg-red-500/10 border border-red-500/20 rounded-lg p-3
            text-xs text-red-300/80 leading-relaxed;
   }
 }
