@@ -2179,7 +2179,39 @@ Calendar ID: ${agent.ghlCalendarId}
 Timezone: ${tz}`
 }
 
+// Ensure a provider credential exists in Vapi (creates or updates)
+async function ensureVapiCredential(vapiKey, provider, apiKey) {
+  const headers = { Authorization: `Bearer ${vapiKey}`, 'Content-Type': 'application/json' }
+  // Check existing credentials
+  const list = await fetch('https://api.vapi.ai/credential', { headers })
+  if (list.ok) {
+    const creds = await list.json()
+    const existing = (Array.isArray(creds) ? creds : creds.results || [])
+      .find(c => c.provider === provider)
+    if (existing) {
+      // Update existing
+      await fetch(`https://api.vapi.ai/credential/${existing.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ provider, apiKey }),
+      })
+      return
+    }
+  }
+  // Create new
+  await fetch('https://api.vapi.ai/credential', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ provider, apiKey }),
+  })
+}
+
 export async function syncVapiAssistant(agent, vapiKey) {
+  // Auto-register OpenRouter key with Vapi if needed
+  const openrouterKey = getKey('openrouter')
+  if (vapiModelProvider(agent.llmModel) === 'openrouter' && openrouterKey) {
+    await ensureVapiCredential(vapiKey, 'openrouter', openrouterKey)
+  }
   const systemPrompt = (agent.systemPrompt || 'You are a helpful voice assistant.') + ghlCalendarPrompt(agent)
 
   // GHL tools — only when calendar + webhook configured
