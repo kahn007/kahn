@@ -89,15 +89,24 @@ const LANGUAGES = [
 ]
 
 const LLM_MODELS = [
-  { id: 'llama-3.3-70b-versatile',   label: '⚡ Llama 3.3 70B via Groq — Fastest ~150ms' },
-  { id: 'llama-3.1-8b-instant',      label: '⚡ Llama 3.1 8B via Groq — Ultra fast ~80ms' },
-  { id: 'gpt-4o-mini',               label: '★ GPT-4o Mini — Best balance ~200ms' },
-  { id: 'gpt-4o',                    label: 'GPT-4o — Highest quality ~350ms' },
-  { id: 'gemini-2.0-flash',          label: 'Gemini 2.0 Flash — Fast ~150ms' },
-  { id: 'gemini-1.5-flash',          label: 'Gemini 1.5 Flash — Reliable ~200ms' },
-  { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6 — Nuanced ~400ms' },
-  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 — Fast Claude ~300ms' },
-  { id: 'claude-opus-4-6',           label: 'Claude Opus 4.6 — Most capable ~600ms' },
+  // xAI Grok
+  { id: 'grok-3-mini-fast', label: '🔥 Grok 3 Mini Fast (xAI) — Ultra fast voice' },
+  { id: 'grok-3-mini',      label: 'Grok 3 Mini (xAI) — Fast + smart' },
+  { id: 'grok-3-fast',      label: 'Grok 3 Fast (xAI) — High quality fast' },
+  { id: 'grok-3',           label: 'Grok 3 (xAI) — Most capable Grok' },
+  // Groq (LPU chip - sub-150ms)
+  { id: 'llama-3.3-70b-versatile', label: '⚡ Llama 3.3 70B via Groq — ~150ms free' },
+  { id: 'llama-3.1-8b-instant',    label: '⚡ Llama 3.1 8B via Groq — ~80ms cheapest' },
+  // OpenAI
+  { id: 'gpt-4o-mini',     label: '★ GPT-4o Mini — Best balance ~200ms' },
+  { id: 'gpt-4o',          label: 'GPT-4o — Highest quality OpenAI' },
+  // Google
+  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash — Fast ~150ms' },
+  { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash — Reliable' },
+  // Anthropic
+  { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6 — Nuanced' },
+  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 — Fast Claude' },
+  { id: 'claude-opus-4-6',           label: 'Claude Opus 4.6 — Most capable' },
 ]
 
 const TIMEZONES = [

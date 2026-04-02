@@ -92,6 +92,23 @@ const API_CONFIGS = [
     },
   },
   {
+    id: 'xai',
+    name: 'xAI (Grok)',
+    placeholder: 'xai-...',
+    helpUrl: 'https://console.x.ai',
+    helpLabel: 'console.x.ai',
+    color: 'text-white',
+    bg: 'bg-zinc-500/10 border-zinc-500/30',
+    dot: 'bg-zinc-300',
+    description: 'Grok 3 & Grok 3 Mini — xAI\'s frontier models, fast and highly capable for voice',
+    testFn: async (key) => {
+      const res = await fetch('https://api.x.ai/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+    },
+  },
+  {
     id: 'groq',
     name: 'Groq',
     placeholder: 'gsk_...',
