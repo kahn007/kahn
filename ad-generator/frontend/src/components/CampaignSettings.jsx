@@ -141,9 +141,18 @@ const API_CONFIGS = [
     dot: 'bg-emerald-500',
     description: 'Private Integration Token — contacts, calendars, opportunities',
     testFn: async (key) => {
-      const res = await fetch('https://services.leadconnectorhq.com/locations/search?limit=1', {
-        headers: { Authorization: `Bearer ${key}`, Version: '2021-07-28' },
-      })
+      // Private Integration Tokens are sub-account scoped JWTs —
+      // decode the payload to get locationId, then hit a location endpoint
+      let locationId
+      try {
+        const payload = JSON.parse(atob(key.split('.')[1]))
+        locationId = payload.locationId || payload.location_id
+      } catch (_) {}
+      if (!locationId) throw new Error('Could not read location from token — make sure this is a Private Integration Token')
+      const res = await fetch(
+        `https://services.leadconnectorhq.com/contacts/?locationId=${locationId}&limit=1`,
+        { headers: { Authorization: `Bearer ${key}`, Version: '2021-07-28' } },
+      )
       if (!res.ok) throw new Error(`GHL ${res.status}`)
     },
   },
