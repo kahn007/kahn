@@ -1504,208 +1504,491 @@ export async function updateGHLOpportunity(token, opportunityId, updates) {
   return res.json()
 }
 
-// ── Voice Agent server code generator ────────────────────────
-export function generateVoiceAgentServerCode({ agent, keys }) {
-  const voiceProviderBlock = {
-    elevenlabs: `
-// ElevenLabs TTS
-async function textToSpeech(text) {
-  const res = await fetch(\`https://api.elevenlabs.io/v1/text-to-speech/\${VOICE_ID}/stream\`, {
+// ── Voice Agent: test conversation (text simulation) ─────────
+export async function testAgentConversation({ systemPrompt, history, userMessage }) {
+  const key = getKey('anthropic')
+  if (!key) throw new Error('Add your Anthropic key in Settings')
+  const messages = [...history, { role: 'user', content: userMessage }]
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'xi-api-key': ELEVENLABS_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text, model_id: 'eleven_turbo_v2_5', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
+    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 400, system: systemPrompt, messages }),
   })
-  if (!res.ok) throw new Error('ElevenLabs TTS failed: ' + res.status)
-  return Buffer.from(await res.arrayBuffer())
-}`,
-    cartesia: `
-// Cartesia TTS
+  if (!res.ok) throw new Error(`Claude ${res.status}`)
+  const data = await res.json()
+  return data.content?.[0]?.text || ''
+}
+
+// ── Voice Agent server code generator ────────────────────────
+export function generateVoiceAgentServerCode({ agent }) {
+  const ghl = agent.ghl || {}
+  const tw  = agent.twilio || {}
+  const hasGHL = ghl.capabilities?.length > 0
+
+  const ghlTools = hasGHL ? `
+// GHL tool definitions for Claude function calling
+const GHL_TOOLS = [
+  { name: 'create_or_find_contact', description: 'Find or create a contact in GoHighLevel by phone number',
+    input_schema: { type: 'object', properties: { phone: { type: 'string' }, firstName: { type: 'string' }, lastName: { type: 'string' }, email: { type: 'string' } }, required: ['phone'] } },
+  { name: 'book_appointment', description: 'Book a calendar appointment for the contact',
+    input_schema: { type: 'object', properties: { contactId: { type: 'string' }, startTime: { type: 'string', description: 'ISO 8601 e.g. 2025-06-15T14:00:00Z' }, title: { type: 'string' } }, required: ['contactId', 'startTime'] } },
+  { name: 'update_pipeline_stage', description: 'Move contact to a pipeline stage (new/qualified/proposal/won/lost)',
+    input_schema: { type: 'object', properties: { contactId: { type: 'string' }, stage: { type: 'string' } }, required: ['contactId', 'stage'] } },
+  { name: 'log_note', description: 'Log a note on the contact record',
+    input_schema: { type: 'object', properties: { contactId: { type: 'string' }, note: { type: 'string' } }, required: ['contactId', 'note'] } },
+  { name: 'end_call', description: 'End the call politely when conversation is complete',
+    input_schema: { type: 'object', properties: { summary: { type: 'string' } } } },
+]
+
+// GHL REST helpers
+const GHL = 'https://services.leadconnectorhq.com'
+function ghlHeaders() { return { Authorization: \`Bearer \${GHL_TOKEN}\`, Version: '2021-07-28', 'Content-Type': 'application/json' } }
+
+async function ghlFindOrCreate(phone, extra = {}) {
+  const s = await fetch(\`\${GHL}/contacts/?locationId=\${GHL_LOCATION_ID}&query=\${encodeURIComponent(phone)}\`, { headers: ghlHeaders() })
+  const sd = await s.json()
+  if (sd.contacts?.length) return sd.contacts[0]
+  const r = await fetch(\`\${GHL}/contacts/\`, { method: 'POST', headers: ghlHeaders(), body: JSON.stringify({ locationId: GHL_LOCATION_ID, phone, ...extra }) })
+  return (await r.json()).contact
+}
+
+async function ghlBookAppointment(contactId, startTime, title) {
+  const end = new Date(new Date(startTime).getTime() + 3600000).toISOString()
+  await fetch(\`\${GHL}/calendars/events/appointments\`, {
+    method: 'POST', headers: ghlHeaders(),
+    body: JSON.stringify({ locationId: GHL_LOCATION_ID, calendarId: GHL_CALENDAR_ID, contactId, startTime, endTime: end, title: title || 'Booked via Voice Agent' }),
+  })
+}
+
+async function ghlCreateOpportunity(contactId, status = 'open') {
+  if (!GHL_PIPELINE_ID) return
+  await fetch(\`\${GHL}/opportunities/\`, {
+    method: 'POST', headers: ghlHeaders(),
+    body: JSON.stringify({ locationId: GHL_LOCATION_ID, pipelineId: GHL_PIPELINE_ID, contactId, name: 'Voice Agent Lead', status }),
+  })
+}
+
+async function ghlAddNote(contactId, note) {
+  await fetch(\`\${GHL}/contacts/\${contactId}/notes\`, {
+    method: 'POST', headers: ghlHeaders(),
+    body: JSON.stringify({ body: note }),
+  })
+}
+
+async function executeTool(tool, callerPhone) {
+  const i = tool.input
+  if (tool.name === 'create_or_find_contact') return ghlFindOrCreate(i.phone || callerPhone, { firstName: i.firstName, lastName: i.lastName, email: i.email })
+  if (tool.name === 'book_appointment') { await ghlBookAppointment(i.contactId, i.startTime, i.title); return { ok: true } }
+  if (tool.name === 'update_pipeline_stage') { await ghlCreateOpportunity(i.contactId, i.stage); return { ok: true } }
+  if (tool.name === 'log_note') { await ghlAddNote(i.contactId, i.note); return { ok: true } }
+  if (tool.name === 'end_call') return { end: true, summary: i.summary }
+  return {}
+}` : `
+const GHL_TOOLS = []
+async function executeTool() { return {} }`
+
+  const ttsBlock = agent.voiceProvider === 'cartesia' ? `
+// Cartesia TTS → pcm_mulaw 8kHz (Twilio-ready)
 async function textToSpeech(text) {
   const res = await fetch('https://api.cartesia.ai/tts/bytes', {
     method: 'POST',
     headers: { 'X-API-Key': CARTESIA_KEY, 'Cartesia-Version': '2024-06-10', 'Content-Type': 'application/json' },
     body: JSON.stringify({ model_id: 'sonic-english', transcript: text, voice: { mode: 'id', id: VOICE_ID }, output_format: { container: 'raw', encoding: 'pcm_mulaw', sample_rate: 8000 } }),
   })
-  if (!res.ok) throw new Error('Cartesia TTS failed: ' + res.status)
+  if (!res.ok) throw new Error('Cartesia TTS ' + res.status + ': ' + await res.text())
   return Buffer.from(await res.arrayBuffer())
-}`,
-    hume: `
-// Hume EVI TTS (via REST)
+}` : agent.voiceProvider === 'deepgram' ? `
+// Deepgram Aura TTS → mulaw 8kHz (Twilio-ready)
 async function textToSpeech(text) {
-  // Hume EVI uses its own WebSocket protocol — see docs.hume.ai/docs/empathic-voice
-  // For REST synthesis, use ElevenLabs or Cartesia as a fallback
-  throw new Error('Hume EVI requires WebSocket — see docs.hume.ai/docs/empathic-voice for full integration')
-}`,
-    deepgram: `
-// Deepgram Aura TTS
-async function textToSpeech(text) {
-  const res = await fetch('https://api.deepgram.com/v1/speak?model=aura-asteria-en', {
+  const res = await fetch('https://api.deepgram.com/v1/speak?model=aura-asteria-en&encoding=mulaw&sample_rate=8000', {
     method: 'POST',
     headers: { Authorization: \`Token \${DEEPGRAM_KEY}\`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
   })
-  if (!res.ok) throw new Error('Deepgram TTS failed: ' + res.status)
+  if (!res.ok) throw new Error('Deepgram TTS ' + res.status)
   return Buffer.from(await res.arrayBuffer())
-}`,
-  }
+}` : `
+// ElevenLabs TTS → ulaw_8000 (Twilio-ready, no conversion needed)
+async function textToSpeech(text) {
+  const res = await fetch(\`https://api.elevenlabs.io/v1/text-to-speech/\${VOICE_ID}?output_format=ulaw_8000\`, {
+    method: 'POST',
+    headers: { 'xi-api-key': ELEVENLABS_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, model_id: 'eleven_turbo_v2_5', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
+  })
+  if (!res.ok) throw new Error('ElevenLabs TTS ' + res.status + ': ' + await res.text())
+  return Buffer.from(await res.arrayBuffer())
+}`
 
-  const llmBlock = {
-    anthropic: `
-// Claude LLM
-async function chat(messages) {
+  const llmProvider = agent.llmModel?.startsWith('gpt') ? 'openai'
+    : agent.llmModel?.startsWith('gemini') ? 'google' : 'anthropic'
+
+  const llmBlock = llmProvider === 'openai' ? `
+// OpenAI GPT LLM
+async function getLLMResponse(history) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: \`Bearer \${OPENAI_KEY}\`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: LLM_MODEL, max_tokens: 400, messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...history], tools: GHL_TOOLS.map(t => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } })), tool_choice: GHL_TOOLS.length ? 'auto' : undefined }),
+  })
+  const data = await res.json()
+  const msg = data.choices[0].message
+  return { text: msg.content || '', toolUse: (msg.tool_calls || []).map(tc => ({ id: tc.id, name: tc.function.name, input: JSON.parse(tc.function.arguments) })), stopReason: data.choices[0].finish_reason }
+}` : `
+// Claude LLM with tool use
+async function getLLMResponse(history) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'x-api-key': ANTHROPIC_KEY, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: '${agent.llmModel}', max_tokens: 300, system: SYSTEM_PROMPT, messages }),
+    body: JSON.stringify({ model: LLM_MODEL, max_tokens: 400, system: SYSTEM_PROMPT, messages: history, ...(GHL_TOOLS.length ? { tools: GHL_TOOLS } : {}) }),
   })
+  if (!res.ok) throw new Error('LLM error ' + res.status + ': ' + await res.text())
   const data = await res.json()
-  return data.content?.[0]?.text || ''
-}`,
-    openai: `
-// OpenAI LLM
-const OpenAI = require('openai')
-const openai = new OpenAI({ apiKey: OPENAI_KEY })
-async function chat(messages) {
-  const res = await openai.chat.completions.create({
-    model: '${agent.llmModel}', max_tokens: 300,
-    messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
-  })
-  return res.choices[0].message.content || ''
-}`,
+  return {
+    text: data.content.filter(c => c.type === 'text').map(c => c.text).join(' '),
+    toolUse: data.content.filter(c => c.type === 'tool_use').map(t => ({ id: t.id, name: t.name, input: t.input })),
+    stopReason: data.stop_reason,
   }
+}`
 
-  const llmProvider = LLM_MODELS_MAP[agent.llmModel] || 'anthropic'
-
-  const ghlBlock = agent.ghlCapabilities.length ? `
-// ── GoHighLevel CRM helpers ──────────────────────────────────
-const GHL_TOKEN = process.env.GHL_TOKEN || '${keys.ghl_token || ''}'
-const GHL_LOC   = process.env.GHL_LOCATION_ID || '${keys.ghl_location_id || ''}'
-const GHL_BASE  = 'https://services.leadconnectorhq.com'
-const ghlHeaders = { Authorization: \`Bearer \${GHL_TOKEN}\`, Version: '2021-07-28', 'Content-Type': 'application/json' }
-
-async function findOrCreateContact(phone, name) {
-  const search = await fetch(\`\${GHL_BASE}/contacts/?locationId=\${GHL_LOC}&query=\${encodeURIComponent(phone)}\`, { headers: ghlHeaders })
-  const data = await search.json()
-  if (data.contacts?.length) return data.contacts[0]
-  const create = await fetch(\`\${GHL_BASE}/contacts/\`, {
-    method: 'POST', headers: ghlHeaders,
-    body: JSON.stringify({ locationId: GHL_LOC, phone, name: name || 'Unknown' }),
-  })
-  return (await create.json()).contact
-}
-${agent.ghlCapabilities.includes('calendar') ? `
-async function bookAppointment(contactId, startTime) {
-  await fetch(\`\${GHL_BASE}/calendars/events/appointments\`, {
-    method: 'POST', headers: ghlHeaders,
-    body: JSON.stringify({ locationId: GHL_LOC, calendarId: '${agent.ghlCalendarId || 'YOUR_CALENDAR_ID'}', contactId, startTime, title: 'Call booked via Voice Agent' }),
-  })
-}` : ''}
-${agent.ghlCapabilities.includes('conversations') ? `
-async function logConversation(contactId, message) {
-  await fetch(\`\${GHL_BASE}/conversations/messages\`, {
-    method: 'POST', headers: ghlHeaders,
-    body: JSON.stringify({ type: 'TYPE_CALL', contactId, locationId: GHL_LOC, message }),
-  })
-}` : ''}
-` : ''
-
-  const model = LLM_MODELS_MAP[agent.llmModel] || 'anthropic'
-  const ttsBlock = voiceProviderBlock[agent.voiceProvider] || voiceProviderBlock.elevenlabs
-  const llmCodeBlock = llmBlock[model] || llmBlock.anthropic
-
-  return `// ============================================================
-// Voice Agent Server — Generated by Brayne AI Marketing Suite
-// Agent: ${agent.name} (${agent.type})
-// ============================================================
-// Quick start:
-//   npm install express ws twilio axios
-//   node server.js
-// ============================================================
+  return `// =================================================================
+// Voice Agent: ${agent.name}
+// Type: ${agent.type} | Direction: ${agent.callDirection}
+// Voice: ${agent.voiceProvider}/${agent.voiceName || agent.voiceId}
+// LLM: ${agent.llmModel}
+// Generated by Brayne AI Marketing Suite
+// =================================================================
+// Deploy: Railway / Render / Fly.io / any Node host
+// npm install && node server.js
+// =================================================================
 
 require('dotenv').config()
-const express    = require('express')
-const twilio     = require('twilio')
-const WebSocket  = require('ws')
-const http       = require('http')
+const express   = require('express')
+const http      = require('http')
+const WebSocket = require('ws')
+const twilio    = require('twilio')
 
 const app    = express()
 const server = http.createServer(app)
-const wss    = new WebSocket.Server({ server })
+const wss    = new WebSocket.Server({ server, path: '/stream' })
 
-app.use(express.json())
 app.use(express.urlencoded({ extended: false }))
+app.use(express.json())
 
-// ── Config ──────────────────────────────────────────────────
-const PORT          = process.env.PORT || 3000
-const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || \`${(agent.systemPrompt || '').replace(/`/g, '\\`')}\`
-const FIRST_MESSAGE = process.env.FIRST_MESSAGE || \`${(agent.firstMessage || 'Hello, how can I help you today?').replace(/`/g, '\\`')}\`
-const VOICE_ID      = process.env.VOICE_ID || '${agent.voiceId || ''}'
-const TWILIO_SID    = process.env.TWILIO_SID || '${keys.twilio_sid || ''}'
-const TWILIO_TOKEN  = process.env.TWILIO_TOKEN || '${keys.twilio_token || ''}'
-const ANTHROPIC_KEY = process.env.ANTHROPIC_KEY || '${keys.anthropic || ''}'
-const OPENAI_KEY    = process.env.OPENAI_KEY || '${keys.openai || ''}'
-const ELEVENLABS_KEY= process.env.ELEVENLABS_KEY || '${keys.elevenlabs || ''}'
-const CARTESIA_KEY  = process.env.CARTESIA_KEY || '${keys.cartesia || ''}'
-const DEEPGRAM_KEY  = process.env.DEEPGRAM_KEY || '${keys.deepgram || ''}'
-const HUME_KEY      = process.env.HUME_KEY || '${keys.hume || ''}'
+// ── Config (all values from .env) ───────────────────────────
+const AGENT_NAME    = process.env.AGENT_NAME    || '${(agent.name || '').replace(/'/g, "\'")}'
+const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || \`${(agent.systemPrompt || '').replace(/`/g, '\`')}\`
+const FIRST_MESSAGE = process.env.FIRST_MESSAGE || \`${(agent.firstMessage || 'Hello, how can I help you today?').replace(/`/g, '\`')}\`
+const LLM_MODEL     = process.env.LLM_MODEL     || '${agent.llmModel}'
+const VOICE_ID      = process.env.VOICE_ID      || '${agent.voiceId || ''}'
+const LANGUAGE      = process.env.LANGUAGE      || '${agent.language || 'en'}'
+const MAX_MINUTES   = parseInt(process.env.MAX_MINUTES || '${agent.maxCallMinutes || 10}')
+
+// API Keys
+const ANTHROPIC_KEY  = process.env.ANTHROPIC_KEY  || ''
+const OPENAI_KEY     = process.env.OPENAI_KEY     || ''
+const ELEVENLABS_KEY = process.env.ELEVENLABS_KEY || ''
+const CARTESIA_KEY   = process.env.CARTESIA_KEY   || ''
+const DEEPGRAM_KEY   = process.env.DEEPGRAM_KEY   || ''
+
+// Twilio (per-agent)
+const TWILIO_SID   = process.env.TWILIO_SID   || '${tw.accountSid || ''}'
+const TWILIO_TOKEN = process.env.TWILIO_TOKEN || '${tw.authToken || ''}'
+
+// GHL (per-subaccount)
+const GHL_TOKEN       = process.env.GHL_TOKEN       || '${ghl.token || ''}'
+const GHL_LOCATION_ID = process.env.GHL_LOCATION_ID || '${ghl.locationId || ''}'
+const GHL_CALENDAR_ID = process.env.GHL_CALENDAR_ID || '${ghl.calendarId || ''}'
+const GHL_PIPELINE_ID = process.env.GHL_PIPELINE_ID || '${ghl.pipelineId || ''}'
+${ghlTools}
+${ttsBlock}
+${llmBlock}
 
 // ── Twilio Voice webhook ─────────────────────────────────────
 app.post('/twilio/voice', (req, res) => {
   const twiml = new twilio.twiml.VoiceResponse()
-  const gather = twiml.connect()
-  gather.stream({ url: \`wss://\${req.headers.host}/stream\`, track: 'both_tracks' })
+  const connect = twiml.connect()
+  connect.stream({ url: \`wss://\${req.headers.host}/stream\` })
   res.type('text/xml').send(twiml.toString())
 })
-${ghlBlock}
-${ttsBlock}
-${llmCodeBlock}
 
-// ── Media Stream handler ─────────────────────────────────────
+app.get('/health', (_req, res) => res.json({ ok: true, agent: AGENT_NAME }))
+
+// ── Media Stream WebSocket ───────────────────────────────────
 wss.on('connection', (ws) => {
-  console.log('Call connected')
-  const history = []
-  let buffer = ''
-  let callSid = null
+  let streamSid   = null
+  let callSid     = null
+  let callerPhone = ''
+  let dgWs        = null
+  const history   = []
+  let speaking    = false
+  let endPending  = false
+
+  // Send audio buffer back to Twilio
+  const sendAudio = (buf) => {
+    if (ws.readyState !== WebSocket.OPEN) return
+    ws.send(JSON.stringify({ event: 'media', streamSid, media: { payload: buf.toString('base64') } }))
+  }
+
+  // TTS → Twilio
+  const speak = async (text) => {
+    if (!text?.trim()) return
+    console.log('[Agent]', text)
+    speaking = true
+    try {
+      const audio = await textToSpeech(text)
+      sendAudio(audio)
+      // Rough duration estimate to avoid cutting off: 100ms per word, min 800ms
+      await new Promise(r => setTimeout(r, Math.max(800, text.split(' ').length * 120)))
+    } catch (err) { console.error('[TTS Error]', err.message) }
+    speaking = false
+  }
+
+  // Handle user transcript from Deepgram
+  const handleTranscript = async (transcript) => {
+    if (!transcript?.trim() || speaking || endPending) return
+    console.log('[User]', transcript)
+    history.push({ role: 'user', content: transcript })
+
+    let response = await getLLMResponse(history)
+
+    // Process tool calls (GHL actions)
+    while (response.toolUse?.length) {
+      const toolResults = []
+      for (const tool of response.toolUse) {
+        console.log('[Tool]', tool.name, tool.input)
+        const result = await executeTool(tool, callerPhone)
+        if (result?.end) endPending = true
+        toolResults.push({ type: 'tool_result', tool_use_id: tool.id, content: JSON.stringify(result) })
+      }
+      history.push({ role: 'assistant', content: response.toolUse.map(t => ({ type: 'tool_use', id: t.id, name: t.name, input: t.input })) })
+      history.push({ role: 'user', content: toolResults })
+      if (endPending) { await speak('Thank you so much for your time. Have a great day — goodbye!'); ws.close(); return }
+      response = await getLLMResponse(history)
+    }
+
+    history.push({ role: 'assistant', content: response.text })
+    await speak(response.text)
+  }
+
+  // Open Deepgram STT WebSocket
+  const initDeepgram = () => {
+    const url = 'wss://api.deepgram.com/v1/listen?' +
+      \`encoding=mulaw&sample_rate=8000&channels=1&\` +
+      \`model=nova-2&language=\${LANGUAGE}&\` +
+      \`endpointing=300&utterance_end_ms=1200&\` +
+      \`interim_results=true&smart_format=true\`
+
+    const dg = new WebSocket(url, { headers: { Authorization: \`Token \${DEEPGRAM_KEY}\` } })
+    dg.on('open',  () => console.log('[Deepgram] Connected'))
+    dg.on('error', (e) => console.error('[Deepgram Error]', e.message))
+    dg.on('close', () => console.log('[Deepgram] Disconnected'))
+    dg.on('message', (raw) => {
+      try {
+        const msg = JSON.parse(raw)
+        if (msg.type !== 'Results') return
+        const transcript = msg.channel?.alternatives?.[0]?.transcript
+        if (transcript && msg.is_final) handleTranscript(transcript).catch(console.error)
+      } catch {}
+    })
+    return dg
+  }
+
+  // Call timeout
+  setTimeout(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      speak('I need to wrap up our call now. Thank you and have a great day!').then(() => ws.close())
+    }
+  }, MAX_MINUTES * 60 * 1000)
 
   ws.on('message', async (raw) => {
-    const msg = JSON.parse(raw)
+    try {
+      const msg = JSON.parse(raw)
 
-    if (msg.event === 'start') {
-      callSid = msg.start.callSid
-      console.log('Call started:', callSid)
-      // Send greeting
-      const audio = await textToSpeech(FIRST_MESSAGE).catch(console.error)
-      if (audio) ws.send(JSON.stringify({ event: 'media', streamSid: msg.start.streamSid, media: { payload: audio.toString('base64') } }))
-    }
+      if (msg.event === 'start') {
+        streamSid   = msg.start.streamSid
+        callSid     = msg.start.callSid
+        callerPhone = msg.start.customParameters?.callerPhone || ''
+        console.log('[Call Started]', callSid)
+        dgWs = initDeepgram()
+        dgWs.on('open', async () => {
+          await new Promise(r => setTimeout(r, 400))
+          await speak(FIRST_MESSAGE)
+        })
+      }
 
-    if (msg.event === 'media' && msg.media.track === 'inbound') {
-      // Accumulate audio — in production, feed to Deepgram WebSocket STT
-      // For simplicity, this scaffold processes text once you add your STT integration
-      buffer += msg.media.payload
-    }
+      if (msg.event === 'media' && msg.media?.track === 'inbound') {
+        if (dgWs?.readyState === WebSocket.OPEN) {
+          dgWs.send(Buffer.from(msg.media.payload, 'base64'))
+        }
+      }
 
-    if (msg.event === 'stop') {
-      console.log('Call ended:', callSid)
-      ws.close()
-    }
+      if (msg.event === 'stop') {
+        console.log('[Call Ended]', callSid)
+        dgWs?.close()
+      }
+    } catch (err) { console.error('[Stream Error]', err.message) }
   })
 
-  // Called by your STT integration with transcript text
-  ws.processTranscript = async (transcript, streamSid) => {
-    console.log('User:', transcript)
-    history.push({ role: 'user', content: transcript })
-    const reply = await chat(history)
-    console.log('Agent:', reply)
-    history.push({ role: 'assistant', content: reply })
-    const audio = await textToSpeech(reply)
-    ws.send(JSON.stringify({ event: 'media', streamSid, media: { payload: audio.toString('base64') } }))
-  }
+  ws.on('close', () => dgWs?.close())
+  ws.on('error', (e) => console.error('[WS Error]', e.message))
 })
 
-server.listen(PORT, () => console.log(\`Voice agent running on port \${PORT}\`))
-// Webhook URL for Twilio: https://your-domain.com/twilio/voice
+const PORT = process.env.PORT || 3000
+server.listen(PORT, () => {
+  console.log(\`[${agent.name || 'Voice Agent'}] Running on port \${PORT}\`)
+  console.log(\`Set Twilio webhook → POST https://YOUR_DOMAIN/twilio/voice\`)
+})
 `
 }
+
+export function generatePackageJson(agent) {
+  return JSON.stringify({
+    name: (agent.name || 'voice-agent').toLowerCase().replace(/\s+/g, '-'),
+    version: '1.0.0',
+    description: 'Voice Agent: ' + (agent.name || 'voice-agent') + ' — generated by Brayne AI',
+    main: 'server.js',
+    scripts: { start: 'node server.js', dev: 'node --watch server.js' },
+    dependencies: {
+      express: '^4.18.2',
+      ws: '^8.16.0',
+      twilio: '^5.0.0',
+      dotenv: '^16.4.5',
+    },
+  }, null, 2)
+}
+
+// ── Scrape website for services/products ─────────────────────
+export async function scrapeWebsiteForServices(url) {
+  const key = getKey('anthropic')
+  if (!key) throw new Error('Add your Anthropic key in Settings')
+
+  // Jina Reader converts any URL to clean markdown — no CORS issues
+  const cleanUrl = url.startsWith('http') ? url : `https://${url}`
+  const readerRes = await fetch(`https://r.jina.ai/${cleanUrl}`, {
+    headers: { Accept: 'text/plain' },
+  })
+  if (!readerRes.ok) throw new Error(`Could not read website (${readerRes.status})`)
+  const rawText = await readerRes.text()
+  const truncated = rawText.slice(0, 7000)
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1200,
+      messages: [{
+        role: 'user',
+        content: `Extract business information from this website and return ONLY valid JSON (no markdown, no explanation):
+
+{
+  "companyName": "string",
+  "tagline": "1-sentence tagline",
+  "services": [
+    { "id": "svc_1", "name": "Service Name", "description": "1-2 sentence description" }
+  ]
+}
+
+Include up to 12 services/products/offers. Give each a unique id like svc_1, svc_2, etc.
+
+Website content:
+${truncated}`,
+      }],
+    }),
+  })
+  if (!res.ok) throw new Error(`Claude ${res.status}`)
+  const data = await res.json()
+  const text = data.content?.[0]?.text || '{}'
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error('Could not parse website data')
+  return JSON.parse(match[0])
+}
+
+// ── Generate agent prompt from scraped services ───────────────
+export async function generateAgentPromptFromServices({ companyName, services, callDirection, firstMessage, language }) {
+  const key = getKey('anthropic')
+  if (!key) throw new Error('Add your Anthropic key in Settings')
+
+  const serviceList = services.map((s, i) => `${i + 1}. ${s.name}: ${s.description}`).join('\n')
+  const direction = callDirection === 'outbound' ? 'outbound (you call the lead first)' : 'inbound (the customer called in)'
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      messages: [{
+        role: 'user',
+        content: `Create a voice AI agent system prompt for a ${direction} call agent for "${companyName}".
+
+Services the agent handles:
+${serviceList}
+
+Language: ${language || 'en'}
+${firstMessage ? `Opening message: "${firstMessage}"` : ''}
+
+Return ONLY valid JSON (no markdown):
+{
+  "systemPrompt": "Full system prompt (300-500 words, written in second person 'You are...'). Include: role, company, services they can discuss/book, how to qualify leads, when to book appointments, objection handling, call ending procedure. Keep it conversational for voice — short sentences, natural pacing.",
+  "firstMessage": "Natural opening line (1-2 sentences, warm and conversational)"
+}`,
+      }],
+    }),
+  })
+  if (!res.ok) throw new Error(`Claude ${res.status}`)
+  const data = await res.json()
+  const text = data.content?.[0]?.text || '{}'
+  const match = text.match(/\{[\s\S]*\}/)
+  if (!match) throw new Error('Could not parse prompt')
+  return JSON.parse(match[0])
+}
+
+export function generateEnvExample(agent) {
+  const ghl = agent.ghl || {}
+  const tw  = agent.twilio || {}
+  return [
+    '# === Voice Agent Config ===',
+    `AGENT_NAME="${agent.name}"`,
+    `SYSTEM_PROMPT="(paste your system prompt here)"`,
+    `FIRST_MESSAGE="${agent.firstMessage || 'Hello, how can I help you today?'}"`,
+    `LLM_MODEL=${agent.llmModel}`,
+    `LANGUAGE=${agent.language || 'en'}`,
+    `MAX_MINUTES=${agent.maxCallMinutes || 10}`,
+    '',
+    '# === Voice ===',
+    `VOICE_ID=${agent.voiceId || 'your_voice_id'}`,
+    '',
+    '# === API Keys ===',
+    'ANTHROPIC_KEY=sk-ant-...',
+    'DEEPGRAM_KEY=your_deepgram_key',
+    agent.voiceProvider === 'elevenlabs' ? 'ELEVENLABS_KEY=sk_...' : '',
+    agent.voiceProvider === 'cartesia'   ? 'CARTESIA_KEY=sk_car_...' : '',
+    agent.voiceProvider === 'hume'       ? 'HUME_KEY=...' : '',
+    '',
+    '# === Twilio (per agent) ===',
+    `TWILIO_SID=${tw.accountSid || 'AC...'}`,
+    `TWILIO_TOKEN=${tw.authToken || 'your_auth_token'}`,
+    '',
+    ghl.capabilities?.length ? '# === GoHighLevel (per subaccount) ===' : '',
+    ghl.capabilities?.length ? `GHL_TOKEN=${ghl.token || 'eyJhbGci...'}` : '',
+    ghl.capabilities?.length ? `GHL_LOCATION_ID=${ghl.locationId || 'your_location_id'}` : '',
+    ghl.capabilities?.includes('calendar') ? `GHL_CALENDAR_ID=${ghl.calendarId || 'your_calendar_id'}` : '',
+    ghl.capabilities?.includes('opportunities') ? `GHL_PIPELINE_ID=${ghl.pipelineId || 'your_pipeline_id'}` : '',
+  ].filter(l => l !== null && l !== undefined).join('\n').trim()
+}
+
+
 
 // LLM provider map (used by code generator)
 const LLM_MODELS_MAP = {

@@ -235,7 +235,6 @@ export const useAdStore = create(
             : s.activeAgentId,
         })),
       setActiveAgentId: (id) => set({ activeAgentId: id }),
-
       // Onboarding
       hasOnboarded: false,
       setHasOnboarded: (v) => set({ hasOnboarded: v }),
