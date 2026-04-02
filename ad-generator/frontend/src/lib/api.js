@@ -2143,14 +2143,17 @@ export function generateEnvExample(agent) {
 
 // ── Vapi: sync assistant + trigger call ──────────────────────
 // Map model ID → Vapi provider string
+// OpenRouter model IDs use 'provider/model' format — detected by the '/' separator
 function vapiModelProvider(modelId) {
-  if (!modelId) return 'openai'
+  if (!modelId) return 'openrouter'
+  if (modelId.includes('/')) return 'openrouter'  // e.g. openai/gpt-4o-mini, x-ai/grok-3
+  // Legacy bare IDs (backwards compat)
   if (modelId.startsWith('claude')) return 'anthropic'
   if (modelId.startsWith('gpt') || modelId.startsWith('o1') || modelId.startsWith('o3')) return 'openai'
   if (modelId.startsWith('gemini')) return 'google'
   if (modelId.startsWith('llama') || modelId.startsWith('mixtral') || modelId.startsWith('gemma')) return 'groq'
   if (modelId.startsWith('grok')) return 'xai'
-  return 'openai'
+  return 'openrouter'
 }
 
 // Build GHL calendar system prompt addition
@@ -2227,10 +2230,13 @@ export async function syncVapiAssistant(agent, vapiKey) {
     // ── Model ────────────────────────────────────────────────────
     model: {
       provider: vapiModelProvider(agent.llmModel),
-      model: agent.llmModel || 'gpt-4o-mini',
+      model: agent.llmModel || 'openai/gpt-4o-mini',
       messages: [{ role: 'system', content: systemPrompt }],
       temperature: 0.7,
-      ...(tools.length > 0 ? { toolIds: undefined } : {}),
+      // Pass OpenRouter key inline so Vapi can use any model without dashboard config
+      ...(vapiModelProvider(agent.llmModel) === 'openrouter' && getKey('openrouter')
+        ? { metadata: { openRouterApiKey: getKey('openrouter') } }
+        : {}),
     },
 
     // ── Voice ────────────────────────────────────────────────────

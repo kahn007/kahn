@@ -88,25 +88,25 @@ const LANGUAGES = [
   { id: 'it', label: 'Italian' },
 ]
 
+// All via OpenRouter — one key covers everything
 const LLM_MODELS = [
   // xAI Grok
-  { id: 'grok-3-mini-fast', label: '🔥 Grok 3 Mini Fast (xAI) — Ultra fast voice' },
-  { id: 'grok-3-mini',      label: 'Grok 3 Mini (xAI) — Fast + smart' },
-  { id: 'grok-3-fast',      label: 'Grok 3 Fast (xAI) — High quality fast' },
-  { id: 'grok-3',           label: 'Grok 3 (xAI) — Most capable Grok' },
-  // Groq (LPU chip - sub-150ms)
-  { id: 'llama-3.3-70b-versatile', label: '⚡ Llama 3.3 70B via Groq — ~150ms free' },
-  { id: 'llama-3.1-8b-instant',    label: '⚡ Llama 3.1 8B via Groq — ~80ms cheapest' },
+  { id: 'x-ai/grok-3-mini-fast', label: '🔥 Grok 3 Mini Fast — Ultra low latency' },
+  { id: 'x-ai/grok-3-mini',      label: 'Grok 3 Mini — Fast + smart' },
+  { id: 'x-ai/grok-3',           label: 'Grok 3 — Most capable Grok' },
   // OpenAI
-  { id: 'gpt-4o-mini',     label: '★ GPT-4o Mini — Best balance ~200ms' },
-  { id: 'gpt-4o',          label: 'GPT-4o — Highest quality OpenAI' },
+  { id: 'openai/gpt-4o-mini',    label: '★ GPT-4o Mini — Best balance' },
+  { id: 'openai/gpt-4o',         label: 'GPT-4o — Top OpenAI quality' },
   // Google
-  { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash — Fast ~150ms' },
-  { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash — Reliable' },
+  { id: 'google/gemini-2.0-flash-001', label: 'Gemini 2.0 Flash — Fast & cheap' },
+  { id: 'google/gemini-1.5-flash',     label: 'Gemini 1.5 Flash — Reliable' },
+  // Meta Llama
+  { id: 'meta-llama/llama-3.3-70b-instruct', label: 'Llama 3.3 70B — Open source' },
+  { id: 'meta-llama/llama-3.1-8b-instruct',  label: 'Llama 3.1 8B — Cheapest' },
   // Anthropic
-  { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6 — Nuanced' },
-  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 — Fast Claude' },
-  { id: 'claude-opus-4-6',           label: 'Claude Opus 4.6 — Most capable' },
+  { id: 'anthropic/claude-3-5-sonnet',       label: 'Claude 3.5 Sonnet — Nuanced' },
+  { id: 'anthropic/claude-3-5-haiku',        label: 'Claude 3.5 Haiku — Fast Claude' },
+  { id: 'anthropic/claude-3-opus',           label: 'Claude 3 Opus — Most capable' },
 ]
 
 const TIMEZONES = [

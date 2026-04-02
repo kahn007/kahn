@@ -92,34 +92,17 @@ const API_CONFIGS = [
     },
   },
   {
-    id: 'xai',
-    name: 'xAI (Grok)',
-    placeholder: 'xai-...',
-    helpUrl: 'https://console.x.ai',
-    helpLabel: 'console.x.ai',
-    color: 'text-white',
-    bg: 'bg-zinc-500/10 border-zinc-500/30',
-    dot: 'bg-zinc-300',
-    description: 'Grok 3 & Grok 3 Mini — xAI\'s frontier models, fast and highly capable for voice',
+    id: 'openrouter',
+    name: 'OpenRouter',
+    placeholder: 'sk-or-v1-...',
+    helpUrl: 'https://openrouter.ai/keys',
+    helpLabel: 'openrouter.ai/keys',
+    color: 'text-indigo-400',
+    bg: 'bg-indigo-500/10 border-indigo-500/30',
+    dot: 'bg-indigo-500',
+    description: 'One key — every model. Grok, GPT-4o, Gemini, Llama, Claude — all via Vapi',
     testFn: async (key) => {
-      const res = await fetch('https://api.x.ai/v1/models', {
-        headers: { Authorization: `Bearer ${key}` },
-      })
-      if (!res.ok) throw new Error(`Status ${res.status}`)
-    },
-  },
-  {
-    id: 'groq',
-    name: 'Groq',
-    placeholder: 'gsk_...',
-    helpUrl: 'https://console.groq.com/keys',
-    helpLabel: 'console.groq.com',
-    color: 'text-orange-400',
-    bg: 'bg-orange-500/10 border-orange-500/30',
-    dot: 'bg-orange-500',
-    description: 'Llama 3.3 70B via Groq LPU chip — fastest LLM for voice (~150ms)',
-    testFn: async (key) => {
-      const res = await fetch('https://api.groq.com/openai/v1/models', {
+      const res = await fetch('https://openrouter.ai/api/v1/models', {
         headers: { Authorization: `Bearer ${key}` },
       })
       if (!res.ok) throw new Error(`Status ${res.status}`)
@@ -138,23 +121,6 @@ const API_CONFIGS = [
     testFn: async (key) => {
       const res = await fetch('https://api.cartesia.ai/voices', {
         headers: { 'X-API-Key': key, 'Cartesia-Version': '2024-06-10' },
-      })
-      if (!res.ok) throw new Error(`Status ${res.status}`)
-    },
-  },
-  {
-    id: 'openai',
-    name: 'OpenAI',
-    placeholder: 'sk-...',
-    helpUrl: 'https://platform.openai.com/api-keys',
-    helpLabel: 'platform.openai.com',
-    color: 'text-cyan-400',
-    bg: 'bg-cyan-500/10 border-cyan-500/30',
-    dot: 'bg-cyan-500',
-    description: 'GPT-4o Mini is the recommended model for low-latency voice agents',
-    testFn: async (key) => {
-      const res = await fetch('https://api.openai.com/v1/models', {
-        headers: { Authorization: `Bearer ${key}` },
       })
       if (!res.ok) throw new Error(`Status ${res.status}`)
     },
