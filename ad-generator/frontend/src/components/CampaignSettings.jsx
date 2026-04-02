@@ -92,6 +92,23 @@ const API_CONFIGS = [
     },
   },
   {
+    id: 'openai',
+    name: 'OpenAI',
+    placeholder: 'sk-...',
+    helpUrl: 'https://platform.openai.com/api-keys',
+    helpLabel: 'platform.openai.com',
+    color: 'text-cyan-400',
+    bg: 'bg-cyan-500/10 border-cyan-500/30',
+    dot: 'bg-cyan-500',
+    description: 'GPT-4o Mini is the recommended model for low-latency voice agents',
+    testFn: async (key) => {
+      const res = await fetch('https://api.openai.com/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+    },
+  },
+  {
     id: 'elevenlabs',
     name: 'ElevenLabs',
     placeholder: 'sk_...',

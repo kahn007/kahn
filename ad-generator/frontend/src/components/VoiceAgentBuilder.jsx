@@ -2,14 +2,14 @@ import React, { useState, useEffect, useRef } from 'react'
 import {
   Phone, Plus, Trash2, Wand2, Globe, Copy,
   Check, AlertCircle, Loader2, RefreshCw, MessageSquare,
-  Play, Mic, Zap, Building2, Search, PhoneCall,
+  Play, Mic, Zap, Building2, Search, PhoneCall, X, Calendar,
 } from 'lucide-react'
 import { useAdStore } from '../store/adStore'
 import { getKey } from '../lib/keys'
 import {
   syncVapiAssistant, triggerVapiCall,
   testAgentConversation, listElevenLabsVoices,
-  listTwilioNumbers,
+  listTwilioNumbers, fetchGHLCalendars,
   scrapeWebsiteForServices, generateAgentPromptFromServices,
 } from '../lib/api'
 import { v4 as uuidv4 } from 'uuid'
@@ -21,7 +21,7 @@ const DEFAULT_AGENT = () => ({
   callDirection: 'inbound',
   language: 'en',
   maxCallMinutes: 10,
-  llmModel: 'claude-sonnet-4-6',
+  llmModel: 'gpt-4o-mini',
   voiceId: '',
   voiceName: '',
   firstMessage: '',
@@ -32,13 +32,17 @@ const DEFAULT_AGENT = () => ({
   companyName: '',
   twilioPhoneNumber: '',
   vapiAssistantId: '',
+  ghlCalendarId: '',
+  ghlBookingWebhookUrl: '',
   createdAt: new Date().toISOString(),
 })
 
 const LLM_MODELS = [
-  { id: 'claude-opus-4-6',         label: 'Claude Opus 4.6 — Most capable' },
-  { id: 'claude-sonnet-4-6',       label: 'Claude Sonnet 4.6 — Best balance' },
-  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 — Fastest' },
+  { id: 'gpt-4o-mini',               label: 'GPT-4o Mini — ★ Best for voice (fast + cheap)' },
+  { id: 'gpt-4o',                    label: 'GPT-4o — Most capable OpenAI' },
+  { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6 — Great balance' },
+  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 — Fastest Claude' },
+  { id: 'claude-opus-4-6',           label: 'Claude Opus 4.6 — Most capable Claude' },
 ]
 const TABS = ['Setup', 'Voice', 'Test Chat', 'Live Test', 'Calls']
 
@@ -213,7 +217,86 @@ function SetupTab({ agent, update }) {
           className="w-full accent-brand-500"/>
       </Field>
 
+      <GHLCalendarPicker
+        calendarId={agent.ghlCalendarId}
+        webhookUrl={agent.ghlBookingWebhookUrl}
+        onChange={(cal, hook) => update({ ghlCalendarId: cal, ghlBookingWebhookUrl: hook })}
+      />
+
       <PhoneNumberPicker value={agent.twilioPhoneNumber} onChange={v=>update({twilioPhoneNumber:v})}/>
+    </div>
+  )
+}
+
+// ── GHL Calendar Picker ───────────────────────────────────────
+function GHLCalendarPicker({ calendarId, webhookUrl, onChange }) {
+  const [calendars, setCalendars] = useState([])
+  const [loading,   setLoading]   = useState(false)
+  const [err,       setErr]       = useState('')
+
+  useEffect(() => { loadCalendars() }, [])
+
+  async function loadCalendars() {
+    const token      = getKey('ghl_token')
+    const locationId = getKey('ghl_location_id')
+    if (!token || !locationId) { setErr('Add GHL Token + Location ID in Settings first'); return }
+    setLoading(true); setErr('')
+    try {
+      const data = await fetchGHLCalendars(token, locationId)
+      setCalendars(data.calendars || [])
+    } catch(e) { setErr(e.message) }
+    finally { setLoading(false) }
+  }
+
+  return (
+    <div className="border border-white/[0.08] rounded-xl p-4 space-y-4 bg-surface-900/50">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Calendar size={13} className="text-emerald-400"/>
+          <p className="text-sm font-semibold text-white">GHL Appointment Booking</p>
+          <span className="text-xs text-zinc-600 ml-1">optional</span>
+        </div>
+        <button onClick={loadCalendars} disabled={loading} className="btn-ghost text-xs">
+          <RefreshCw size={11} className={loading ? 'animate-spin' : ''}/>Refresh
+        </button>
+      </div>
+
+      {err && <p className="text-xs text-amber-400 flex items-center gap-1"><AlertCircle size={11}/>{err}</p>}
+
+      <Field label="Calendar" hint="The agent will book appointments into this calendar">
+        {calendars.length > 0 ? (
+          <select className="input" value={calendarId} onChange={e => onChange(e.target.value, webhookUrl)}>
+            <option value="">No booking — agent only talks</option>
+            {calendars.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        ) : (
+          <div className="flex gap-2">
+            <input className="input flex-1 font-mono text-xs" placeholder="Calendar ID (paste manually)"
+              value={calendarId} onChange={e => onChange(e.target.value, webhookUrl)}/>
+            {loading && <Loader2 size={13} className="text-zinc-600 animate-spin self-center flex-shrink-0"/>}
+          </div>
+        )}
+      </Field>
+
+      {calendarId && (
+        <Field label="Booking Webhook URL"
+          hint="Vapi calls this URL to book appointments. Use Make.com, Zapier, or your own endpoint.">
+          <input className="input font-mono text-xs" placeholder="https://hook.make.com/..."
+            value={webhookUrl} onChange={e => onChange(calendarId, e.target.value)}/>
+          <div className="mt-2 p-3 bg-emerald-500/5 border border-emerald-500/15 rounded-lg space-y-1.5">
+            <p className="text-[10px] text-emerald-400 font-semibold">How it works</p>
+            <p className="text-[10px] text-zinc-500 leading-relaxed">
+              When the AI decides to book, Vapi POSTs to your webhook with:
+              <code className="block mt-1 bg-surface-900 px-2 py-1 rounded text-zinc-300">
+                {`{ contactName, contactPhone, contactEmail, startTime (ISO 8601), timezone, notes }`}
+              </code>
+            </p>
+            <p className="text-[10px] text-zinc-500 leading-relaxed">
+              Your webhook should call the GHL API to create the appointment using calendar ID: <code className="text-emerald-400">{calendarId}</code>
+            </p>
+          </div>
+        </Field>
+      )}
     </div>
   )
 }
