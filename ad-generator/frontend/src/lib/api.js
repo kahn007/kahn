@@ -1991,22 +1991,104 @@ export function generateEnvExample(agent) {
 
 
 // ── Vapi: sync assistant + trigger call ──────────────────────
+// Map model ID → Vapi provider string
+function vapiModelProvider(modelId) {
+  if (!modelId) return 'openai'
+  if (modelId.startsWith('claude')) return 'anthropic'
+  if (modelId.startsWith('gpt') || modelId.startsWith('o1') || modelId.startsWith('o3')) return 'openai'
+  if (modelId.startsWith('gemini')) return 'google'
+  return 'openai'
+}
+
+// Build GHL calendar system prompt addition
+function ghlCalendarPrompt(agent) {
+  if (!agent.ghlCalendarId) return ''
+  return `
+
+APPOINTMENT BOOKING:
+You have the ability to book appointments. When a prospect agrees to schedule:
+1. Collect their: full name, phone number, email address, and preferred date/time
+2. Confirm all details back to them before booking
+3. Use the book_appointment function to create the booking
+4. Give them the confirmation once booked
+
+Be conversational — don't read out a form. Ask naturally one piece at a time.
+Calendar ID: ${agent.ghlCalendarId}`
+}
+
 export async function syncVapiAssistant(agent, vapiKey) {
-  const voiceMap = {
-    elevenlabs: { provider: '11labs', voiceId: agent.voiceId },
+  const systemPrompt = (agent.systemPrompt || 'You are a helpful voice assistant.') + ghlCalendarPrompt(agent)
+
+  // GHL booking tool — only included when calendar is selected and webhook URL is set
+  const tools = []
+  if (agent.ghlCalendarId && agent.ghlBookingWebhookUrl) {
+    tools.push({
+      type: 'function',
+      async: false,
+      name: 'book_appointment',
+      description: 'Book an appointment in GoHighLevel for the contact. Call this after collecting name, phone, email, and their preferred time.',
+      parameters: {
+        type: 'object',
+        properties: {
+          contactName:  { type: 'string', description: 'Full name of the contact' },
+          contactPhone: { type: 'string', description: 'Phone number' },
+          contactEmail: { type: 'string', description: 'Email address' },
+          startTime:    { type: 'string', description: 'Appointment start time in ISO 8601 format, e.g. 2025-06-15T14:00:00-05:00' },
+          timezone:     { type: 'string', description: 'Timezone, e.g. America/Chicago' },
+          notes:        { type: 'string', description: 'Any notes from the call' },
+        },
+        required: ['contactName', 'contactPhone', 'startTime'],
+      },
+      server: { url: agent.ghlBookingWebhookUrl },
+    })
   }
+
   const body = {
     name: agent.name || 'Voice Agent',
     firstMessage: agent.firstMessage || 'Hello! How can I help you today?',
+
+    // ── Model ────────────────────────────────────────────────────
     model: {
-      provider: 'anthropic',
-      model: agent.llmModel || 'claude-sonnet-4-6',
-      messages: [{ role: 'system', content: agent.systemPrompt || 'You are a helpful voice assistant.' }],
+      provider: vapiModelProvider(agent.llmModel),
+      model: agent.llmModel || 'gpt-4o-mini',
+      messages: [{ role: 'system', content: systemPrompt }],
+      temperature: 0.7,
+      ...(tools.length > 0 ? { toolIds: undefined } : {}),
     },
-    voice: voiceMap.elevenlabs,
-    transcriber: { provider: 'deepgram', model: 'nova-2', language: agent.language || 'en' },
+
+    // ── Voice — ElevenLabs turbo, max latency optimization ───────
+    voice: {
+      provider: '11labs',
+      voiceId: agent.voiceId || '',
+      model: 'eleven_turbo_v2_5',
+      stability: 0.5,
+      similarityBoost: 0.75,
+      optimizeStreamingLatency: 4,   // 0-4, 4 = max speed
+      enableSsmlParsing: false,
+    },
+
+    // ── STT — Deepgram Nova-3 (fastest + most accurate) ─────────
+    transcriber: {
+      provider: 'deepgram',
+      model: 'nova-3',
+      language: agent.language || 'en',
+      smartFormat: true,
+      endpointing: 300,              // ms of silence to trigger end of speech
+    },
+
+    // ── Latency + behaviour ──────────────────────────────────────
     maxDurationSeconds: (agent.maxCallMinutes || 10) * 60,
+    silenceTimeoutSeconds: 30,
+    responseDelaySeconds: 0,
+    llmRequestDelaySeconds: 0,
+    numWordsToInterruptAssistant: 3, // user can interrupt after 3 words
+    backchannelingEnabled: true,     // agent says "mm-hmm" while listening
+    backgroundDenoisingEnabled: true,
+
+    // ── Tools ────────────────────────────────────────────────────
+    ...(tools.length > 0 ? { tools } : {}),
   }
+
   const method = agent.vapiAssistantId ? 'PATCH' : 'POST'
   const url = agent.vapiAssistantId
     ? `https://api.vapi.ai/assistant/${agent.vapiAssistantId}`
