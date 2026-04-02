@@ -40,7 +40,7 @@ const LLM_MODELS = [
   { id: 'claude-sonnet-4-6',       label: 'Claude Sonnet 4.6 — Best balance' },
   { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 — Fastest' },
 ]
-const TABS = ['Setup', 'Voice', 'Test Chat', 'Calls']
+const TABS = ['Setup', 'Voice', 'Test Chat', 'Live Test', 'Calls']
 
 // ── Helpers ───────────────────────────────────────────────────
 function Field({ label, hint, children }) {
@@ -420,6 +420,210 @@ function TestTab({ agent }) {
   )
 }
 
+// ── Live Test Tab ─────────────────────────────────────────────
+function LiveTestTab({ agent }) {
+  const [active,  setActive]  = useState(false)
+  const [status,  setStatus]  = useState('idle') // idle|listening|thinking|speaking
+  const [msgs,    setMsgs]    = useState([])
+  const [interim, setInterim] = useState('')
+  const activeRef  = useRef(false)
+  const recogRef   = useRef(null)
+  const audioRef   = useRef(null)
+  const msgsRef    = useRef([])
+  const endRef     = useRef(null)
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs, interim])
+  useEffect(() => { return () => stopSession() }, [])
+
+  function addMsg(msg) {
+    msgsRef.current = [...msgsRef.current, msg]
+    setMsgs([...msgsRef.current])
+  }
+
+  async function startSession() {
+    activeRef.current = true
+    setActive(true)
+    msgsRef.current = []
+    setMsgs([])
+    setStatus('idle')
+    if (agent.firstMessage) {
+      addMsg({ role: 'assistant', content: agent.firstMessage })
+      await speak(agent.firstMessage)
+    }
+    if (activeRef.current) listen()
+  }
+
+  function stopSession() {
+    activeRef.current = false
+    setActive(false)
+    setStatus('idle')
+    setInterim('')
+    if (recogRef.current) { try { recogRef.current.stop() } catch(_) {} }
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+    window.speechSynthesis?.cancel()
+  }
+
+  function listen() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SR) { alert('Your browser does not support speech recognition. Try Chrome.'); return }
+    const r = new SR()
+    recogRef.current = r
+    r.lang = agent.language === 'en' ? 'en-US' : (agent.language || 'en-US')
+    r.interimResults = true
+    r.continuous = false
+    setStatus('listening')
+
+    r.onresult = e => {
+      const text = Array.from(e.results).map(x => x[0].transcript).join('')
+      setInterim(text)
+      if (e.results[e.results.length - 1].isFinal) {
+        r.stop()
+        handleUtterance(text)
+      }
+    }
+    r.onerror = () => { if (activeRef.current) listen() }
+    r.onend = () => setInterim('')
+    r.start()
+  }
+
+  async function handleUtterance(text) {
+    if (!text.trim()) { if (activeRef.current) listen(); return }
+    setInterim('')
+    addMsg({ role: 'user', content: text })
+    setStatus('thinking')
+    try {
+      const history = msgsRef.current.slice(0,-1).map(m => ({ role: m.role, content: m.content }))
+      const reply = await testAgentConversation({
+        systemPrompt: agent.systemPrompt ||
+          `You are ${agent.name||'a helpful voice assistant'}. Keep responses concise and conversational — 1-3 sentences max.`,
+        history,
+        userMessage: text,
+      })
+      addMsg({ role: 'assistant', content: reply })
+      await speak(reply)
+      if (activeRef.current) listen()
+    } catch(e) {
+      addMsg({ role: 'assistant', content: `Error: ${e.message}` })
+      setStatus('idle')
+    }
+  }
+
+  async function speak(text) {
+    setStatus('speaking')
+    const elevenKey = getKey('elevenlabs')
+    if (elevenKey && agent.voiceId) {
+      try {
+        const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${agent.voiceId}`, {
+          method: 'POST',
+          headers: { 'xi-api-key': elevenKey, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text,
+            model_id: 'eleven_flash_v2_5',
+            voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+          }),
+        })
+        if (res.ok) {
+          const blob = await res.blob()
+          const url  = URL.createObjectURL(blob)
+          const audio = new Audio(url)
+          audioRef.current = audio
+          await new Promise(resolve => {
+            audio.play()
+            audio.onended = () => { URL.revokeObjectURL(url); resolve() }
+            audio.onerror = resolve
+          })
+          return
+        }
+      } catch(_) {}
+    }
+    // Fallback: browser TTS
+    await new Promise(resolve => {
+      const utt = new SpeechSynthesisUtterance(text)
+      utt.onend = resolve
+      window.speechSynthesis.speak(utt)
+    })
+  }
+
+  const STATUS_LABEL = { idle: 'Ready', listening: 'Listening…', thinking: 'Thinking…', speaking: 'Speaking…' }
+  const STATUS_COLOR = { idle: 'text-zinc-500', listening: 'text-green-400', thinking: 'text-brand-400', speaking: 'text-yellow-400' }
+  const STATUS_PULSE = { idle: 'bg-zinc-600', listening: 'bg-green-400 animate-pulse', thinking: 'bg-brand-400 animate-pulse', speaking: 'bg-yellow-400 animate-pulse' }
+
+  const missingVoice = !agent.voiceId
+  const missingPrompt = !agent.systemPrompt
+
+  return (
+    <div className="flex flex-col gap-4" style={{ height: '520px' }}>
+      {/* Warnings */}
+      {(missingVoice || missingPrompt) && (
+        <div className="flex flex-col gap-1.5">
+          {missingPrompt && <p className="text-xs text-amber-400 flex items-center gap-1.5"><AlertCircle size={11}/>No system prompt — go to Setup tab first</p>}
+          {missingVoice  && <p className="text-xs text-amber-400 flex items-center gap-1.5"><AlertCircle size={11}/>No voice selected — pick one in Voice tab (will use browser TTS as fallback)</p>}
+        </div>
+      )}
+
+      {/* Status bar */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${STATUS_PULSE[status]}`}/>
+          <span className={`text-xs font-medium ${STATUS_COLOR[status]}`}>{STATUS_LABEL[status]}</span>
+        </div>
+        <button
+          onClick={active ? stopSession : startSession}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 ${
+            active
+              ? 'bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25'
+              : 'bg-green-500/15 border border-green-500/30 text-green-400 hover:bg-green-500/25'
+          }`}>
+          {active ? <><X size={12}/>End Session</> : <><Mic size={12}/>Start Voice Test</>}
+        </button>
+      </div>
+
+      {/* Transcript */}
+      <div className="flex-1 bg-surface-900 border border-white/[0.06] rounded-xl p-4 overflow-y-auto space-y-3">
+        {msgs.length === 0 && !active && (
+          <div className="h-full flex items-center justify-center text-center">
+            <div>
+              <Mic size={28} className="text-zinc-700 mx-auto mb-3"/>
+              <p className="text-sm font-medium text-zinc-500 mb-1">Talk to your agent</p>
+              <p className="text-xs text-zinc-600">Uses your mic + ElevenLabs voice · Claude brain</p>
+            </div>
+          </div>
+        )}
+        {msgs.map((m, i) => (
+          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] px-3 py-2 rounded-xl text-xs leading-relaxed ${
+              m.role === 'user'
+                ? 'bg-brand-500/20 text-brand-100 rounded-br-sm'
+                : 'bg-surface-800 text-zinc-300 rounded-bl-sm'
+            }`}>{m.content}</div>
+          </div>
+        ))}
+        {interim && (
+          <div className="flex justify-end">
+            <div className="max-w-[80%] px-3 py-2 rounded-xl text-xs leading-relaxed bg-brand-500/10 text-brand-300 rounded-br-sm italic border border-brand-500/20">
+              {interim}
+            </div>
+          </div>
+        )}
+        {status === 'thinking' && (
+          <div className="flex justify-start">
+            <div className="bg-surface-800 px-3 py-2 rounded-xl rounded-bl-sm flex items-center gap-1.5">
+              <Loader2 size={11} className="animate-spin text-zinc-500"/>
+              <span className="text-xs text-zinc-500">Thinking…</span>
+            </div>
+          </div>
+        )}
+        <div ref={endRef}/>
+      </div>
+
+      {/* Mic hint */}
+      {active && status === 'listening' && (
+        <p className="text-center text-xs text-green-400 animate-pulse">🎤 Speak now…</p>
+      )}
+    </div>
+  )
+}
+
 // ── Calls Tab ─────────────────────────────────────────────────
 function CallsTab({ agent, update }) {
   const [syncing,    setSyncing]    = useState(false)
@@ -681,10 +885,11 @@ export default function VoiceAgentBuilder() {
 
           {/* Tab content */}
           <div className="flex-1 overflow-y-auto">
-            {tab==='Setup'     && <SetupTab  agent={draft} update={update}/>}
-            {tab==='Voice'     && <VoiceTab  agent={draft} update={update}/>}
-            {tab==='Test Chat' && <TestTab   agent={draft}/>}
-            {tab==='Calls'     && <CallsTab  agent={draft} update={update}/>}
+            {tab==='Setup'      && <SetupTab     agent={draft} update={update}/>}
+            {tab==='Voice'      && <VoiceTab     agent={draft} update={update}/>}
+            {tab==='Test Chat'  && <TestTab      agent={draft}/>}
+            {tab==='Live Test'  && <LiveTestTab  agent={draft}/>}
+            {tab==='Calls'      && <CallsTab     agent={draft} update={update}/>}
           </div>
         </div>
       ) : (
