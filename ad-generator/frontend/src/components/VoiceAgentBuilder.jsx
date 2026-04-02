@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useRef } from 'react'
 import {
   Phone, Plus, Trash2, Wand2, Globe, Copy,
   Check, AlertCircle, Loader2, RefreshCw, MessageSquare,
