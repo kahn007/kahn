@@ -267,8 +267,8 @@ function VoiceTab({ agent, update }) {
     if (!k) { setErr('Add your ElevenLabs key in Settings'); return }
     setLoading(true); setErr('')
     try {
-      const d = await listElevenLabsVoices(k)
-      setVoices((d.voices||[]).map(v=>({id:v.voice_id,name:v.name,labels:v.labels})))
+      const voices = await listElevenLabsVoices(k)
+      setVoices(voices.map(v=>({id:v.voice_id,name:v.name,labels:v.labels})))
     } catch(e) { setErr(e.message) }
     finally { setLoading(false) }
   }
