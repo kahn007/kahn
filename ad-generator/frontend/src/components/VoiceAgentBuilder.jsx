@@ -259,8 +259,22 @@ function VoiceTab({ agent, update }) {
   const [voices,  setVoices]  = useState([])
   const [loading, setLoading] = useState(false)
   const [err,     setErr]     = useState('')
+  const [playing, setPlaying] = useState(null)
+  const audioRef = useRef(null)
 
   useEffect(() => { load() }, [])
+
+  function playPreview(voice) {
+    if (!voice.previewUrl) return
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+    if (playing === voice.id) { setPlaying(null); return }
+    const audio = new Audio(voice.previewUrl)
+    audioRef.current = audio
+    setPlaying(voice.id)
+    audio.play()
+    audio.onended = () => setPlaying(null)
+    audio.onerror = () => setPlaying(null)
+  }
 
   async function load() {
     const k = getKey('elevenlabs')
@@ -268,7 +282,7 @@ function VoiceTab({ agent, update }) {
     setLoading(true); setErr('')
     try {
       const voices = await listElevenLabsVoices(k)
-      setVoices(voices.map(v=>({id:v.voice_id,name:v.name,labels:v.labels})))
+      setVoices(voices.map(v=>({id:v.voice_id,name:v.name,labels:v.labels,previewUrl:v.preview_url})))
     } catch(e) { setErr(e.message) }
     finally { setLoading(false) }
   }
@@ -288,13 +302,26 @@ function VoiceTab({ agent, update }) {
       {voices.length > 0 ? (
         <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-1">
           {voices.map(v=>(
-            <button key={v.id} onClick={()=>update({voiceId:v.id,voiceName:v.name})}
-              className={`text-left p-2.5 rounded-lg border text-xs transition-colors
+            <div key={v.id}
+              className={`rounded-lg border text-xs transition-colors
                 ${agent.voiceId===v.id ? 'bg-brand-500/15 border-brand-500/30 text-white'
-                : 'border-white/[0.06] text-zinc-500 hover:text-zinc-300 hover:border-white/[0.12]'}`}>
-              <p className="font-medium">{v.name}</p>
-              {v.labels && <p className="text-zinc-600 mt-0.5">{Object.values(v.labels).slice(0,2).join(', ')}</p>}
-            </button>
+                : 'border-white/[0.06] text-zinc-500 hover:border-white/[0.12]'}`}>
+              <button className="w-full text-left p-2.5" onClick={()=>update({voiceId:v.id,voiceName:v.name})}>
+                <p className="font-medium text-inherit">{v.name}</p>
+                {v.labels && <p className="text-zinc-600 mt-0.5">{Object.values(v.labels).slice(0,2).join(', ')}</p>}
+              </button>
+              {v.previewUrl && (
+                <button onClick={()=>playPreview(v)}
+                  className={`w-full flex items-center justify-center gap-1.5 py-1.5 border-t text-[10px] font-medium transition-colors
+                    ${playing===v.id
+                      ? 'border-brand-500/20 text-brand-400 bg-brand-500/10'
+                      : 'border-white/[0.04] text-zinc-600 hover:text-zinc-300'}`}>
+                  {playing===v.id
+                    ? <><Loader2 size={10} className="animate-spin"/>Playing…</>
+                    : <><Play size={10}/>Preview</>}
+                </button>
+              )}
+            </div>
           ))}
         </div>
       ) : (
