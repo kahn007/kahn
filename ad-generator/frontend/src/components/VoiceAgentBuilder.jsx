@@ -1,16 +1,14 @@
-import React, { useState, useEffect, useRef } from 'react'
 import {
-  Phone, Plus, Trash2, Wand2, Globe, Copy, Download,
+  Phone, Plus, Trash2, Wand2, Globe, Copy,
   Check, AlertCircle, Loader2, RefreshCw, MessageSquare,
-  Code2, Play, Server, X, Mic, Zap, Building2, Search,
-  PhoneCall, ExternalLink,
+  Play, Mic, Zap, Building2, Search, PhoneCall,
 } from 'lucide-react'
 import { useAdStore } from '../store/adStore'
 import { getKey } from '../lib/keys'
 import {
   syncVapiAssistant, triggerVapiCall,
   testAgentConversation, listElevenLabsVoices,
-  listTwilioNumbers, fetchGHLCalendars, fetchGHLPipelines,
+  listTwilioNumbers,
   scrapeWebsiteForServices, generateAgentPromptFromServices,
 } from '../lib/api'
 import { v4 as uuidv4 } from 'uuid'
@@ -23,7 +21,6 @@ const DEFAULT_AGENT = () => ({
   language: 'en',
   maxCallMinutes: 10,
   llmModel: 'claude-sonnet-4-6',
-  voiceProvider: 'elevenlabs', // only option
   voiceId: '',
   voiceName: '',
   firstMessage: '',
@@ -32,24 +29,17 @@ const DEFAULT_AGENT = () => ({
   scrapedServices: [],
   selectedServices: [],
   companyName: '',
-  twilio: { accountSid: '', authToken: '', phoneNumber: '' },
-  ghl: { token: '', locationId: '', calendarId: '', pipelineId: '', capabilities: ['contacts', 'calendar'] },
+  twilioPhoneNumber: '',
   vapiAssistantId: '',
   createdAt: new Date().toISOString(),
 })
 
 const LLM_MODELS = [
-  { id: 'claude-opus-4-6', label: 'Claude Opus 4.6 — Most capable' },
-  { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 — Best balance' },
+  { id: 'claude-opus-4-6',         label: 'Claude Opus 4.6 — Most capable' },
+  { id: 'claude-sonnet-4-6',       label: 'Claude Sonnet 4.6 — Best balance' },
   { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 — Fastest' },
 ]
-const GHL_CAPS = [
-  { id: 'contacts', label: 'Contacts', desc: 'Find / create contacts' },
-  { id: 'calendar', label: 'Calendar', desc: 'Book appointments' },
-  { id: 'pipeline', label: 'Pipeline', desc: 'Move deal stages' },
-  { id: 'notes',    label: 'Notes',    desc: 'Log call notes' },
-]
-const TABS = ['Setup','Voice','Credentials','Test Chat','Calls']
+const TABS = ['Setup', 'Voice', 'Test Chat', 'Calls']
 
 // ── Helpers ───────────────────────────────────────────────────
 function Field({ label, hint, children }) {
@@ -221,7 +211,45 @@ function SetupTab({ agent, update }) {
           onChange={e=>update({maxCallMinutes:Number(e.target.value)})}
           className="w-full accent-brand-500"/>
       </Field>
+
+      <PhoneNumberPicker value={agent.twilioPhoneNumber} onChange={v=>update({twilioPhoneNumber:v})}/>
     </div>
+  )
+}
+
+// ── Phone Number Picker (uses global Twilio keys from Settings) ─
+function PhoneNumberPicker({ value, onChange }) {
+  const [nums,    setNums]    = useState([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => { loadNums() }, [])
+
+  async function loadNums() {
+    const sid   = getKey('twilio_sid')
+    const token = getKey('twilio_token')
+    if (!sid || !token) return
+    setLoading(true)
+    try {
+      const d = await listTwilioNumbers(sid, token)
+      setNums(d.incomingPhoneNumbers || [])
+    } catch(_) {}
+    finally { setLoading(false) }
+  }
+
+  return (
+    <Field label="Twilio Phone Number" hint="Which number this agent calls from / receives on">
+      {nums.length > 0 ? (
+        <select className="input" value={value} onChange={e=>onChange(e.target.value)}>
+          <option value="">Select number…</option>
+          {nums.map(n=><option key={n.sid} value={n.phoneNumber}>{n.friendlyName||n.phoneNumber}</option>)}
+        </select>
+      ) : (
+        <div className="flex gap-2">
+          <input className="input flex-1" placeholder="+1 (555) 000-0000" value={value} onChange={e=>onChange(e.target.value)}/>
+          {loading && <Loader2 size={13} className="text-zinc-600 animate-spin self-center"/>}
+        </div>
+      )}
+    </Field>
   )
 }
 
@@ -231,11 +259,13 @@ function VoiceTab({ agent, update }) {
   const [loading, setLoading] = useState(false)
   const [err,     setErr]     = useState('')
 
-  async function loadVoices() {
+  useEffect(() => { load() }, [])
+
+  async function load() {
+    const k = getKey('elevenlabs')
+    if (!k) { setErr('Add your ElevenLabs key in Settings'); return }
     setLoading(true); setErr('')
     try {
-      const k = getKey('elevenlabs')
-      if (!k) throw new Error('Add your ElevenLabs key in Settings')
       const d = await listElevenLabsVoices(k)
       setVoices((d.voices||[]).map(v=>({id:v.voice_id,name:v.name,labels:v.labels})))
     } catch(e) { setErr(e.message) }
@@ -245,10 +275,11 @@ function VoiceTab({ agent, update }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-zinc-400 font-medium">ElevenLabs Voices</p>
-        <button onClick={loadVoices} disabled={loading} className="btn-ghost text-xs">
-          {loading ? <Loader2 size={11} className="animate-spin"/> : <RefreshCw size={11}/>}
-          {loading ? 'Loading…' : 'Load Voices'}
+        <p className="text-xs text-zinc-400 font-medium">
+          {loading ? 'Loading voices…' : `${voices.length} ElevenLabs voices`}
+        </p>
+        <button onClick={load} disabled={loading} className="btn-ghost text-xs">
+          <RefreshCw size={11} className={loading ? 'animate-spin' : ''}/>Refresh
         </button>
       </div>
       {err && <p className="text-xs text-red-400">{err}</p>}
@@ -279,149 +310,6 @@ function VoiceTab({ agent, update }) {
           <span className="text-xs text-zinc-600 font-mono ml-auto">{agent.voiceId.slice(0,20)}…</span>
         </div>
       )}
-    </div>
-  )
-}
-
-// ── Credentials Tab ───────────────────────────────────────────
-function CredentialsTab({ agent, update }) {
-  const [twilioNums, setTwilioNums] = useState([])
-  const [loadNums,   setLoadNums]   = useState(false)
-  const [calendars,  setCalendars]  = useState([])
-  const [pipelines,  setPipelines]  = useState([])
-  const [loadCRM,    setLoadCRM]    = useState(false)
-  const [crmErr,     setCrmErr]     = useState('')
-
-  const upTw  = (k,v) => update({twilio:{...agent.twilio,[k]:v}})
-  const upGHL = (k,v) => update({ghl:{...agent.ghl,[k]:v}})
-
-  async function fetchNums() {
-    if (!agent.twilio.accountSid||!agent.twilio.authToken) return
-    setLoadNums(true)
-    try { const d=await listTwilioNumbers(agent.twilio.accountSid,agent.twilio.authToken); setTwilioNums(d.incomingPhoneNumbers||[]) }
-    catch(_) {} finally { setLoadNums(false) }
-  }
-
-  async function fetchCRM() {
-    if (!agent.ghl.token||!agent.ghl.locationId){setCrmErr('Enter GHL Token and Location ID first');return}
-    setLoadCRM(true); setCrmErr('')
-    try {
-      const [c,p]=await Promise.all([
-        fetchGHLCalendars(agent.ghl.token,agent.ghl.locationId),
-        fetchGHLPipelines(agent.ghl.token,agent.ghl.locationId),
-      ])
-      setCalendars(c.calendars||[]); setPipelines(p.pipelines||[])
-    } catch(e){setCrmErr(e.message)} finally{setLoadCRM(false)}
-  }
-
-  function toggleCap(id){
-    upGHL('capabilities', agent.ghl.capabilities.includes(id)
-      ? agent.ghl.capabilities.filter(c=>c!==id)
-      : [...agent.ghl.capabilities,id])
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* GHL */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded bg-emerald-500/20 flex items-center justify-center">
-            <Zap size={10} className="text-emerald-400"/>
-          </div>
-          <p className="text-sm font-semibold text-white">GoHighLevel</p>
-          <span className="text-xs text-zinc-600">per sub-account</span>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Private Integration Token">
-            <input className="input font-mono text-xs" placeholder="eyJhbGc…" type="password"
-              value={agent.ghl.token} onChange={e=>upGHL('token',e.target.value)}/>
-          </Field>
-          <Field label="Location ID">
-            <input className="input font-mono text-xs" placeholder="abc123xyz…"
-              value={agent.ghl.locationId} onChange={e=>upGHL('locationId',e.target.value)}/>
-          </Field>
-        </div>
-        <button onClick={fetchCRM} disabled={loadCRM} className="btn-ghost text-xs">
-          {loadCRM ? <Loader2 size={11} className="animate-spin"/> : <RefreshCw size={11}/>}
-          Load Calendars & Pipelines
-        </button>
-        {crmErr && <p className="text-xs text-red-400">{crmErr}</p>}
-        {(calendars.length>0||pipelines.length>0) && (
-          <div className="grid grid-cols-2 gap-3">
-            {calendars.length>0 && (
-              <Field label="Calendar">
-                <select className="input text-xs" value={agent.ghl.calendarId} onChange={e=>upGHL('calendarId',e.target.value)}>
-                  <option value="">Select…</option>
-                  {calendars.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </Field>
-            )}
-            {pipelines.length>0 && (
-              <Field label="Pipeline">
-                <select className="input text-xs" value={agent.ghl.pipelineId} onChange={e=>upGHL('pipelineId',e.target.value)}>
-                  <option value="">Select…</option>
-                  {pipelines.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </Field>
-            )}
-          </div>
-        )}
-        <div>
-          <p className="text-xs text-zinc-400 font-medium mb-2">CRM Capabilities</p>
-          <div className="grid grid-cols-2 gap-2">
-            {GHL_CAPS.map(c=>{
-              const on=agent.ghl.capabilities.includes(c.id)
-              return(
-                <button key={c.id} onClick={()=>toggleCap(c.id)}
-                  className={`text-left p-2.5 rounded-lg border text-xs transition-colors
-                    ${on ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
-                    : 'border-white/[0.06] text-zinc-500 hover:text-zinc-300'}`}>
-                  <p className="font-medium">{c.label}</p>
-                  <p className="text-zinc-600 mt-0.5">{c.desc}</p>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Twilio */}
-      <div className="space-y-4 pt-4 border-t border-white/[0.06]">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded bg-red-500/20 flex items-center justify-center">
-            <Phone size={10} className="text-red-400"/>
-          </div>
-          <p className="text-sm font-semibold text-white">Twilio</p>
-          <span className="text-xs text-zinc-600">per sub-account</span>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Account SID">
-            <input className="input font-mono text-xs" placeholder="ACxxxx…"
-              value={agent.twilio.accountSid} onChange={e=>upTw('accountSid',e.target.value)}/>
-          </Field>
-          <Field label="Auth Token">
-            <input className="input font-mono text-xs" type="password" placeholder="••••••••"
-              value={agent.twilio.authToken} onChange={e=>upTw('authToken',e.target.value)}/>
-          </Field>
-        </div>
-        <div className="flex gap-2 items-end">
-          <div className="flex-1">
-            <Field label="Phone Number">
-              <select className="input text-xs" value={agent.twilio.phoneNumber} onChange={e=>upTw('phoneNumber',e.target.value)}>
-                <option value="">Select or type below…</option>
-                {twilioNums.map(n=><option key={n.sid} value={n.phoneNumber}>{n.friendlyName||n.phoneNumber}</option>)}
-              </select>
-            </Field>
-          </div>
-          <button onClick={fetchNums} disabled={loadNums||!agent.twilio.accountSid} className="btn-ghost text-xs mb-0 shrink-0">
-            {loadNums ? <Loader2 size={11} className="animate-spin"/> : <RefreshCw size={11}/>}
-          </button>
-        </div>
-        {!twilioNums.length && (
-          <input className="input text-xs" placeholder="+1234567890"
-            value={agent.twilio.phoneNumber} onChange={e=>upTw('phoneNumber',e.target.value)}/>
-        )}
-      </div>
     </div>
   )
 }
@@ -528,8 +416,10 @@ function CallsTab({ agent, update }) {
   async function makeCall() {
     if (!vapiKey) { setCallStatus('no_key'); return }
     if (!agent.vapiAssistantId) { setCallStatus('sync_first'); return }
-    const tw = agent.twilio || {}
-    if (!tw.accountSid || !tw.authToken || !tw.phoneNumber) { setCallStatus('no_twilio'); return }
+    const sid   = getKey('twilio_sid')
+    const token = getKey('twilio_token')
+    const from  = agent.twilioPhoneNumber
+    if (!sid || !token || !from) { setCallStatus('no_twilio'); return }
     if (!callPhone) { setCallStatus('no_phone'); return }
     setCalling(true); setCallStatus('')
     try {
@@ -537,9 +427,9 @@ function CallsTab({ agent, update }) {
         vapiKey,
         assistantId: agent.vapiAssistantId,
         toPhone: callPhone,
-        fromPhone: tw.phoneNumber,
-        twilioAccountSid: tw.accountSid,
-        twilioAuthToken: tw.authToken,
+        fromPhone: from,
+        twilioAccountSid: sid,
+        twilioAuthToken: token,
       })
       setCallStatus('ok')
     } catch(e) { setCallStatus('err:' + e.message) }
@@ -550,9 +440,9 @@ function CallsTab({ agent, update }) {
     assistantId: agent.vapiAssistantId || 'YOUR_ASSISTANT_ID',
     customer: { number: '{{contact.phone}}' },
     phoneNumber: {
-      twilioPhoneNumber: agent.twilio?.phoneNumber || '+1...',
-      twilioAccountSid: agent.twilio?.accountSid || 'AC...',
-      twilioAuthToken: '{{your_twilio_auth_token}}',
+      twilioPhoneNumber: agent.twilioPhoneNumber || '+1...',
+      twilioAccountSid: getKey('twilio_sid') || 'AC...',
+      twilioAuthToken: getKey('twilio_token') || '...',
     },
   }, null, 2)
 
@@ -612,11 +502,11 @@ function CallsTab({ agent, update }) {
         {callStatus === 'ok'         && <p className="text-xs text-green-400">✓ Calling {callPhone}… your phone will ring in seconds!</p>}
         {callStatus === 'no_key'     && <p className="text-xs text-amber-400">Add Vapi key in Settings</p>}
         {callStatus === 'sync_first' && <p className="text-xs text-amber-400">Sync the agent first (Step 1)</p>}
-        {callStatus === 'no_twilio'  && <p className="text-xs text-amber-400">Add Twilio credentials in the Credentials tab</p>}
+        {callStatus === 'no_twilio'  && <p className="text-xs text-amber-400">Add Twilio SID + Token in Settings, and select a phone number in Setup</p>}
         {callStatus === 'no_phone'   && <p className="text-xs text-amber-400">Enter a phone number</p>}
         {callStatus.startsWith('err:') && <p className="text-xs text-red-400">{callStatus.slice(4)}</p>}
         <p className="text-xs text-zinc-600">
-          Calls from: {agent.twilio?.phoneNumber || <span className="text-amber-500">add Twilio number in Credentials</span>}
+          Calls from: {agent.twilioPhoneNumber || <span className="text-amber-500">select a phone number in Setup tab</span>}
         </p>
       </div>
 
@@ -763,11 +653,10 @@ export default function VoiceAgentBuilder() {
 
           {/* Tab content */}
           <div className="flex-1 overflow-y-auto">
-            {tab==='Setup'       && <SetupTab       agent={draft} update={update}/>}
-            {tab==='Voice'       && <VoiceTab       agent={draft} update={update}/>}
-            {tab==='Credentials' && <CredentialsTab agent={draft} update={update}/>}
-            {tab==='Test Chat'   && <TestTab        agent={draft}/>}
-            {tab==='Calls'       && <CallsTab       agent={draft} update={update}/>}
+            {tab==='Setup'     && <SetupTab  agent={draft} update={update}/>}
+            {tab==='Voice'     && <VoiceTab  agent={draft} update={update}/>}
+            {tab==='Test Chat' && <TestTab   agent={draft}/>}
+            {tab==='Calls'     && <CallsTab  agent={draft} update={update}/>}
           </div>
         </div>
       ) : (
