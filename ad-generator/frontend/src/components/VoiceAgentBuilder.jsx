@@ -3,13 +3,12 @@ import {
   Phone, Plus, Trash2, Wand2, Globe, Copy, Download,
   Check, AlertCircle, Loader2, RefreshCw, MessageSquare,
   Code2, Play, Server, X, Mic, Zap, Building2, Search,
-  PhoneCall, PhoneOutgoing, ExternalLink,
+  PhoneCall, ExternalLink,
 } from 'lucide-react'
 import { useAdStore } from '../store/adStore'
 import { getKey } from '../lib/keys'
 import {
-  generateVoiceAgentServerCode, generatePackageJson, generateEnvExample,
-  generateRenderYaml, triggerTwilioCall,
+  syncVapiAssistant, triggerVapiCall,
   testAgentConversation, listElevenLabsVoices, listCartesiaVoices,
   listTwilioNumbers, fetchGHLCalendars, fetchGHLPipelines,
   scrapeWebsiteForServices, generateAgentPromptFromServices,
@@ -35,7 +34,7 @@ const DEFAULT_AGENT = () => ({
   companyName: '',
   twilio: { accountSid: '', authToken: '', phoneNumber: '' },
   ghl: { token: '', locationId: '', calendarId: '', pipelineId: '', capabilities: ['contacts', 'calendar'] },
-  serverUrl: '',
+  vapiAssistantId: '',
   createdAt: new Date().toISOString(),
 })
 
@@ -55,7 +54,7 @@ const GHL_CAPS = [
   { id: 'pipeline', label: 'Pipeline', desc: 'Move deal stages' },
   { id: 'notes',    label: 'Notes',    desc: 'Log call notes' },
 ]
-const TABS = ['Setup','Voice','Credentials','Test Chat','Deploy']
+const TABS = ['Setup','Voice','Credentials','Test Chat','Calls']
 
 // ── Helpers ───────────────────────────────────────────────────
 function Field({ label, hint, children }) {
@@ -539,162 +538,159 @@ function TestTab({ agent }) {
   )
 }
 
-// ── Deploy Tab ────────────────────────────────────────────────
-function DeployTab({ agent, update }) {
-  const [gen,        setGen]        = useState(false)
-  const [server,     setServer]     = useState('')
-  const [pkg,        setPkg]        = useState('')
-  const [env,        setEnv]        = useState('')
-  const [render,     setRender]     = useState('')
-  const [copied,     setCopied]     = useState({})
-  const [calling,    setCalling]    = useState('')   // 'inbound'|'outbound'|''
+// ── Calls Tab ─────────────────────────────────────────────────
+function CallsTab({ agent, update }) {
+  const [syncing,    setSyncing]    = useState(false)
+  const [syncStatus, setSyncStatus] = useState('')
+  const [calling,    setCalling]    = useState(false)
   const [callPhone,  setCallPhone]  = useState('')
   const [callStatus, setCallStatus] = useState('')
 
-  function cp(k,t){ navigator.clipboard.writeText(t); setCopied(p=>({...p,[k]:true})); setTimeout(()=>setCopied(p=>({...p,[k]:false})),1500) }
-  function dl(name,text){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'})); a.download=name; a.click() }
+  const vapiKey = getKey('vapi')
 
-  async function generate() {
-    setGen(true)
+  async function syncToVapi() {
+    if (!vapiKey) { setSyncStatus('no_key'); return }
+    setSyncing(true); setSyncStatus('')
     try {
-      setServer(generateVoiceAgentServerCode({agent}))
-      setPkg(JSON.stringify(generatePackageJson(agent),null,2))
-      setEnv(generateEnvExample(agent))
-      setRender(generateRenderYaml(agent))
-    } catch(e){alert(e.message)} finally{setGen(false)}
+      const result = await syncVapiAssistant(agent, vapiKey)
+      update({ vapiAssistantId: result.id })
+      setSyncStatus('ok')
+    } catch(e) { setSyncStatus('err:' + e.message) }
+    finally { setSyncing(false) }
   }
 
-  async function makeCall(direction) {
+  async function makeCall() {
+    if (!vapiKey) { setCallStatus('no_key'); return }
+    if (!agent.vapiAssistantId) { setCallStatus('sync_first'); return }
     const tw = agent.twilio || {}
-    if (!tw.accountSid || !tw.authToken || !tw.phoneNumber) {
-      setCallStatus('Add Twilio credentials in the Credentials tab first'); return
-    }
-    if (!agent.serverUrl) {
-      setCallStatus('Enter your deployed Server URL above first'); return
-    }
-    const to = direction === 'inbound' ? callPhone : callPhone
-    if (!to) { setCallStatus('Enter a phone number to call'); return }
-    setCalling(direction); setCallStatus('')
+    if (!tw.accountSid || !tw.authToken || !tw.phoneNumber) { setCallStatus('no_twilio'); return }
+    if (!callPhone) { setCallStatus('no_phone'); return }
+    setCalling(true); setCallStatus('')
     try {
-      const webhookUrl = agent.serverUrl.replace(/\/$/, '') + '/twilio/voice'
-      await triggerTwilioCall({
-        accountSid: tw.accountSid,
-        authToken:  tw.authToken,
-        from: tw.phoneNumber,
-        to,
-        webhookUrl,
+      await triggerVapiCall({
+        vapiKey,
+        assistantId: agent.vapiAssistantId,
+        toPhone: callPhone,
+        fromPhone: tw.phoneNumber,
+        twilioAccountSid: tw.accountSid,
+        twilioAuthToken: tw.authToken,
       })
-      setCallStatus(`✓ Call initiated to ${to} — pick up your phone!`)
-    } catch(e) {
-      setCallStatus(`Error: ${e.message}`)
-    } finally { setCalling('') }
+      setCallStatus('ok')
+    } catch(e) { setCallStatus('err:' + e.message) }
+    finally { setCalling(false) }
   }
 
-  const files = server ? [
-    {k:'server',  name:'server.js',       content:server},
-    {k:'pkg',     name:'package.json',    content:pkg},
-    {k:'env',     name:'.env.example',    content:env},
-    {k:'render',  name:'render.yaml',     content:render},
-  ] : []
-
-  const ready = !!(agent.twilio?.accountSid && agent.twilio?.phoneNumber && agent.serverUrl)
+  const ghlBody = JSON.stringify({
+    assistantId: agent.vapiAssistantId || 'YOUR_ASSISTANT_ID',
+    customer: { number: '{{contact.phone}}' },
+    phoneNumber: {
+      twilioPhoneNumber: agent.twilio?.phoneNumber || '+1...',
+      twilioAccountSid: agent.twilio?.accountSid || 'AC...',
+      twilioAuthToken: '{{your_twilio_auth_token}}',
+    },
+  }, null, 2)
 
   return (
-    <div className="space-y-5">
-      {/* Server URL — the key field */}
-      <div className={`border rounded-xl p-4 space-y-3 ${ready ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-amber-500/25 bg-amber-500/5'}`}>
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${ready ? 'bg-emerald-400' : 'bg-amber-400'}`}/>
-          <p className="text-sm font-semibold text-white">Server URL</p>
-          <span className="text-xs text-zinc-600">paste after you deploy below</span>
+    <div className="space-y-4">
+      {/* No Vapi key */}
+      {!vapiKey && (
+        <div className="bg-purple-500/10 border border-purple-500/25 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle size={14} className="text-purple-400 mt-0.5 flex-shrink-0"/>
+          <div>
+            <p className="text-sm font-semibold text-purple-300 mb-1">Add your Vapi API key first</p>
+            <p className="text-xs text-zinc-500 leading-relaxed">
+              Vapi handles all the phone call infrastructure — no server to deploy.
+              Get a free key at <strong className="text-zinc-300">dashboard.vapi.ai</strong>, then add it in Settings.
+            </p>
+          </div>
         </div>
-        <input className="input font-mono text-xs" placeholder="https://your-agent.up.railway.app"
-          value={agent.serverUrl || ''} onChange={e=>update({serverUrl:e.target.value})}/>
-        {agent.serverUrl && (
-          <p className="text-xs text-zinc-500">
-            Twilio webhook: <code className="text-zinc-300 bg-surface-900 px-1 rounded">{agent.serverUrl.replace(/\/$/,'')}/twilio/voice</code>
-          </p>
-        )}
+      )}
+
+      {/* Step 1: Sync */}
+      <div className={`border rounded-xl p-4 space-y-3 transition-colors ${agent.vapiAssistantId ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-white/[0.06]'}`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-white flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 text-xs font-bold flex items-center justify-center">1</span>
+              Sync Agent to Vapi
+            </p>
+            <p className="text-xs text-zinc-600 mt-1 ml-7">Uploads your prompt, voice, and settings to Vapi's servers</p>
+          </div>
+          {agent.vapiAssistantId && <Check size={14} className="text-emerald-400 flex-shrink-0"/>}
+        </div>
+        <button onClick={syncToVapi} disabled={syncing || !vapiKey} className="btn-primary w-full">
+          {syncing ? <Loader2 size={13} className="animate-spin"/> : <Zap size={13}/>}
+          {syncing ? 'Syncing…' : agent.vapiAssistantId ? 'Re-sync (after changes)' : 'Sync to Vapi'}
+        </button>
+        {syncStatus === 'ok'      && <p className="text-xs text-emerald-400">✓ Synced! ID: {agent.vapiAssistantId}</p>}
+        {syncStatus === 'no_key'  && <p className="text-xs text-amber-400">Add your Vapi key in Settings first</p>}
+        {syncStatus.startsWith('err:') && <p className="text-xs text-red-400">{syncStatus.slice(4)}</p>}
       </div>
 
-      {/* Live call buttons */}
+      {/* Step 2: Call */}
+      <div className={`border rounded-xl p-4 space-y-3 transition-colors ${!agent.vapiAssistantId ? 'opacity-50' : 'border-white/[0.06]'}`}>
+        <p className="text-sm font-semibold text-white flex items-center gap-2">
+          <span className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 text-xs font-bold flex items-center justify-center">2</span>
+          Make a Call
+        </p>
+        <Field label="Phone number (yours or any lead's)">
+          <input className="input" placeholder="+1 (555) 000-0000"
+            value={callPhone} onChange={e=>setCallPhone(e.target.value)}
+            onKeyDown={e=>e.key==='Enter'&&makeCall()} disabled={!agent.vapiAssistantId}/>
+        </Field>
+        <button onClick={makeCall} disabled={calling || !callPhone || !agent.vapiAssistantId}
+          className="w-full py-3 text-sm font-semibold rounded-xl border border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-40">
+          {calling ? <Loader2 size={14} className="animate-spin"/> : <PhoneCall size={14}/>}
+          {calling ? 'Calling…' : 'Call this number now'}
+        </button>
+        {callStatus === 'ok'         && <p className="text-xs text-green-400">✓ Calling {callPhone}… your phone will ring in seconds!</p>}
+        {callStatus === 'no_key'     && <p className="text-xs text-amber-400">Add Vapi key in Settings</p>}
+        {callStatus === 'sync_first' && <p className="text-xs text-amber-400">Sync the agent first (Step 1)</p>}
+        {callStatus === 'no_twilio'  && <p className="text-xs text-amber-400">Add Twilio credentials in the Credentials tab</p>}
+        {callStatus === 'no_phone'   && <p className="text-xs text-amber-400">Enter a phone number</p>}
+        {callStatus.startsWith('err:') && <p className="text-xs text-red-400">{callStatus.slice(4)}</p>}
+        <p className="text-xs text-zinc-600">
+          Calls from: {agent.twilio?.phoneNumber || <span className="text-amber-500">add Twilio number in Credentials</span>}
+        </p>
+      </div>
+
+      {/* Inbound */}
       <div className="border border-white/[0.06] rounded-xl p-4 space-y-3">
         <p className="text-sm font-semibold text-white flex items-center gap-2">
-          <PhoneCall size={13} className="text-green-400"/>Make a Live Call
+          <span className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 text-xs font-bold flex items-center justify-center">3</span>
+          Inbound Calls
         </p>
-        <Field label="Phone number to call">
-          <input className="input" placeholder="+1 (555) 000-0000"
-            value={callPhone} onChange={e=>setCallPhone(e.target.value)}/>
-        </Field>
-        <div className="flex gap-2">
-          <button onClick={()=>makeCall('test')} disabled={!!calling||!callPhone}
-            className="flex-1 py-2.5 text-xs font-semibold rounded-lg border border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-40">
-            {calling==='test' ? <Loader2 size={12} className="animate-spin"/> : <PhoneCall size={12}/>}
-            {calling==='test' ? 'Calling…' : 'Call this number'}
-          </button>
-        </div>
-        {callStatus && (
-          <p className={`text-xs ${callStatus.startsWith('✓') ? 'text-green-400' : 'text-red-400'}`}>{callStatus}</p>
-        )}
-        <p className="text-xs text-zinc-600">
-          Your Twilio number ({agent.twilio?.phoneNumber||'—'}) will call the number above. The AI agent answers and runs the conversation.
-        </p>
-      </div>
-
-      {/* Deploy steps */}
-      <div className="bg-surface-900 border border-white/[0.06] rounded-xl p-4 space-y-3">
-        <p className="text-sm font-semibold text-white flex items-center gap-2">
-          <Server size={13} className="text-brand-400"/>Deploy Once — Works Forever
-        </p>
-        {[
-          ['1','Generate code & download below','4 files including render.yaml for one-click deploy'],
-          ['2','Push to a new GitHub repo','Create a new private repo, push all 4 files'],
-          ['3','Connect to Render (free)','render.com → New → Web Service → connect your repo → it auto-detects render.yaml'],
-          ['4','Add env vars in Render dashboard','Paste your API keys from .env.example into Render → Environment'],
-          ['5','Copy your Render URL and paste above','e.g. https://your-agent.onrender.com → paste in Server URL field'],
-          ['6','Set Twilio webhook','Twilio Console → Phone Numbers → your number → Voice: POST {url}/twilio/voice'],
-        ].map(([n,t,s])=>(
-          <div key={n} className="flex items-start gap-3">
-            <span className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{n}</span>
-            <div><p className="text-xs text-white font-medium">{t}</p><p className="text-xs text-zinc-600 mt-0.5">{s}</p></div>
-          </div>
-        ))}
-      </div>
-
-      {/* GHL outbound tip */}
-      <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl p-3">
-        <p className="text-xs font-semibold text-emerald-400 mb-1 flex items-center gap-1.5"><Zap size={11}/>GHL Outbound Automation</p>
         <p className="text-xs text-zinc-500 leading-relaxed">
-          In any GHL Workflow: add a <strong className="text-zinc-300">Custom Webhook</strong> step →
-          POST to <code className="text-zinc-300 bg-surface-800 px-1 rounded text-[10px]">{(agent.serverUrl||'https://your-server.com').replace(/\/$/,'')}/trigger-call</code> with body <code className="text-zinc-300 bg-surface-800 px-1 rounded text-[10px]">{`{"to":"{{contact.phone}}"}`}</code>.
-          The agent will automatically call that contact.
+          For people to call YOUR Twilio number and reach this agent:
         </p>
+        <ol className="space-y-2 text-xs text-zinc-500">
+          <li className="flex gap-2"><span className="text-zinc-600">a.</span><span>Twilio Console → Phone Numbers → your number → Voice webhook: set to</span></li>
+        </ol>
+        <div className="flex items-center gap-2 bg-surface-900 border border-white/[0.06] rounded-lg px-3 py-2">
+          <code className="flex-1 text-zinc-300 font-mono text-[10px]">https://api.vapi.ai/webhook/twilio</code>
+          <CopyBtn text="https://api.vapi.ai/webhook/twilio"/>
+        </div>
+        <ol className="space-y-1 text-xs text-zinc-500" start={2}>
+          <li className="flex gap-2"><span className="text-zinc-600">b.</span><span>Vapi Dashboard → Phone Numbers → Import → enter your Twilio number + SID + Auth Token → assign <strong className="text-zinc-300">{agent.name||'this assistant'}</strong></span></li>
+        </ol>
       </div>
 
-      <button onClick={generate} disabled={gen} className="btn-primary w-full">
-        {gen ? <Loader2 size={14} className="animate-spin"/> : <Code2 size={14}/>}
-        {gen ? 'Generating…' : server ? 'Regenerate Code' : 'Generate Server Code'}
-      </button>
-
-      {files.map(({k,name,content})=>(
-        <div key={k} className="border border-white/[0.06] rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-3 py-2 bg-surface-900 border-b border-white/[0.06]">
-            <span className="text-xs font-mono font-semibold text-zinc-300">{name}</span>
-            <div className="flex items-center gap-1">
-              <button onClick={()=>cp(k,content)} className="btn-ghost text-xs py-1">
-                {copied[k] ? <Check size={11} className="text-green-400"/> : <Copy size={11}/>}
-                {copied[k] ? 'Copied' : 'Copy'}
-              </button>
-              <button onClick={()=>dl(name,content)} className="btn-ghost text-xs py-1">
-                <Download size={11}/>Download
-              </button>
-            </div>
+      {/* GHL automation */}
+      <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl p-4 space-y-3">
+        <p className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+          <Zap size={11}/>GHL Workflow — Auto-call contacts
+        </p>
+        <p className="text-xs text-zinc-500">Add a <strong className="text-zinc-300">Custom Webhook</strong> action in any GHL workflow:</p>
+        <div className="space-y-1.5">
+          <p className="text-xs text-zinc-600">URL: <code className="text-zinc-300 bg-surface-900 px-1 rounded">POST https://api.vapi.ai/call/phone</code></p>
+          <p className="text-xs text-zinc-600 mb-1">Headers: <code className="text-zinc-300 bg-surface-900 px-1 rounded">Authorization: Bearer YOUR_VAPI_KEY</code></p>
+          <p className="text-xs text-zinc-600">Body:</p>
+          <div className="relative">
+            <pre className="bg-surface-900 border border-white/[0.06] rounded-lg p-2.5 text-[10px] text-zinc-400 font-mono overflow-x-auto">{ghlBody}</pre>
+            <div className="absolute top-2 right-2"><CopyBtn text={ghlBody}/></div>
           </div>
-          <pre className="p-3 text-xs text-zinc-400 font-mono overflow-x-auto max-h-40 leading-relaxed bg-surface-950">
-            {content.slice(0,600)}{content.length>600?'\n…':''}
-          </pre>
         </div>
-      ))}
+      </div>
     </div>
   )
 }
@@ -805,7 +801,7 @@ export default function VoiceAgentBuilder() {
             {tab==='Voice'       && <VoiceTab       agent={draft} update={update}/>}
             {tab==='Credentials' && <CredentialsTab agent={draft} update={update}/>}
             {tab==='Test Chat'   && <TestTab        agent={draft}/>}
-            {tab==='Deploy'      && <DeployTab      agent={draft} update={update}/>}
+            {tab==='Calls'       && <CallsTab       agent={draft} update={update}/>}
           </div>
         </div>
       ) : (

@@ -1990,6 +1990,56 @@ export function generateEnvExample(agent) {
 
 
 
+// ── Vapi: sync assistant + trigger call ──────────────────────
+export async function syncVapiAssistant(agent, vapiKey) {
+  const voiceMap = {
+    elevenlabs: { provider: '11labs',  voiceId: agent.voiceId },
+    cartesia:   { provider: 'cartesia', voiceId: agent.voiceId },
+    deepgram:   { provider: 'deepgram', voiceId: agent.voiceId || 'aura-asteria-en' },
+  }
+  const body = {
+    name: agent.name || 'Voice Agent',
+    firstMessage: agent.firstMessage || 'Hello! How can I help you today?',
+    model: {
+      provider: 'anthropic',
+      model: agent.llmModel || 'claude-sonnet-4-6',
+      messages: [{ role: 'system', content: agent.systemPrompt || 'You are a helpful voice assistant.' }],
+    },
+    voice: voiceMap[agent.voiceProvider] || voiceMap.deepgram,
+    transcriber: { provider: 'deepgram', model: 'nova-2', language: agent.language || 'en' },
+    maxDurationSeconds: (agent.maxCallMinutes || 10) * 60,
+  }
+  const method = agent.vapiAssistantId ? 'PATCH' : 'POST'
+  const url = agent.vapiAssistantId
+    ? `https://api.vapi.ai/assistant/${agent.vapiAssistantId}`
+    : 'https://api.vapi.ai/assistant'
+  const res = await fetch(url, {
+    method,
+    headers: { Authorization: `Bearer ${vapiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(`Vapi ${res.status}: ${await res.text()}`)
+  return res.json()
+}
+
+export async function triggerVapiCall({ vapiKey, assistantId, toPhone, fromPhone, twilioAccountSid, twilioAuthToken }) {
+  const res = await fetch('https://api.vapi.ai/call/phone', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${vapiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      assistantId,
+      customer: { number: toPhone },
+      phoneNumber: {
+        twilioPhoneNumber: fromPhone,
+        twilioAccountSid,
+        twilioAuthToken,
+      },
+    }),
+  })
+  if (!res.ok) throw new Error(`Vapi ${res.status}: ${await res.text()}`)
+  return res.json()
+}
+
 // ── Twilio: trigger a call ────────────────────────────────────
 export async function triggerTwilioCall({ accountSid, authToken, from, to, webhookUrl }) {
   const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`

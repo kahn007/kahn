@@ -204,6 +204,23 @@ const API_CONFIGS = [
     description: 'Your GoHighLevel sub-account / location ID',
     testFn: async () => {},
   },
+  {
+    id: 'vapi',
+    name: 'Vapi API Key',
+    placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+    helpUrl: 'https://dashboard.vapi.ai/api-keys',
+    helpLabel: 'dashboard.vapi.ai',
+    color: 'text-purple-400',
+    bg: 'bg-purple-500/10 border-purple-500/30',
+    dot: 'bg-purple-500',
+    description: 'Vapi handles all voice call infrastructure — no server needed',
+    testFn: async (key) => {
+      const res = await fetch('https://api.vapi.ai/assistant?limit=1', {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      if (!res.ok) throw new Error(`Vapi ${res.status}`)
+    },
+  },
 ]
 
 export default function CampaignSettings() {
