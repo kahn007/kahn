@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import {
   Phone, Plus, Trash2, Wand2, Globe, Copy,
   Check, AlertCircle, Loader2, RefreshCw, MessageSquare,
-  Play, Mic, Zap, Building2, Search, PhoneCall, X, Calendar,
+  Play, Mic, Zap, Building2, Search, PhoneCall, X, Calendar, User, Sparkles,
 } from 'lucide-react'
 import { useAdStore } from '../store/adStore'
 import { getKey } from '../lib/keys'
@@ -34,8 +34,20 @@ const DEFAULT_AGENT = () => ({
   vapiAssistantId: '',
   ghlCalendarId: '',
   ghlBookingWebhookUrl: '',
+  // Character fields
+  agentPersonality: '',
+  agentObjective: 'book_appointment',
+  agentVoiceSample: '',
   createdAt: new Date().toISOString(),
 })
+
+const OBJECTIVES = [
+  { id: 'book_appointment',  label: 'Book Appointment' },
+  { id: 'qualify_lead',      label: 'Qualify Lead' },
+  { id: 'customer_support',  label: 'Customer Support' },
+  { id: 'information',       label: 'Provide Information' },
+  { id: 'follow_up',         label: 'Follow Up' },
+]
 
 const LLM_MODELS = [
   { id: 'gpt-4o-mini',               label: 'GPT-4o Mini — ★ Best for voice (fast + cheap)' },
@@ -94,6 +106,10 @@ function SetupTab({ agent, update }) {
       const r = await generateAgentPromptFromServices({
         companyName: agent.companyName, services: svcs,
         callDirection: agent.callDirection, firstMessage: agent.firstMessage, language: agent.language,
+        agentName: agent.name,
+        agentPersonality: agent.agentPersonality,
+        agentObjective: agent.agentObjective,
+        agentVoiceSample: agent.agentVoiceSample,
       })
       update({ systemPrompt: r.systemPrompt, firstMessage: r.firstMessage || agent.firstMessage })
     } catch(e) { alert(e.message) }
@@ -108,25 +124,61 @@ function SetupTab({ agent, update }) {
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Agent Name">
-          <input className="input" placeholder="e.g. Sarah — Appointment Setter"
-            value={agent.name} onChange={e=>update({name:e.target.value})}/>
-        </Field>
-        <Field label="Call Direction">
-          <div className="flex gap-2">
-            {['inbound','outbound'].map(d=>(
-              <button key={d} onClick={()=>update({callDirection:d})}
-                className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-colors capitalize
-                  ${agent.callDirection===d ? 'bg-brand-500/20 border-brand-500/40 text-brand-300'
-                  : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'}`}>{d}</button>
+      {/* ── Character & Personality ──────────────────────────────── */}
+      <div className="border border-white/[0.08] rounded-xl p-4 space-y-4 bg-surface-900/50">
+        <div className="flex items-center gap-2">
+          <User size={13} className="text-brand-400"/>
+          <p className="text-sm font-semibold text-white">Character & Personality</p>
+          <span className="text-xs text-zinc-600 ml-1">shapes the whole agent prompt</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Agent Name">
+            <input className="input" placeholder="e.g. Jess, Marcus, Sarah"
+              value={agent.name} onChange={e=>update({name:e.target.value})}/>
+          </Field>
+          <Field label="Call Direction">
+            <div className="flex gap-2">
+              {['inbound','outbound'].map(d=>(
+                <button key={d} onClick={()=>update({callDirection:d})}
+                  className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-colors capitalize
+                    ${agent.callDirection===d ? 'bg-brand-500/20 border-brand-500/40 text-brand-300'
+                    : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'}`}>{d}</button>
+              ))}
+            </div>
+          </Field>
+        </div>
+
+        <Field label="Call Objective">
+          <div className="flex flex-wrap gap-2">
+            {OBJECTIVES.map(o=>(
+              <button key={o.id} onClick={()=>update({agentObjective:o.id})}
+                className={`px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors
+                  ${agent.agentObjective===o.id
+                    ? 'bg-brand-500/20 border-brand-500/40 text-brand-300'
+                    : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'}`}>
+                {o.label}
+              </button>
             ))}
           </div>
         </Field>
+
+        <Field label="Personality & Style"
+          hint="Describe how the agent should come across — tone, background, energy">
+          <input className="input" placeholder="e.g. warm, sharp, American, naturally curious, no-nonsense"
+            value={agent.agentPersonality} onChange={e=>update({agentPersonality:e.target.value})}/>
+        </Field>
+
+        <Field label="Opening Script (optional)"
+          hint="How the agent naturally opens — used as the voice sample in the prompt. Leave blank to auto-generate.">
+          <textarea className="input min-h-[90px] resize-y text-xs leading-relaxed font-mono"
+            placeholder={`"Hey, is this {{contact.first_name}}? This is ${agent.name||'Jess'} from ${agent.companyName||'[Company]'}… caught you at an okay time for like thirty seconds?"`}
+            value={agent.agentVoiceSample} onChange={e=>update({agentVoiceSample:e.target.value})}/>
+        </Field>
       </div>
 
-      <Field label="Opening Message" hint="What the agent says first when a call connects">
-        <textarea className="input min-h-[70px] resize-none"
+      <Field label="Opening Message" hint="What the agent says first when a call connects (used by Vapi)">
+        <textarea className="input min-h-[60px] resize-none"
           placeholder={`"Hi! Thanks for calling ${agent.companyName||'us'}, this is ${agent.name||'Sarah'}. How can I help?"`}
           value={agent.firstMessage} onChange={e=>update({firstMessage:e.target.value})}/>
       </Field>

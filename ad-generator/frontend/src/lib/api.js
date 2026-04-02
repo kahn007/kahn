@@ -1910,12 +1910,29 @@ ${truncated}`,
 }
 
 // ── Generate agent prompt from scraped services ───────────────
-export async function generateAgentPromptFromServices({ companyName, services, callDirection, firstMessage, language }) {
+export async function generateAgentPromptFromServices({
+  companyName, services, callDirection, firstMessage, language,
+  agentName, agentPersonality, agentObjective, agentVoiceSample,
+}) {
   const key = getKey('anthropic')
   if (!key) throw new Error('Add your Anthropic key in Settings')
 
-  const serviceList = services.map((s, i) => `${i + 1}. ${s.name}: ${s.description}`).join('\n')
-  const direction = callDirection === 'outbound' ? 'outbound (you call the lead first)' : 'inbound (the customer called in)'
+  const serviceList = services.length
+    ? services.map((s, i) => `${i + 1}. ${s.name}${s.description ? ': ' + s.description : ''}`).join('\n')
+    : 'General enquiries and assistance'
+
+  const direction = callDirection === 'outbound' ? 'outbound cold call' : 'inbound call'
+  const objectiveMap = {
+    book_appointment: 'book a discovery or demo call with a specialist',
+    qualify_lead:     'qualify the lead and collect key information',
+    customer_support: 'resolve customer questions and support issues',
+    information:      'provide information and answer questions',
+    follow_up:        'follow up with an existing lead or customer',
+  }
+  const objective = objectiveMap[agentObjective] || 'help the caller'
+  const name      = agentName || 'the agent'
+  const company   = companyName || 'the company'
+  const personality = agentPersonality || 'warm, professional, conversational, naturally curious'
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -1927,31 +1944,144 @@ export async function generateAgentPromptFromServices({ companyName, services, c
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1500,
+      max_tokens: 2800,
       messages: [{
         role: 'user',
-        content: `Create a voice AI agent system prompt for a ${direction} call agent for "${companyName}".
+        content: `You are writing a structured voice AI agent prompt. Generate ONLY valid JSON with NO markdown fences.
 
-Services the agent handles:
+Agent name: ${name}
+Company: ${company}
+Personality: ${personality}
+Call type: ${direction}
+Objective: ${objective}
+Services / topics:
 ${serviceList}
-
 Language: ${language || 'en'}
-${firstMessage ? `Opening message: "${firstMessage}"` : ''}
+${agentVoiceSample ? `\nOpening script example (base the voice section on this style):\n${agentVoiceSample}` : ''}
+${firstMessage ? `\nOpening message: "${firstMessage}"` : ''}
 
-Return ONLY valid JSON (no markdown):
+Return ONLY this exact JSON structure. Every field is a plain string — no nested objects:
+
 {
-  "systemPrompt": "Full system prompt (300-500 words, written in second person 'You are...'). Include: role, company, services they can discuss/book, how to qualify leads, when to book appointments, objection handling, call ending procedure. Keep it conversational for voice — short sentences, natural pacing.",
-  "firstMessage": "Natural opening line (1-2 sentences, warm and conversational)"
+  "character": "2-3 sentences in second person. Start: You are ${name}, [personality traits]. You work for ${company}. Your role is to [direction + objective]. React to what people actually say — not what you expect them to say.",
+  "voice": "The natural opening script (5-8 lines, conversational, NOT scripted). Show how ${name} sounds — use natural hesitations, short sentences, commas instead of full stops. Include a soft permission question like 'did I catch you at an okay time for thirty seconds'.",
+  "flow": "4-5 discovery questions the agent asks BEFORE pitching, in order. One per line. Start with how they currently handle [relevant topic], then dig deeper.",
+  "cta": "The close. Two sentences max. Summarise what you heard, then offer the next step (booking a call, sending a link, etc). Then ask for preferred time.",
+  "objections": "6 common objections and natural SHORT responses. Format each as: Objection text / Response text. One per line.",
+  "firstMessage": "The very first thing ${name} says when the call connects. 1-2 sentences, warm and natural.",
+  "context": "Any relevant context: company name, specialist hours, lead placeholder variables like {{contact.first_name}}, etc. 2-4 lines."
 }`,
       }],
     }),
   })
   if (!res.ok) throw new Error(`Claude ${res.status}`)
   const data = await res.json()
-  const text = data.content?.[0]?.text || '{}'
+  const text  = data.content?.[0]?.text || '{}'
   const match = text.match(/\{[\s\S]*\}/)
-  if (!match) throw new Error('Could not parse prompt')
-  return JSON.parse(match[0])
+  if (!match) throw new Error('Could not parse prompt from Claude')
+  const parts = JSON.parse(match[0])
+
+  // Build the full structured XML-style prompt
+  const systemPrompt = `<character>
+${parts.character}
+</character>
+
+<voice>
+${parts.voice}
+</voice>
+
+<speech_patterns>
+Sound like you are thinking out loud not reading a script
+
+Use naturally
+uh um yeah like you know I mean
+
+Trailing thoughts
+so if we could just
+and then you would basically
+which is why I was thinking
+
+Self correction
+it is about well it can be closer to
+what I mean is
+actually let me back up for a sec
+
+Thinking out loud
+okay so if I am hearing you right
+let me think for a second
+so the way I am picturing it is
+
+Softeners
+kind of sort of maybe pretty much a bit in general I think
+
+Brief reactions
+oh awesome cool nice right gotcha totally that makes sense interesting okay
+
+Use once or twice per response
+</speech_patterns>
+
+<pronunciation>
+No full stops
+Use commas or pauses
+
+Spell numbers out
+thirty seconds not 30
+</pronunciation>
+
+<tts_rules>
+Use occasional breaks
+<break time="0.1s" /> or <break time="0.2s" />
+
+Use at most one emotion rarely
+<emotion value="curious" />
+
+Do not overuse tags
+</tts_rules>
+
+<rules>
+One question per turn
+Maximum three sentences
+Sound human
+Do not repeat yourself
+React to what they say
+Do not sound scripted
+
+If asked whether you are AI say
+I am a digital assistant helping ${company} handle outreach and conversations
+</rules>
+
+<flow>
+Discover before pitching
+
+${parts.flow}
+
+Keep it quick then move to booking
+</flow>
+
+<cta>
+THE CLOSE (keep it tight two sentences max):
+Summarize what you heard then the action:
+
+${parts.cta}
+</cta>
+
+<objections>
+${parts.objections}
+</objections>
+
+<context>
+${parts.context}
+Company ${company}
+</context>
+
+<closing>
+Be brief warm and curious
+</closing>`
+
+  return {
+    systemPrompt,
+    firstMessage: parts.firstMessage || firstMessage || '',
+  }
 }
 
 export function generateEnvExample(agent) {
