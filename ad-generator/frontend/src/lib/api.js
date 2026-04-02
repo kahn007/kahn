@@ -2233,10 +2233,6 @@ export async function syncVapiAssistant(agent, vapiKey) {
       model: agent.llmModel || 'openai/gpt-4o-mini',
       messages: [{ role: 'system', content: systemPrompt }],
       temperature: 0.7,
-      // Pass OpenRouter key inline so Vapi can use any model without dashboard config
-      ...(vapiModelProvider(agent.llmModel) === 'openrouter' && getKey('openrouter')
-        ? { metadata: { openRouterApiKey: getKey('openrouter') } }
-        : {}),
     },
 
     // ── Voice ────────────────────────────────────────────────────
