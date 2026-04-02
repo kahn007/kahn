@@ -1990,6 +1990,68 @@ export function generateEnvExample(agent) {
 
 
 
+// ── Twilio: trigger a call ────────────────────────────────────
+export async function triggerTwilioCall({ accountSid, authToken, from, to, webhookUrl }) {
+  const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`
+  const body = new URLSearchParams({ From: from, To: to, Url: webhookUrl, Method: 'POST' })
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Basic ' + btoa(`${accountSid}:${authToken}`),
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: body.toString(),
+  })
+  if (!res.ok) {
+    const txt = await res.text()
+    throw new Error(`Twilio ${res.status}: ${txt}`)
+  }
+  return res.json()
+}
+
+// ── Generate render.yaml for one-click Render deploy ─────────
+export function generateRenderYaml(agent) {
+  const name = (agent.name || 'voice-agent').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+  return `services:
+  - type: web
+    name: ${name}
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: AGENT_NAME
+        value: ${agent.name || 'Voice Agent'}
+      - key: LLM_MODEL
+        value: ${agent.llmModel || 'claude-sonnet-4-6'}
+      - key: VOICE_ID
+        value: ${agent.voiceId || ''}
+      - key: LANGUAGE
+        value: ${agent.language || 'en'}
+      - key: MAX_MINUTES
+        value: ${agent.maxCallMinutes || 10}
+      - key: ANTHROPIC_KEY
+        sync: false
+      - key: DEEPGRAM_KEY
+        sync: false
+      - key: ${agent.voiceProvider === 'elevenlabs' ? 'ELEVENLABS_KEY' : agent.voiceProvider === 'cartesia' ? 'CARTESIA_KEY' : 'DEEPGRAM_KEY'}
+        sync: false
+      - key: TWILIO_SID
+        value: ${agent.twilio?.accountSid || ''}
+      - key: TWILIO_TOKEN
+        sync: false
+${(agent.ghl?.capabilities?.length) ? `      - key: GHL_TOKEN
+        sync: false
+      - key: GHL_LOCATION_ID
+        value: ${agent.ghl?.locationId || ''}
+${agent.ghl?.calendarId ? `      - key: GHL_CALENDAR_ID
+        value: ${agent.ghl.calendarId}` : ''}` : ''}
+`
+}
+
 // LLM provider map (used by code generator)
 const LLM_MODELS_MAP = {
   'claude-sonnet-4-6': 'anthropic', 'claude-opus-4-6': 'anthropic', 'claude-haiku-4-5-20251001': 'anthropic',

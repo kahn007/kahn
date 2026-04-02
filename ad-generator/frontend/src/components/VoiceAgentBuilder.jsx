@@ -3,11 +3,13 @@ import {
   Phone, Plus, Trash2, Wand2, Globe, Copy, Download,
   Check, AlertCircle, Loader2, RefreshCw, MessageSquare,
   Code2, Play, Server, X, Mic, Zap, Building2, Search,
+  PhoneCall, PhoneOutgoing, ExternalLink,
 } from 'lucide-react'
 import { useAdStore } from '../store/adStore'
 import { getKey } from '../lib/keys'
 import {
   generateVoiceAgentServerCode, generatePackageJson, generateEnvExample,
+  generateRenderYaml, triggerTwilioCall,
   testAgentConversation, listElevenLabsVoices, listCartesiaVoices,
   listTwilioNumbers, fetchGHLCalendars, fetchGHLPipelines,
   scrapeWebsiteForServices, generateAgentPromptFromServices,
@@ -33,6 +35,7 @@ const DEFAULT_AGENT = () => ({
   companyName: '',
   twilio: { accountSid: '', authToken: '', phoneNumber: '' },
   ghl: { token: '', locationId: '', calendarId: '', pipelineId: '', capabilities: ['contacts', 'calendar'] },
+  serverUrl: '',
   createdAt: new Date().toISOString(),
 })
 
@@ -537,12 +540,16 @@ function TestTab({ agent }) {
 }
 
 // ── Deploy Tab ────────────────────────────────────────────────
-function DeployTab({ agent }) {
-  const [gen,     setGen]     = useState(false)
-  const [server,  setServer]  = useState('')
-  const [pkg,     setPkg]     = useState('')
-  const [env,     setEnv]     = useState('')
-  const [copied,  setCopied]  = useState({})
+function DeployTab({ agent, update }) {
+  const [gen,        setGen]        = useState(false)
+  const [server,     setServer]     = useState('')
+  const [pkg,        setPkg]        = useState('')
+  const [env,        setEnv]        = useState('')
+  const [render,     setRender]     = useState('')
+  const [copied,     setCopied]     = useState({})
+  const [calling,    setCalling]    = useState('')   // 'inbound'|'outbound'|''
+  const [callPhone,  setCallPhone]  = useState('')
+  const [callStatus, setCallStatus] = useState('')
 
   function cp(k,t){ navigator.clipboard.writeText(t); setCopied(p=>({...p,[k]:true})); setTimeout(()=>setCopied(p=>({...p,[k]:false})),1500) }
   function dl(name,text){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([text],{type:'text/plain'})); a.download=name; a.click() }
@@ -553,28 +560,99 @@ function DeployTab({ agent }) {
       setServer(generateVoiceAgentServerCode({agent}))
       setPkg(JSON.stringify(generatePackageJson(agent),null,2))
       setEnv(generateEnvExample(agent))
+      setRender(generateRenderYaml(agent))
     } catch(e){alert(e.message)} finally{setGen(false)}
+  }
+
+  async function makeCall(direction) {
+    const tw = agent.twilio || {}
+    if (!tw.accountSid || !tw.authToken || !tw.phoneNumber) {
+      setCallStatus('Add Twilio credentials in the Credentials tab first'); return
+    }
+    if (!agent.serverUrl) {
+      setCallStatus('Enter your deployed Server URL above first'); return
+    }
+    const to = direction === 'inbound' ? callPhone : callPhone
+    if (!to) { setCallStatus('Enter a phone number to call'); return }
+    setCalling(direction); setCallStatus('')
+    try {
+      const webhookUrl = agent.serverUrl.replace(/\/$/, '') + '/twilio/voice'
+      await triggerTwilioCall({
+        accountSid: tw.accountSid,
+        authToken:  tw.authToken,
+        from: tw.phoneNumber,
+        to,
+        webhookUrl,
+      })
+      setCallStatus(`✓ Call initiated to ${to} — pick up your phone!`)
+    } catch(e) {
+      setCallStatus(`Error: ${e.message}`)
+    } finally { setCalling('') }
   }
 
   const files = server ? [
     {k:'server',  name:'server.js',       content:server},
     {k:'pkg',     name:'package.json',    content:pkg},
     {k:'env',     name:'.env.example',    content:env},
+    {k:'render',  name:'render.yaml',     content:render},
   ] : []
+
+  const ready = !!(agent.twilio?.accountSid && agent.twilio?.phoneNumber && agent.serverUrl)
 
   return (
     <div className="space-y-5">
-      {/* Steps */}
+      {/* Server URL — the key field */}
+      <div className={`border rounded-xl p-4 space-y-3 ${ready ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-amber-500/25 bg-amber-500/5'}`}>
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${ready ? 'bg-emerald-400' : 'bg-amber-400'}`}/>
+          <p className="text-sm font-semibold text-white">Server URL</p>
+          <span className="text-xs text-zinc-600">paste after you deploy below</span>
+        </div>
+        <input className="input font-mono text-xs" placeholder="https://your-agent.up.railway.app"
+          value={agent.serverUrl || ''} onChange={e=>update({serverUrl:e.target.value})}/>
+        {agent.serverUrl && (
+          <p className="text-xs text-zinc-500">
+            Twilio webhook: <code className="text-zinc-300 bg-surface-900 px-1 rounded">{agent.serverUrl.replace(/\/$/,'')}/twilio/voice</code>
+          </p>
+        )}
+      </div>
+
+      {/* Live call buttons */}
+      <div className="border border-white/[0.06] rounded-xl p-4 space-y-3">
+        <p className="text-sm font-semibold text-white flex items-center gap-2">
+          <PhoneCall size={13} className="text-green-400"/>Make a Live Call
+        </p>
+        <Field label="Phone number to call">
+          <input className="input" placeholder="+1 (555) 000-0000"
+            value={callPhone} onChange={e=>setCallPhone(e.target.value)}/>
+        </Field>
+        <div className="flex gap-2">
+          <button onClick={()=>makeCall('test')} disabled={!!calling||!callPhone}
+            className="flex-1 py-2.5 text-xs font-semibold rounded-lg border border-green-500/30 bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors flex items-center justify-center gap-1.5 disabled:opacity-40">
+            {calling==='test' ? <Loader2 size={12} className="animate-spin"/> : <PhoneCall size={12}/>}
+            {calling==='test' ? 'Calling…' : 'Call this number'}
+          </button>
+        </div>
+        {callStatus && (
+          <p className={`text-xs ${callStatus.startsWith('✓') ? 'text-green-400' : 'text-red-400'}`}>{callStatus}</p>
+        )}
+        <p className="text-xs text-zinc-600">
+          Your Twilio number ({agent.twilio?.phoneNumber||'—'}) will call the number above. The AI agent answers and runs the conversation.
+        </p>
+      </div>
+
+      {/* Deploy steps */}
       <div className="bg-surface-900 border border-white/[0.06] rounded-xl p-4 space-y-3">
         <p className="text-sm font-semibold text-white flex items-center gap-2">
-          <Server size={13} className="text-brand-400"/>How to Deploy
+          <Server size={13} className="text-brand-400"/>Deploy Once — Works Forever
         </p>
         {[
-          ['1','Generate & download 3 files below','server.js, package.json, .env.example'],
-          ['2','Deploy to Railway (free tier ok)','railway.app → New Project → Deploy from GitHub'],
-          ['3','Copy your Railway URL','e.g. https://your-agent.up.railway.app'],
-          ['4','Paste into Twilio → Phone Numbers → Voice Webhook','POST https://your-agent.up.railway.app/twilio/voice'],
-          ['5','Verify number shows up in GHL','Settings → Phone Numbers → should appear automatically'],
+          ['1','Generate code & download below','4 files including render.yaml for one-click deploy'],
+          ['2','Push to a new GitHub repo','Create a new private repo, push all 4 files'],
+          ['3','Connect to Render (free)','render.com → New → Web Service → connect your repo → it auto-detects render.yaml'],
+          ['4','Add env vars in Render dashboard','Paste your API keys from .env.example into Render → Environment'],
+          ['5','Copy your Render URL and paste above','e.g. https://your-agent.onrender.com → paste in Server URL field'],
+          ['6','Set Twilio webhook','Twilio Console → Phone Numbers → your number → Voice: POST {url}/twilio/voice'],
         ].map(([n,t,s])=>(
           <div key={n} className="flex items-start gap-3">
             <span className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{n}</span>
@@ -583,12 +661,13 @@ function DeployTab({ agent }) {
         ))}
       </div>
 
-      {/* GHL tip */}
+      {/* GHL outbound tip */}
       <div className="bg-emerald-500/5 border border-emerald-500/15 rounded-xl p-3">
-        <p className="text-xs font-semibold text-emerald-400 mb-1 flex items-center gap-1"><Zap size={11}/>GHL Workflow tip</p>
+        <p className="text-xs font-semibold text-emerald-400 mb-1 flex items-center gap-1.5"><Zap size={11}/>GHL Outbound Automation</p>
         <p className="text-xs text-zinc-500 leading-relaxed">
-          Use a <strong className="text-zinc-300">Custom Webhook</strong> action in any GHL Workflow to trigger outbound AI calls.
-          Point it to <code className="text-zinc-300 bg-surface-800 px-1 rounded text-[10px]">POST /trigger-call</code> with the contact phone in the body.
+          In any GHL Workflow: add a <strong className="text-zinc-300">Custom Webhook</strong> step →
+          POST to <code className="text-zinc-300 bg-surface-800 px-1 rounded text-[10px]">{(agent.serverUrl||'https://your-server.com').replace(/\/$/,'')}/trigger-call</code> with body <code className="text-zinc-300 bg-surface-800 px-1 rounded text-[10px]">{`{"to":"{{contact.phone}}"}`}</code>.
+          The agent will automatically call that contact.
         </p>
       </div>
 
@@ -726,7 +805,7 @@ export default function VoiceAgentBuilder() {
             {tab==='Voice'       && <VoiceTab       agent={draft} update={update}/>}
             {tab==='Credentials' && <CredentialsTab agent={draft} update={update}/>}
             {tab==='Test Chat'   && <TestTab        agent={draft}/>}
-            {tab==='Deploy'      && <DeployTab      agent={draft}/>}
+            {tab==='Deploy'      && <DeployTab      agent={draft} update={update}/>}
           </div>
         </div>
       ) : (
