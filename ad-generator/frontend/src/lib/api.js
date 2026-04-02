@@ -1467,6 +1467,27 @@ export async function fetchGHLCalendars(token, locationId) {
   return data.calendars || []
 }
 
+// Fetch free slots for a calendar — returns array of { date, slots: [ISO string] }
+export async function fetchGHLFreeSlots(token, calendarId, { startDate, endDate, timezone }) {
+  const params = new URLSearchParams({
+    startDate: String(startDate),
+    endDate:   String(endDate),
+    timezone,
+  })
+  const res = await fetch(
+    `${GHL_BASE}/calendars/${calendarId}/free-slots?${params}`,
+    { headers: { Authorization: `Bearer ${token}`, Version: GHL_VER } },
+  )
+  if (!res.ok) throw new Error(`GHL free-slots ${res.status}: ${await res.text()}`)
+  const data = await res.json()
+  // Response: { _dates_: { "YYYY-MM-DD": { slots: ["ISO string", ...] } } }
+  const dateMap = data._dates_ || {}
+  return Object.entries(dateMap)
+    .map(([date, entry]) => ({ date, slots: entry?.slots || [] }))
+    .filter(d => d.slots.length > 0)
+    .sort((a, b) => a.date.localeCompare(b.date))
+}
+
 export async function fetchGHLPipelines(token, locationId) {
   const res = await fetch(`${GHL_BASE}/opportunities/pipelines?locationId=${locationId}`, { headers: ghlHeaders(token) })
   if (!res.ok) throw new Error(`GHL pipelines ${res.status}`)
@@ -2127,45 +2148,71 @@ function vapiModelProvider(modelId) {
   if (modelId.startsWith('claude')) return 'anthropic'
   if (modelId.startsWith('gpt') || modelId.startsWith('o1') || modelId.startsWith('o3')) return 'openai'
   if (modelId.startsWith('gemini')) return 'google'
+  if (modelId.startsWith('llama') || modelId.startsWith('mixtral') || modelId.startsWith('gemma')) return 'groq'
+  if (modelId.startsWith('grok')) return 'xai'
   return 'openai'
 }
 
 // Build GHL calendar system prompt addition
 function ghlCalendarPrompt(agent) {
   if (!agent.ghlCalendarId) return ''
+  const tz = agent.agentTimezone || 'America/New_York'
   return `
 
 APPOINTMENT BOOKING:
-You have the ability to book appointments. When a prospect agrees to schedule:
-1. Collect their: full name, phone number, email address, and preferred date/time
-2. Confirm all details back to them before booking
-3. Use the book_appointment function to create the booking
-4. Give them the confirmation once booked
+You have the ability to check availability and book appointments for the caller.
 
-Be conversational — don't read out a form. Ask naturally one piece at a time.
-Calendar ID: ${agent.ghlCalendarId}`
+BOOKING FLOW — follow this exactly:
+1. When a caller wants to book, ask for their preferred day or time of day
+2. Call check_calendar with that date (YYYY-MM-DD) to get real available slots
+3. Offer only two or three options from the returned slots — never make up times
+4. Once they choose, confirm: "So that is [day] at [time] — does that work for you?"
+5. Collect remaining details conversationally: full name, phone number, email
+6. Call book_appointment only after explicit confirmation
+7. Read back the confirmation naturally once booked
+
+Never mention calendar IDs, tool names, or internal steps out loud.
+Calendar ID: ${agent.ghlCalendarId}
+Timezone: ${tz}`
 }
 
 export async function syncVapiAssistant(agent, vapiKey) {
   const systemPrompt = (agent.systemPrompt || 'You are a helpful voice assistant.') + ghlCalendarPrompt(agent)
 
-  // GHL booking tool — only included when calendar is selected and webhook URL is set
+  // GHL tools — only when calendar + webhook configured
   const tools = []
   if (agent.ghlCalendarId && agent.ghlBookingWebhookUrl) {
+    // Tool 1: check available slots before offering times
+    tools.push({
+      type: 'function',
+      async: false,
+      name: 'check_calendar',
+      description: 'Check available appointment slots for a given date. Always call this BEFORE offering times to the caller.',
+      parameters: {
+        type: 'object',
+        properties: {
+          date:     { type: 'string', description: 'Date to check in YYYY-MM-DD format, e.g. 2025-06-15' },
+          timezone: { type: 'string', description: 'IANA timezone, e.g. America/New_York. Use the agent timezone if not specified by caller.' },
+        },
+        required: ['date'],
+      },
+      server: { url: agent.ghlBookingWebhookUrl },
+    })
+    // Tool 2: book the appointment after collecting details + confirmation
     tools.push({
       type: 'function',
       async: false,
       name: 'book_appointment',
-      description: 'Book an appointment in GoHighLevel for the contact. Call this after collecting name, phone, email, and their preferred time.',
+      description: 'Book an appointment in GoHighLevel. Only call this after the caller has explicitly confirmed the time slot and you have their name, phone, and email.',
       parameters: {
         type: 'object',
         properties: {
           contactName:  { type: 'string', description: 'Full name of the contact' },
-          contactPhone: { type: 'string', description: 'Phone number' },
+          contactPhone: { type: 'string', description: 'Phone number including country code' },
           contactEmail: { type: 'string', description: 'Email address' },
-          startTime:    { type: 'string', description: 'Appointment start time in ISO 8601 format, e.g. 2025-06-15T14:00:00-05:00' },
-          timezone:     { type: 'string', description: 'Timezone, e.g. America/Chicago' },
-          notes:        { type: 'string', description: 'Any notes from the call' },
+          startTime:    { type: 'string', description: 'Appointment start time in ISO 8601, e.g. 2025-06-15T14:00:00-05:00' },
+          timezone:     { type: 'string', description: 'IANA timezone, e.g. America/Chicago' },
+          notes:        { type: 'string', description: 'Any relevant notes from the conversation' },
         },
         required: ['contactName', 'contactPhone', 'startTime'],
       },
@@ -2186,16 +2233,23 @@ export async function syncVapiAssistant(agent, vapiKey) {
       ...(tools.length > 0 ? { toolIds: undefined } : {}),
     },
 
-    // ── Voice — ElevenLabs turbo, max latency optimization ───────
-    voice: {
-      provider: '11labs',
-      voiceId: agent.voiceId || '',
-      model: 'eleven_turbo_v2_5',
-      stability: 0.5,
-      similarityBoost: 0.75,
-      optimizeStreamingLatency: 4,   // 0-4, 4 = max speed
-      enableSsmlParsing: false,
-    },
+    // ── Voice ────────────────────────────────────────────────────
+    voice: agent.voiceProvider === 'cartesia'
+      ? {
+          provider: 'cartesia',
+          voiceId: agent.voiceId || '',
+          model: 'sonic-2024-10-19',  // Cartesia Sonic — ~50ms latency
+          speed: 1.0,
+        }
+      : {
+          provider: '11labs',
+          voiceId: agent.voiceId || '',
+          model: agent.ttsModel || 'eleven_turbo_v2_5',
+          stability: 0.5,
+          similarityBoost: 0.75,
+          optimizeStreamingLatency: 4,  // 0-4, 4 = max speed
+          enableSsmlParsing: false,
+        },
 
     // ── STT — Deepgram Nova-3 (fastest + most accurate) ─────────
     transcriber: {

@@ -92,6 +92,40 @@ const API_CONFIGS = [
     },
   },
   {
+    id: 'groq',
+    name: 'Groq',
+    placeholder: 'gsk_...',
+    helpUrl: 'https://console.groq.com/keys',
+    helpLabel: 'console.groq.com',
+    color: 'text-orange-400',
+    bg: 'bg-orange-500/10 border-orange-500/30',
+    dot: 'bg-orange-500',
+    description: 'Llama 3.3 70B via Groq LPU chip — fastest LLM for voice (~150ms)',
+    testFn: async (key) => {
+      const res = await fetch('https://api.groq.com/openai/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+    },
+  },
+  {
+    id: 'cartesia',
+    name: 'Cartesia',
+    placeholder: 'sk_car_...',
+    helpUrl: 'https://play.cartesia.ai/keys',
+    helpLabel: 'play.cartesia.ai',
+    color: 'text-violet-400',
+    bg: 'bg-violet-500/10 border-violet-500/30',
+    dot: 'bg-violet-500',
+    description: 'Sonic TTS — fastest voice synthesis ~50ms, competitive with ElevenLabs',
+    testFn: async (key) => {
+      const res = await fetch('https://api.cartesia.ai/voices', {
+        headers: { 'X-API-Key': key, 'Cartesia-Version': '2024-06-10' },
+      })
+      if (!res.ok) throw new Error(`Status ${res.status}`)
+    },
+  },
+  {
     id: 'openai',
     name: 'OpenAI',
     placeholder: 'sk-...',

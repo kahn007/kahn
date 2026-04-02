@@ -3,13 +3,14 @@ import {
   Phone, Plus, Trash2, Wand2, Globe, Copy,
   Check, AlertCircle, Loader2, RefreshCw, MessageSquare,
   Play, Mic, Zap, Building2, Search, PhoneCall, X, Calendar, User, Sparkles,
+  ChevronDown, ChevronUp, Clock, Target,
 } from 'lucide-react'
 import { useAdStore } from '../store/adStore'
 import { getKey } from '../lib/keys'
 import {
   syncVapiAssistant, triggerVapiCall,
-  testAgentConversation, listElevenLabsVoices,
-  listTwilioNumbers, fetchGHLCalendars,
+  testAgentConversation, listElevenLabsVoices, listCartesiaVoices,
+  listTwilioNumbers, fetchGHLCalendars, fetchGHLFreeSlots,
   scrapeWebsiteForServices, generateAgentPromptFromServices,
 } from '../lib/api'
 import { v4 as uuidv4 } from 'uuid'
@@ -24,6 +25,8 @@ const DEFAULT_AGENT = () => ({
   llmModel: 'gpt-4o-mini',
   voiceId: '',
   voiceName: '',
+  voiceProvider: 'elevenlabs',
+  ttsModel: 'eleven_turbo_v2_5',
   firstMessage: '',
   systemPrompt: '',
   websiteUrl: '',
@@ -34,28 +37,89 @@ const DEFAULT_AGENT = () => ({
   vapiAssistantId: '',
   ghlCalendarId: '',
   ghlBookingWebhookUrl: '',
-  // Character fields
-  agentPersonality: '',
+  agentPersonality: 'balanced',
   agentObjective: 'book_appointment',
-  agentVoiceSample: '',
+  agentTimezone: 'America/New_York',
   createdAt: new Date().toISOString(),
 })
 
+const PERSONALITIES = [
+  {
+    id: 'friendly',
+    label: 'Friendly Helper',
+    desc: 'Warm & low-pressure — informative, approachable',
+    traits: 'warm, friendly, patient, helpful, low-pressure, informative, approachable',
+  },
+  {
+    id: 'balanced',
+    label: 'Balanced',
+    desc: 'Conversational & curious — naturally guides to close',
+    traits: 'conversational, naturally curious, warm but direct, focused, engaging',
+  },
+  {
+    id: 'closer',
+    label: 'Hard Closer',
+    desc: 'Assertive & results-driven — handles objections firmly',
+    traits: 'assertive, confident, results-driven, direct, handles objections firmly, persistent but respectful',
+  },
+  {
+    id: 'support',
+    label: 'Support Agent',
+    desc: 'Patient & empathetic — solution-focused',
+    traits: 'patient, empathetic, thorough, professional, solution-focused, calm under pressure',
+  },
+]
+
 const OBJECTIVES = [
-  { id: 'book_appointment',  label: 'Book Appointment' },
-  { id: 'qualify_lead',      label: 'Qualify Lead' },
-  { id: 'customer_support',  label: 'Customer Support' },
-  { id: 'information',       label: 'Provide Information' },
-  { id: 'follow_up',         label: 'Follow Up' },
+  { id: 'book_appointment', label: 'Book Appointment' },
+  { id: 'qualify_lead',     label: 'Qualify Lead' },
+  { id: 'customer_support', label: 'Customer Support' },
+  { id: 'information',      label: 'Provide Info' },
+  { id: 'follow_up',        label: 'Follow Up' },
+  { id: 'sales',            label: 'Direct Sales' },
+]
+
+const LANGUAGES = [
+  { id: 'en', label: 'English' },
+  { id: 'es', label: 'Spanish' },
+  { id: 'fr', label: 'French' },
+  { id: 'de', label: 'German' },
+  { id: 'pt', label: 'Portuguese' },
+  { id: 'it', label: 'Italian' },
 ]
 
 const LLM_MODELS = [
-  { id: 'gpt-4o-mini',               label: 'GPT-4o Mini — ★ Best for voice (fast + cheap)' },
-  { id: 'gpt-4o',                    label: 'GPT-4o — Most capable OpenAI' },
-  { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6 — Great balance' },
-  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 — Fastest Claude' },
-  { id: 'claude-opus-4-6',           label: 'Claude Opus 4.6 — Most capable Claude' },
+  { id: 'llama-3.3-70b-versatile',   label: '⚡ Llama 3.3 70B via Groq — Fastest ~150ms' },
+  { id: 'llama-3.1-8b-instant',      label: '⚡ Llama 3.1 8B via Groq — Ultra fast ~80ms' },
+  { id: 'gpt-4o-mini',               label: '★ GPT-4o Mini — Best balance ~200ms' },
+  { id: 'gpt-4o',                    label: 'GPT-4o — Highest quality ~350ms' },
+  { id: 'gemini-2.0-flash',          label: 'Gemini 2.0 Flash — Fast ~150ms' },
+  { id: 'gemini-1.5-flash',          label: 'Gemini 1.5 Flash — Reliable ~200ms' },
+  { id: 'claude-sonnet-4-6',         label: 'Claude Sonnet 4.6 — Nuanced ~400ms' },
+  { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 — Fast Claude ~300ms' },
+  { id: 'claude-opus-4-6',           label: 'Claude Opus 4.6 — Most capable ~600ms' },
 ]
+
+const TIMEZONES = [
+  { id: 'America/New_York',    label: 'Eastern (ET) — New York' },
+  { id: 'America/Chicago',     label: 'Central (CT) — Chicago' },
+  { id: 'America/Denver',      label: 'Mountain (MT) — Denver' },
+  { id: 'America/Los_Angeles', label: 'Pacific (PT) — Los Angeles' },
+  { id: 'America/Phoenix',     label: 'Arizona (no DST)' },
+  { id: 'America/Toronto',     label: 'Toronto (ET)' },
+  { id: 'America/Vancouver',   label: 'Vancouver (PT)' },
+  { id: 'America/Sao_Paulo',   label: 'São Paulo (BRT)' },
+  { id: 'Europe/London',       label: 'London (GMT/BST)' },
+  { id: 'Europe/Paris',        label: 'Paris / Berlin (CET)' },
+  { id: 'Europe/Amsterdam',    label: 'Amsterdam (CET)' },
+  { id: 'Asia/Dubai',          label: 'Dubai (GST)' },
+  { id: 'Asia/Kolkata',        label: 'India (IST)' },
+  { id: 'Asia/Singapore',      label: 'Singapore (SGT)' },
+  { id: 'Asia/Tokyo',          label: 'Tokyo (JST)' },
+  { id: 'Australia/Sydney',    label: 'Sydney (AEST)' },
+  { id: 'Pacific/Auckland',    label: 'New Zealand (NZST)' },
+]
+
 const TABS = ['Setup', 'Voice', 'Test Chat', 'Live Test', 'Calls']
 
 // ── Helpers ───────────────────────────────────────────────────
@@ -65,6 +129,26 @@ function Field({ label, hint, children }) {
       <label className="block text-xs font-medium text-zinc-400">{label}</label>
       {children}
       {hint && <p className="text-xs text-zinc-600">{hint}</p>}
+    </div>
+  )
+}
+
+function FormSection({ num, icon: Icon, title, subtitle, children, accent }) {
+  return (
+    <div className={`rounded-xl border overflow-hidden ${accent ? 'border-brand-500/25' : 'border-white/[0.08]'}`}>
+      <div className={`flex items-center gap-2.5 px-4 py-2.5 border-b border-white/[0.06] ${accent ? 'bg-brand-500/5' : 'bg-surface-900/60'}`}>
+        <span className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-400 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+          {num}
+        </span>
+        {Icon && <Icon size={12} className="text-brand-400 flex-shrink-0"/>}
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-semibold text-white leading-none">{title}</p>
+          {subtitle && <p className="text-[10px] text-zinc-600 mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+      <div className="p-4 space-y-3">
+        {children}
+      </div>
     </div>
   )
 }
@@ -81,9 +165,11 @@ function CopyBtn({ text }) {
 
 // ── Setup Tab ─────────────────────────────────────────────────
 function SetupTab({ agent, update }) {
-  const [scraping,   setScraping]   = useState(false)
-  const [generating, setGenerating] = useState(false)
-  const [scrapeErr,  setScrapeErr]  = useState('')
+  const [scraping,    setScraping]    = useState(false)
+  const [generating,  setGenerating]  = useState(false)
+  const [scrapeErr,   setScrapeErr]   = useState('')
+  const [showPrompt,  setShowPrompt]  = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   async function handleScrape() {
     if (!agent.websiteUrl) return
@@ -103,188 +189,257 @@ function SetupTab({ agent, update }) {
     setGenerating(true)
     try {
       const svcs = agent.scrapedServices.filter(s => agent.selectedServices.includes(s.id))
+      const traits = PERSONALITIES.find(p => p.id === agent.agentPersonality)?.traits
+        || 'warm, professional, conversational'
       const r = await generateAgentPromptFromServices({
-        companyName: agent.companyName, services: svcs,
-        callDirection: agent.callDirection, firstMessage: agent.firstMessage, language: agent.language,
+        companyName: agent.companyName,
+        services: svcs,
+        callDirection: agent.callDirection,
+        firstMessage: agent.firstMessage,
+        language: agent.language,
         agentName: agent.name,
-        agentPersonality: agent.agentPersonality,
+        agentPersonality: traits,
         agentObjective: agent.agentObjective,
-        agentVoiceSample: agent.agentVoiceSample,
+        agentVoiceSample: '',
       })
       update({ systemPrompt: r.systemPrompt, firstMessage: r.firstMessage || agent.firstMessage })
+      setShowPrompt(true)
     } catch(e) { alert(e.message) }
     finally { setGenerating(false) }
   }
 
   function toggleSvc(id) {
     update({ selectedServices: agent.selectedServices.includes(id)
-      ? agent.selectedServices.filter(x=>x!==id)
+      ? agent.selectedServices.filter(x => x !== id)
       : [...agent.selectedServices, id] })
   }
 
+  const canGenerate = !!(agent.agentObjective && (agent.selectedServices.length > 0 || agent.companyName))
+
   return (
-    <div className="space-y-5">
-      {/* ── Character & Personality ──────────────────────────────── */}
-      <div className="border border-white/[0.08] rounded-xl p-4 space-y-4 bg-surface-900/50">
-        <div className="flex items-center gap-2">
-          <User size={13} className="text-brand-400"/>
-          <p className="text-sm font-semibold text-white">Character & Personality</p>
-          <span className="text-xs text-zinc-600 ml-1">shapes the whole agent prompt</span>
-        </div>
+    <div className="space-y-3">
 
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Agent Name">
-            <input className="input" placeholder="e.g. Jess, Marcus, Sarah"
-              value={agent.name} onChange={e=>update({name:e.target.value})}/>
-          </Field>
-          <Field label="Call Direction">
-            <div className="flex gap-2">
-              {['inbound','outbound'].map(d=>(
-                <button key={d} onClick={()=>update({callDirection:d})}
-                  className={`flex-1 py-2 text-xs font-medium rounded-lg border transition-colors capitalize
-                    ${agent.callDirection===d ? 'bg-brand-500/20 border-brand-500/40 text-brand-300'
-                    : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'}`}>{d}</button>
-              ))}
-            </div>
-          </Field>
-        </div>
-
-        <Field label="Call Objective">
-          <div className="flex flex-wrap gap-2">
-            {OBJECTIVES.map(o=>(
-              <button key={o.id} onClick={()=>update({agentObjective:o.id})}
-                className={`px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors
-                  ${agent.agentObjective===o.id
-                    ? 'bg-brand-500/20 border-brand-500/40 text-brand-300'
-                    : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'}`}>
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </Field>
-
-        <Field label="Personality & Style"
-          hint="Describe how the agent should come across — tone, background, energy">
-          <input className="input" placeholder="e.g. warm, sharp, American, naturally curious, no-nonsense"
-            value={agent.agentPersonality} onChange={e=>update({agentPersonality:e.target.value})}/>
-        </Field>
-
-        <Field label="Opening Script (optional)"
-          hint="How the agent naturally opens — used as the voice sample in the prompt. Leave blank to auto-generate.">
-          <textarea className="input min-h-[90px] resize-y text-xs leading-relaxed font-mono"
-            placeholder={`"Hey, is this {{contact.first_name}}? This is ${agent.name||'Jess'} from ${agent.companyName||'[Company]'}… caught you at an okay time for like thirty seconds?"`}
-            value={agent.agentVoiceSample} onChange={e=>update({agentVoiceSample:e.target.value})}/>
-        </Field>
-      </div>
-
-      <Field label="Opening Message" hint="What the agent says first when a call connects (used by Vapi)">
-        <textarea className="input min-h-[60px] resize-none"
-          placeholder={`"Hi! Thanks for calling ${agent.companyName||'us'}, this is ${agent.name||'Sarah'}. How can I help?"`}
-          value={agent.firstMessage} onChange={e=>update({firstMessage:e.target.value})}/>
-      </Field>
-
-      {/* Website Scraper */}
-      <div className="border border-white/[0.08] rounded-xl p-4 space-y-4 bg-surface-900/50">
-        <div className="flex items-center gap-2">
-          <Globe size={13} className="text-brand-400"/>
-          <p className="text-sm font-semibold text-white">Website Scraper</p>
-          <span className="text-xs text-zinc-600 ml-1">auto-build prompt from your site</span>
-        </div>
+      {/* ── 1. Scan Website ────────────────────────────────────── */}
+      <FormSection num="1" icon={Globe} title="Scan Your Website" subtitle="We detect your company name, services and context automatically">
         <div className="flex gap-2">
           <input className="input flex-1" placeholder="https://yoursite.com"
-            value={agent.websiteUrl} onChange={e=>update({websiteUrl:e.target.value})}
-            onKeyDown={e=>e.key==='Enter'&&handleScrape()}/>
-          <button onClick={handleScrape} disabled={!agent.websiteUrl||scraping} className="btn-primary shrink-0">
+            value={agent.websiteUrl} onChange={e => update({websiteUrl: e.target.value})}
+            onKeyDown={e => e.key === 'Enter' && handleScrape()}/>
+          <button onClick={handleScrape} disabled={!agent.websiteUrl || scraping}
+            className="btn-primary shrink-0">
             {scraping ? <Loader2 size={13} className="animate-spin"/> : <Search size={13}/>}
-            {scraping ? 'Scanning…' : 'Scan'}
+            {scraping ? 'Scanning…' : 'Scan Site'}
           </button>
         </div>
         {scrapeErr && <p className="text-xs text-red-400 flex items-center gap-1"><AlertCircle size={11}/>{scrapeErr}</p>}
 
+        {/* Scraped result */}
         {agent.scrapedServices.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {agent.companyName && (
-              <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-                <Building2 size={11} className="text-zinc-600"/>{agent.companyName}
+              <div className="flex items-center gap-1.5">
+                <Building2 size={11} className="text-emerald-500"/>
+                <span className="text-xs font-semibold text-emerald-400">{agent.companyName}</span>
+                <span className="text-[10px] text-zinc-600">detected</span>
               </div>
             )}
-            <p className="text-xs text-zinc-500">Select services this agent handles:</p>
-            <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
+            <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wide">What does this agent handle? Toggle to select:</p>
+            <div className="grid grid-cols-2 gap-1.5">
               {agent.scrapedServices.map(svc => {
                 const on = agent.selectedServices.includes(svc.id)
                 return (
-                  <button key={svc.id} onClick={()=>toggleSvc(svc.id)}
-                    className={`text-left p-2.5 rounded-lg border text-xs transition-colors
-                      ${on ? 'bg-brand-500/15 border-brand-500/30 text-white'
-                           : 'border-white/[0.06] text-zinc-500 hover:text-zinc-300 hover:border-white/[0.12]'}`}>
-                    <div className="flex items-start gap-1.5">
-                      <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 mt-0.5
+                  <button key={svc.id} onClick={() => toggleSvc(svc.id)}
+                    className={`text-left px-3 py-2 rounded-lg border text-xs transition-all
+                      ${on
+                        ? 'bg-brand-500/15 border-brand-500/30 text-white shadow-sm shadow-brand-500/10'
+                        : 'border-white/[0.06] text-zinc-500 hover:text-zinc-300 hover:border-white/[0.12]'}`}>
+                    <div className="flex items-start gap-2">
+                      <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors
                         ${on ? 'bg-brand-500 border-brand-500' : 'border-zinc-600'}`}>
                         {on && <Check size={9} className="text-white"/>}
                       </div>
-                      <div>
-                        <p className="font-medium leading-snug">{svc.name}</p>
-                        {svc.description && <p className="text-zinc-600 mt-0.5 leading-snug line-clamp-1">{svc.description}</p>}
+                      <div className="min-w-0">
+                        <p className="font-medium leading-snug truncate">{svc.name}</p>
+                        {svc.description && <p className="text-zinc-600 mt-0.5 leading-snug line-clamp-1 text-[10px]">{svc.description}</p>}
                       </div>
                     </div>
                   </button>
                 )
               })}
             </div>
-            <button onClick={handleGenerate} disabled={generating||!agent.selectedServices.length} className="btn-primary w-full">
-              {generating ? <Loader2 size={13} className="animate-spin"/> : <Wand2 size={13}/>}
-              {generating ? 'Generating Prompt…'
-                : `Generate Prompt (${agent.selectedServices.length} service${agent.selectedServices.length!==1?'s':''})`}
-            </button>
           </div>
         )}
-      </div>
 
-      <Field label="System Prompt" hint="Auto-generated above, or write manually">
-        <textarea className="input min-h-[160px] resize-y font-mono text-xs leading-relaxed"
-          placeholder="Your agent's instructions will appear here after scanning…"
-          value={agent.systemPrompt} onChange={e=>update({systemPrompt:e.target.value})}/>
-      </Field>
+        {/* No scraper yet — manual company name */}
+        {agent.scrapedServices.length === 0 && (
+          <Field label="Or enter company name manually">
+            <input className="input" placeholder="e.g. Brayne AI"
+              value={agent.companyName} onChange={e => update({companyName: e.target.value})}/>
+          </Field>
+        )}
+      </FormSection>
 
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Language">
-          <select className="input" value={agent.language} onChange={e=>update({language:e.target.value})}>
-            <option value="en">English</option>
-            <option value="es">Spanish</option>
-            <option value="fr">French</option>
-            <option value="de">German</option>
-            <option value="pt">Portuguese</option>
-          </select>
-        </Field>
-        <Field label="AI Model">
-          <select className="input" value={agent.llmModel} onChange={e=>update({llmModel:e.target.value})}>
-            {LLM_MODELS.map(m=><option key={m.id} value={m.id}>{m.label}</option>)}
-          </select>
-        </Field>
-      </div>
+      {/* ── 2. Agent Identity ──────────────────────────────────── */}
+      <FormSection num="2" icon={User} title="Agent Identity">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Agent Name">
+            <input className="input" placeholder="e.g. Jess, Marcus, Sarah"
+              value={agent.name} onChange={e => update({name: e.target.value})}/>
+          </Field>
+          <Field label="Calls">
+            <div className="flex gap-1.5 h-[38px]">
+              {['inbound','outbound'].map(d => (
+                <button key={d} onClick={() => update({callDirection: d})}
+                  className={`flex-1 text-xs font-medium rounded-lg border transition-colors capitalize
+                    ${agent.callDirection === d
+                      ? 'bg-brand-500/20 border-brand-500/40 text-brand-300'
+                      : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'}`}>{d}</button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      </FormSection>
 
-      <Field label={`Max Call Duration — ${agent.maxCallMinutes} min`}>
-        <input type="range" min={2} max={30} step={1} value={agent.maxCallMinutes}
-          onChange={e=>update({maxCallMinutes:Number(e.target.value)})}
-          className="w-full accent-brand-500"/>
-      </Field>
+      {/* ── 3. Personality ─────────────────────────────────────── */}
+      <FormSection num="3" icon={Sparkles} title="Personality" subtitle="How the agent speaks and handles the conversation">
+        <div className="grid grid-cols-2 gap-2">
+          {PERSONALITIES.map(p => (
+            <button key={p.id} onClick={() => update({agentPersonality: p.id})}
+              className={`text-left px-3 py-2.5 rounded-xl border transition-all
+                ${agent.agentPersonality === p.id
+                  ? 'bg-brand-500/15 border-brand-500/30 text-white shadow-sm shadow-brand-500/10'
+                  : 'border-white/[0.06] text-zinc-500 hover:border-white/[0.12] hover:text-zinc-300'}`}>
+              <p className="font-semibold text-xs leading-none mb-1">{p.label}</p>
+              <p className="text-[10px] leading-snug opacity-70">{p.desc}</p>
+            </button>
+          ))}
+        </div>
+      </FormSection>
 
+      {/* ── 4. Call Objective ──────────────────────────────────── */}
+      <FormSection num="4" icon={Target} title="Call Objective" subtitle="What is the primary goal of this agent?">
+        <div className="flex flex-wrap gap-1.5">
+          {OBJECTIVES.map(o => (
+            <button key={o.id} onClick={() => update({agentObjective: o.id})}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors
+                ${agent.agentObjective === o.id
+                  ? 'bg-brand-500/20 border-brand-500/40 text-brand-300'
+                  : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'}`}>
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </FormSection>
+
+      {/* ── 5. Advanced Settings (collapsible) ─────────────────── */}
+      <button onClick={() => setShowAdvanced(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-white/[0.06] text-zinc-500 hover:text-zinc-300 hover:border-white/[0.1] transition-colors text-xs">
+        <span className="font-medium">Advanced Settings</span>
+        <span className="flex items-center gap-1.5 text-zinc-600">
+          <span className="text-[10px]">Language · AI Model · Duration</span>
+          {showAdvanced ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
+        </span>
+      </button>
+      {showAdvanced && (
+        <div className="border border-white/[0.06] rounded-xl p-4 space-y-3 -mt-1">
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="Language">
+              <select className="input" value={agent.language} onChange={e => update({language: e.target.value})}>
+                {LANGUAGES.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}
+              </select>
+            </Field>
+            <Field label="Timezone">
+              <select className="input" value={agent.agentTimezone || 'America/New_York'} onChange={e => update({agentTimezone: e.target.value})}>
+                {TIMEZONES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+              </select>
+            </Field>
+            <Field label="AI Model">
+              <select className="input" value={agent.llmModel} onChange={e => update({llmModel: e.target.value})}>
+                {LLM_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+              </select>
+            </Field>
+          </div>
+          <Field label={`Max Call Duration — ${agent.maxCallMinutes} min`}>
+            <input type="range" min={2} max={30} step={1} value={agent.maxCallMinutes}
+              onChange={e => update({maxCallMinutes: Number(e.target.value)})}
+              className="w-full accent-brand-500"/>
+          </Field>
+        </div>
+      )}
+
+      {/* ── Generate Button ─────────────────────────────────────── */}
+      <button onClick={handleGenerate} disabled={generating || !canGenerate}
+        className="w-full py-3.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all
+          bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-500 hover:to-brand-400 text-white
+          shadow-lg shadow-brand-500/20 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none">
+        {generating
+          ? <><Loader2 size={15} className="animate-spin"/>Building agent prompt…</>
+          : <><Wand2 size={15}/>Build Agent Prompt</>}
+      </button>
+      {!canGenerate && (
+        <p className="text-[10px] text-zinc-600 text-center -mt-1">
+          Scan a site or enter company name, then select an objective
+        </p>
+      )}
+
+      {/* ── Generated Prompt Preview ────────────────────────────── */}
+      {agent.systemPrompt && (
+        <div className="border border-emerald-500/25 rounded-xl overflow-hidden">
+          <button onClick={() => setShowPrompt(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-emerald-500/5 hover:bg-emerald-500/8 transition-colors">
+            <div className="flex items-center gap-2">
+              <Check size={13} className="text-emerald-400"/>
+              <p className="text-xs font-semibold text-emerald-300">Prompt ready</p>
+              {agent.firstMessage && <span className="text-[10px] text-zinc-600">· opening message set</span>}
+            </div>
+            {showPrompt ? <ChevronUp size={12} className="text-zinc-500"/> : <ChevronDown size={12} className="text-zinc-500"/>}
+          </button>
+          {showPrompt && (
+            <div className="p-3 space-y-3 bg-surface-900/40">
+              {agent.firstMessage && (
+                <div>
+                  <p className="text-[10px] text-zinc-500 font-medium mb-1">Opening message</p>
+                  <p className="text-xs text-zinc-300 italic bg-surface-900 rounded-lg px-3 py-2 border border-white/[0.06]">
+                    "{agent.firstMessage}"
+                  </p>
+                </div>
+              )}
+              <div>
+                <p className="text-[10px] text-zinc-500 font-medium mb-1">System prompt — click to edit</p>
+                <textarea className="input min-h-[140px] resize-y font-mono text-[10px] leading-relaxed"
+                  value={agent.systemPrompt} onChange={e => update({systemPrompt: e.target.value})}/>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── GHL Calendar ────────────────────────────────────────── */}
       <GHLCalendarPicker
         calendarId={agent.ghlCalendarId}
         webhookUrl={agent.ghlBookingWebhookUrl}
+        timezone={agent.agentTimezone || 'America/New_York'}
         onChange={(cal, hook) => update({ ghlCalendarId: cal, ghlBookingWebhookUrl: hook })}
       />
 
-      <PhoneNumberPicker value={agent.twilioPhoneNumber} onChange={v=>update({twilioPhoneNumber:v})}/>
+      {/* ── Phone Number ────────────────────────────────────────── */}
+      <PhoneNumberPicker value={agent.twilioPhoneNumber} onChange={v => update({twilioPhoneNumber: v})}/>
     </div>
   )
 }
 
 // ── GHL Calendar Picker ───────────────────────────────────────
-function GHLCalendarPicker({ calendarId, webhookUrl, onChange }) {
-  const [calendars, setCalendars] = useState([])
-  const [loading,   setLoading]   = useState(false)
-  const [err,       setErr]       = useState('')
+function GHLCalendarPicker({ calendarId, webhookUrl, timezone, onChange }) {
+  const [calendars,    setCalendars]    = useState([])
+  const [loading,      setLoading]      = useState(false)
+  const [err,          setErr]          = useState('')
+  const [slots,        setSlots]        = useState([])   // [{ date, slots: [ISO] }]
+  const [slotDate,     setSlotDate]     = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 1)
+    return d.toISOString().slice(0, 10)
+  })
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [slotErr,      setSlotErr]      = useState('')
 
   useEffect(() => { loadCalendars() }, [])
 
@@ -295,60 +450,117 @@ function GHLCalendarPicker({ calendarId, webhookUrl, onChange }) {
     setLoading(true); setErr('')
     try {
       const data = await fetchGHLCalendars(token, locationId)
-      setCalendars(data.calendars || [])
+      // fetchGHLCalendars returns the array directly
+      setCalendars(Array.isArray(data) ? data : (data.calendars || []))
     } catch(e) { setErr(e.message) }
     finally { setLoading(false) }
   }
 
+  async function loadSlots() {
+    const token = getKey('ghl_token')
+    if (!token || !calendarId) return
+    setLoadingSlots(true); setSlotErr('')
+    try {
+      const start = new Date(slotDate + 'T00:00:00')
+      const end   = new Date(slotDate + 'T23:59:59')
+      const data  = await fetchGHLFreeSlots(token, calendarId, {
+        startDate: start.getTime(),
+        endDate:   end.getTime(),
+        timezone:  timezone || 'America/New_York',
+      })
+      setSlots(data)
+    } catch(e) { setSlotErr(e.message) }
+    finally { setLoadingSlots(false) }
+  }
+
+  const today = new Date().toISOString().slice(0, 10)
+
   return (
-    <div className="border border-white/[0.08] rounded-xl p-4 space-y-4 bg-surface-900/50">
-      <div className="flex items-center justify-between">
+    <div className="border border-white/[0.08] rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-surface-900/60 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <Calendar size={13} className="text-emerald-400"/>
-          <p className="text-sm font-semibold text-white">GHL Appointment Booking</p>
-          <span className="text-xs text-zinc-600 ml-1">optional</span>
+          <Calendar size={12} className="text-emerald-400"/>
+          <p className="text-xs font-semibold text-white">GHL Appointment Booking</p>
+          <span className="text-[10px] text-zinc-600">optional</span>
         </div>
         <button onClick={loadCalendars} disabled={loading} className="btn-ghost text-xs">
           <RefreshCw size={11} className={loading ? 'animate-spin' : ''}/>Refresh
         </button>
       </div>
+      <div className="p-4 space-y-3">
+        {err && <p className="text-xs text-amber-400 flex items-center gap-1"><AlertCircle size={11}/>{err}</p>}
 
-      {err && <p className="text-xs text-amber-400 flex items-center gap-1"><AlertCircle size={11}/>{err}</p>}
-
-      <Field label="Calendar" hint="The agent will book appointments into this calendar">
-        {calendars.length > 0 ? (
-          <select className="input" value={calendarId} onChange={e => onChange(e.target.value, webhookUrl)}>
-            <option value="">No booking — agent only talks</option>
-            {calendars.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        ) : (
-          <div className="flex gap-2">
-            <input className="input flex-1 font-mono text-xs" placeholder="Calendar ID (paste manually)"
-              value={calendarId} onChange={e => onChange(e.target.value, webhookUrl)}/>
-            {loading && <Loader2 size={13} className="text-zinc-600 animate-spin self-center flex-shrink-0"/>}
-          </div>
-        )}
-      </Field>
-
-      {calendarId && (
-        <Field label="Booking Webhook URL"
-          hint="Vapi calls this URL to book appointments. Use Make.com, Zapier, or your own endpoint.">
-          <input className="input font-mono text-xs" placeholder="https://hook.make.com/..."
-            value={webhookUrl} onChange={e => onChange(calendarId, e.target.value)}/>
-          <div className="mt-2 p-3 bg-emerald-500/5 border border-emerald-500/15 rounded-lg space-y-1.5">
-            <p className="text-[10px] text-emerald-400 font-semibold">How it works</p>
-            <p className="text-[10px] text-zinc-500 leading-relaxed">
-              When the AI decides to book, Vapi POSTs to your webhook with:
-              <code className="block mt-1 bg-surface-900 px-2 py-1 rounded text-zinc-300">
-                {`{ contactName, contactPhone, contactEmail, startTime (ISO 8601), timezone, notes }`}
-              </code>
-            </p>
-            <p className="text-[10px] text-zinc-500 leading-relaxed">
-              Your webhook should call the GHL API to create the appointment using calendar ID: <code className="text-emerald-400">{calendarId}</code>
-            </p>
-          </div>
+        <Field label="Calendar" hint="The agent checks availability and books into this calendar">
+          {calendars.length > 0 ? (
+            <select className="input" value={calendarId} onChange={e => onChange(e.target.value, webhookUrl)}>
+              <option value="">No booking — agent just talks</option>
+              {calendars.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          ) : (
+            <div className="flex gap-2">
+              <input className="input flex-1 font-mono text-xs" placeholder="Calendar ID (paste manually)"
+                value={calendarId} onChange={e => onChange(e.target.value, webhookUrl)}/>
+              {loading && <Loader2 size={13} className="text-zinc-600 animate-spin self-center flex-shrink-0"/>}
+            </div>
+          )}
         </Field>
-      )}
+
+        {/* Available slots preview */}
+        {calendarId && (
+          <>
+            <div className="flex items-center gap-2">
+              <input type="date" min={today}
+                className="input flex-1 text-xs" value={slotDate}
+                onChange={e => { setSlotDate(e.target.value); setSlots([]) }}/>
+              <button onClick={loadSlots} disabled={loadingSlots}
+                className="btn-ghost text-xs shrink-0">
+                {loadingSlots
+                  ? <Loader2 size={11} className="animate-spin"/>
+                  : <Clock size={11}/>}
+                {loadingSlots ? 'Loading…' : 'Preview Slots'}
+              </button>
+            </div>
+            {slotErr && <p className="text-xs text-red-400">{slotErr}</p>}
+            {slots.length > 0 && (
+              <div className="grid grid-cols-4 gap-1">
+                {slots.flatMap(d => d.slots).slice(0, 16).map((s, i) => (
+                  <div key={i} className="text-[10px] font-mono text-center py-1 px-1.5 rounded-lg
+                    bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                    {new Date(s).toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', hour12:true})}
+                  </div>
+                ))}
+                {slots.flatMap(d => d.slots).length > 16 && (
+                  <div className="text-[10px] text-zinc-600 self-center col-span-4">
+                    +{slots.flatMap(d => d.slots).length - 16} more slots
+                  </div>
+                )}
+              </div>
+            )}
+            {slots.length === 0 && !loadingSlots && !slotErr && (
+              <p className="text-[10px] text-zinc-600">Click "Preview Slots" to see live availability from your GHL calendar</p>
+            )}
+
+            <Field label="Booking Webhook URL"
+              hint="Vapi calls this for both check_calendar and book_appointment. Use Make.com, Zapier, or your own server.">
+              <input className="input font-mono text-xs" placeholder="https://hook.make.com/..."
+                value={webhookUrl} onChange={e => onChange(calendarId, e.target.value)}/>
+            </Field>
+
+            <div className="p-3 bg-emerald-500/5 border border-emerald-500/15 rounded-lg space-y-1.5">
+              <p className="text-[10px] text-emerald-400 font-semibold">How the booking flow works</p>
+              <p className="text-[10px] text-zinc-500 leading-relaxed">
+                The agent automatically checks availability before offering times, then books on confirmation.
+                Vapi sends two tool calls to your webhook:
+              </p>
+              <div className="space-y-1 text-[10px] font-mono">
+                <p className="text-zinc-400"><span className="text-emerald-500">check_calendar</span> → <span className="text-zinc-500">{'{ date, timezone }'}</span></p>
+                <p className="text-zinc-400"><span className="text-emerald-500">book_appointment</span> → <span className="text-zinc-500">{'{ contactName, contactPhone, contactEmail, startTime, timezone, notes }'}</span></p>
+              </div>
+              <p className="text-[10px] text-zinc-600">Calendar ID: <code className="text-emerald-400">{calendarId}</code></p>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -396,14 +608,20 @@ function PhoneNumberPicker({ value, onChange }) {
 }
 
 // ── Voice Tab ─────────────────────────────────────────────────
+const TTS_MODELS = [
+  { id: 'eleven_flash_v2_5', label: 'Flash v2.5', hint: '~75ms fastest' },
+  { id: 'eleven_turbo_v2_5', label: 'Turbo v2.5', hint: '~100ms best quality' },
+]
+
 function VoiceTab({ agent, update }) {
   const [voices,  setVoices]  = useState([])
   const [loading, setLoading] = useState(false)
   const [err,     setErr]     = useState('')
   const [playing, setPlaying] = useState(null)
   const audioRef = useRef(null)
+  const provider = agent.voiceProvider || 'elevenlabs'
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(provider) }, [provider])
 
   function playPreview(voice) {
     if (!voice.previewUrl) return
@@ -417,47 +635,105 @@ function VoiceTab({ agent, update }) {
     audio.onerror = () => setPlaying(null)
   }
 
-  async function load() {
-    const k = getKey('elevenlabs')
-    if (!k) { setErr('Add your ElevenLabs key in Settings'); return }
-    setLoading(true); setErr('')
-    try {
-      const voices = await listElevenLabsVoices(k)
-      setVoices(voices.map(v=>({id:v.voice_id,name:v.name,labels:v.labels,previewUrl:v.preview_url})))
-    } catch(e) { setErr(e.message) }
-    finally { setLoading(false) }
+  async function load(prov) {
+    setVoices([]); setErr('')
+    if (prov === 'cartesia') {
+      const k = getKey('cartesia')
+      if (!k) { setErr('Add your Cartesia key in Settings'); return }
+      setLoading(true)
+      try {
+        const list = await listCartesiaVoices(k)
+        setVoices(list.map(v => ({ id: v.id, name: v.name, labels: v.description ? {desc: v.description} : null, previewUrl: null })))
+      } catch(e) { setErr(e.message) }
+      finally { setLoading(false) }
+    } else {
+      const k = getKey('elevenlabs')
+      if (!k) { setErr('Add your ElevenLabs key in Settings'); return }
+      setLoading(true)
+      try {
+        const list = await listElevenLabsVoices(k)
+        setVoices(list.map(v => ({ id: v.voice_id, name: v.name, labels: v.labels, previewUrl: v.preview_url })))
+      } catch(e) { setErr(e.message) }
+      finally { setLoading(false) }
+    }
+  }
+
+  function switchProvider(prov) {
+    update({ voiceProvider: prov, voiceId: '', voiceName: '' })
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
+
+      {/* Provider toggle */}
+      <div>
+        <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wide mb-2">Voice Provider</p>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { id: 'elevenlabs', label: 'ElevenLabs', hint: 'Best quality · ~75–100ms' },
+            { id: 'cartesia',   label: 'Cartesia',   hint: 'Fastest · ~50ms · cheaper' },
+          ].map(p => (
+            <button key={p.id} onClick={() => switchProvider(p.id)}
+              className={`px-3 py-2.5 rounded-xl border text-left transition-all
+                ${provider === p.id
+                  ? 'bg-brand-500/15 border-brand-500/30 text-white'
+                  : 'border-white/[0.06] text-zinc-500 hover:border-white/[0.12] hover:text-zinc-300'}`}>
+              <p className="font-semibold text-xs">{p.label}</p>
+              <p className="text-[10px] opacity-70 mt-0.5">{p.hint}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ElevenLabs TTS model speed selector */}
+      {provider === 'elevenlabs' && (
+        <div>
+          <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wide mb-2">TTS Speed</p>
+          <div className="flex gap-2">
+            {TTS_MODELS.map(m => (
+              <button key={m.id} onClick={() => update({ttsModel: m.id})}
+                className={`flex-1 py-2 px-3 rounded-lg border text-xs transition-colors flex justify-between items-center
+                  ${(agent.ttsModel || 'eleven_turbo_v2_5') === m.id
+                    ? 'bg-brand-500/20 border-brand-500/40 text-brand-300'
+                    : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'}`}>
+                <span className="font-medium">{m.label}</span>
+                <span className="text-[10px] opacity-60">{m.hint}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Voice list */}
       <div className="flex items-center justify-between">
         <p className="text-xs text-zinc-400 font-medium">
-          {loading ? 'Loading voices…' : `${voices.length} ElevenLabs voices`}
+          {loading ? 'Loading voices…' : `${voices.length} ${provider === 'cartesia' ? 'Cartesia' : 'ElevenLabs'} voices`}
         </p>
-        <button onClick={load} disabled={loading} className="btn-ghost text-xs">
+        <button onClick={() => load(provider)} disabled={loading} className="btn-ghost text-xs">
           <RefreshCw size={11} className={loading ? 'animate-spin' : ''}/>Refresh
         </button>
       </div>
       {err && <p className="text-xs text-red-400">{err}</p>}
 
       {voices.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-1">
-          {voices.map(v=>(
+        <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
+          {voices.map(v => (
             <div key={v.id}
               className={`rounded-lg border text-xs transition-colors
-                ${agent.voiceId===v.id ? 'bg-brand-500/15 border-brand-500/30 text-white'
-                : 'border-white/[0.06] text-zinc-500 hover:border-white/[0.12]'}`}>
-              <button className="w-full text-left p-2.5" onClick={()=>update({voiceId:v.id,voiceName:v.name})}>
+                ${agent.voiceId === v.id
+                  ? 'bg-brand-500/15 border-brand-500/30 text-white'
+                  : 'border-white/[0.06] text-zinc-500 hover:border-white/[0.12]'}`}>
+              <button className="w-full text-left p-2.5" onClick={() => update({voiceId: v.id, voiceName: v.name})}>
                 <p className="font-medium text-inherit">{v.name}</p>
-                {v.labels && <p className="text-zinc-600 mt-0.5">{Object.values(v.labels).slice(0,2).join(', ')}</p>}
+                {v.labels && <p className="text-zinc-600 mt-0.5 text-[10px]">{Object.values(v.labels).slice(0,2).join(', ')}</p>}
               </button>
               {v.previewUrl && (
-                <button onClick={()=>playPreview(v)}
+                <button onClick={() => playPreview(v)}
                   className={`w-full flex items-center justify-center gap-1.5 py-1.5 border-t text-[10px] font-medium transition-colors
-                    ${playing===v.id
+                    ${playing === v.id
                       ? 'border-brand-500/20 text-brand-400 bg-brand-500/10'
                       : 'border-white/[0.04] text-zinc-600 hover:text-zinc-300'}`}>
-                  {playing===v.id
+                  {playing === v.id
                     ? <><Loader2 size={10} className="animate-spin"/>Playing…</>
                     : <><Play size={10}/>Preview</>}
                 </button>
@@ -466,17 +742,19 @@ function VoiceTab({ agent, update }) {
           ))}
         </div>
       ) : (
-        <div className="border border-dashed border-white/[0.08] rounded-xl p-8 text-center">
-          <Mic size={20} className="text-zinc-700 mx-auto mb-2"/>
-          <p className="text-xs text-zinc-600">Click "Load Voices" to browse your ElevenLabs library</p>
-        </div>
+        !loading && (
+          <div className="border border-dashed border-white/[0.08] rounded-xl p-8 text-center">
+            <Mic size={20} className="text-zinc-700 mx-auto mb-2"/>
+            <p className="text-xs text-zinc-600">Add your {provider === 'cartesia' ? 'Cartesia' : 'ElevenLabs'} key in Settings, then click Refresh</p>
+          </div>
+        )
       )}
 
       {agent.voiceId && (
         <div className="flex items-center gap-2 p-2.5 bg-brand-500/10 border border-brand-500/20 rounded-lg">
           <Check size={12} className="text-brand-400"/>
           <span className="text-xs text-brand-300 font-medium">{agent.voiceName}</span>
-          <span className="text-xs text-zinc-600 font-mono ml-auto">{agent.voiceId.slice(0,20)}…</span>
+          <span className="text-[10px] text-zinc-600 font-mono ml-auto truncate max-w-[120px]">{agent.voiceId}</span>
         </div>
       )}
     </div>
