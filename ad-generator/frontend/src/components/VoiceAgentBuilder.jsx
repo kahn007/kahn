@@ -225,29 +225,35 @@ function PhoneNumberPicker({ value, onChange }) {
 
   useEffect(() => { loadNums() }, [])
 
+  const [err, setErr] = useState('')
+
   async function loadNums() {
     const sid   = getKey('twilio_sid')
     const token = getKey('twilio_token')
-    if (!sid || !token) return
-    setLoading(true)
+    if (!sid || !token) { setErr('Add Twilio SID + Token in Settings first'); return }
+    setLoading(true); setErr('')
     try {
-      const d = await listTwilioNumbers(sid, token)
-      setNums(d.incomingPhoneNumbers || [])
-    } catch(_) {}
+      const nums = await listTwilioNumbers(sid, token)
+      setNums(nums)
+    } catch(e) { setErr(e.message) }
     finally { setLoading(false) }
   }
 
   return (
     <Field label="Twilio Phone Number" hint="Which number this agent calls from / receives on">
+      {err && <p className="text-xs text-amber-400 mb-1">{err}</p>}
       {nums.length > 0 ? (
         <select className="input" value={value} onChange={e=>onChange(e.target.value)}>
           <option value="">Select number…</option>
-          {nums.map(n=><option key={n.sid} value={n.phoneNumber}>{n.friendlyName||n.phoneNumber}</option>)}
+          {nums.map(n=><option key={n.sid} value={n.phone_number}>{n.friendly_name||n.phone_number}</option>)}
         </select>
       ) : (
         <div className="flex gap-2">
           <input className="input flex-1" placeholder="+1 (555) 000-0000" value={value} onChange={e=>onChange(e.target.value)}/>
-          {loading && <Loader2 size={13} className="text-zinc-600 animate-spin self-center"/>}
+          {loading
+            ? <Loader2 size={13} className="text-zinc-600 animate-spin self-center"/>
+            : <button onClick={loadNums} className="btn-ghost text-xs shrink-0"><RefreshCw size={11}/>Load</button>
+          }
         </div>
       )}
     </Field>
