@@ -350,8 +350,8 @@ function SetupTab({ agent, update }) {
         </span>
       </button>
       {showAdvanced && (
-        <div className="border border-white/[0.06] rounded-xl p-4 space-y-3 -mt-1">
-          <div className="grid grid-cols-3 gap-3">
+        <div className="border border-white/[0.06] rounded-xl p-4 space-y-4 -mt-1">
+          <div className="grid grid-cols-2 gap-3">
             <Field label="Language">
               <select className="input" value={agent.language} onChange={e => update({language: e.target.value})}>
                 {LANGUAGES.map(l => <option key={l.id} value={l.id}>{l.label}</option>)}
@@ -362,12 +362,10 @@ function SetupTab({ agent, update }) {
                 {TIMEZONES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
               </select>
             </Field>
-            <Field label="AI Model">
-              <select className="input" value={agent.llmModel} onChange={e => update({llmModel: e.target.value})}>
-                {LLM_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
-              </select>
-            </Field>
           </div>
+
+          <ModelPicker value={agent.llmModel} onChange={v => update({llmModel: v})}/>
+
           <Field label={`Max Call Duration — ${agent.maxCallMinutes} min`}>
             <input type="range" min={2} max={30} step={1} value={agent.maxCallMinutes}
               onChange={e => update({maxCallMinutes: Number(e.target.value)})}
@@ -433,6 +431,54 @@ function SetupTab({ agent, update }) {
 
       {/* ── Phone Number ────────────────────────────────────────── */}
       <PhoneNumberPicker value={agent.twilioPhoneNumber} onChange={v => update({twilioPhoneNumber: v})}/>
+    </div>
+  )
+}
+
+// ── Model Picker ──────────────────────────────────────────────
+const CURATED_MODELS = [
+  { id: 'x-ai/grok-3-mini-fast',       name: 'Grok 3 Mini Fast', provider: 'xAI',    tag: 'Fastest',       tagColor: 'text-red-400 bg-red-500/10 border-red-500/20' },
+  { id: 'openai/gpt-4o-mini',          name: 'GPT-4o Mini',      provider: 'OpenAI', tag: 'Recommended',   tagColor: 'text-green-400 bg-green-500/10 border-green-500/20' },
+  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: 'Google', tag: 'Best Value',    tagColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+  { id: 'x-ai/grok-3',                 name: 'Grok 3',           provider: 'xAI',    tag: 'Most Capable',  tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+  { id: 'openai/gpt-4o',               name: 'GPT-4o',           provider: 'OpenAI', tag: 'Premium',       tagColor: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
+  { id: 'x-ai/grok-3-mini',            name: 'Grok 3 Mini',      provider: 'xAI',    tag: 'Fast',          tagColor: 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20' },
+]
+
+function ModelPicker({ value, onChange }) {
+  const [showAll, setShowAll] = useState(false)
+  const selected = LLM_MODELS.find(m => m.id === value) || CURATED_MODELS.find(m => m.id === value)
+  // If selected model is not in curated list, show all
+  const isCustom = value && !CURATED_MODELS.find(m => m.id === value)
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-medium text-zinc-400">AI Model</label>
+      <div className="grid grid-cols-3 gap-1.5">
+        {CURATED_MODELS.map(m => (
+          <button key={m.id} onClick={() => onChange(m.id)}
+            className={`text-left px-2.5 py-2 rounded-lg border transition-all
+              ${value === m.id
+                ? 'bg-brand-500/15 border-brand-500/30 text-white'
+                : 'border-white/[0.06] text-zinc-500 hover:border-white/[0.12] hover:text-zinc-300'}`}>
+            <p className="font-semibold text-[11px] leading-none truncate">{m.name}</p>
+            <p className="text-[9px] text-zinc-600 mt-0.5">{m.provider}</p>
+            <span className={`inline-block mt-1 px-1.5 py-0.5 rounded border text-[9px] font-medium ${m.tagColor}`}>
+              {m.tag}
+            </span>
+          </button>
+        ))}
+      </div>
+      <button onClick={() => setShowAll(v => !v)}
+        className="text-[10px] text-zinc-600 hover:text-zinc-400 flex items-center gap-1 transition-colors">
+        {showAll ? <ChevronUp size={10}/> : <ChevronDown size={10}/>}
+        {showAll ? 'Show less' : 'More models (Llama, Claude, Gemini 1.5…)'}
+      </button>
+      {(showAll || isCustom) && (
+        <select className="input text-xs" value={value} onChange={e => onChange(e.target.value)}>
+          {LLM_MODELS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+        </select>
+      )}
     </div>
   )
 }
@@ -617,20 +663,38 @@ function PhoneNumberPicker({ value, onChange }) {
 }
 
 // ── Voice Tab ─────────────────────────────────────────────────
+const CATEGORY_ORDER = { professional: 0, premade: 1, cloned: 2, generated: 3 }
+const CATEGORY_BADGE = {
+  professional: { label: 'Pro',    color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/25' },
+  premade:      { label: 'Stable', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25' },
+  cloned:       { label: 'Custom', color: 'text-blue-400 bg-blue-500/10 border-blue-500/25' },
+}
 const TTS_MODELS = [
-  { id: 'eleven_flash_v2_5', label: 'Flash v2.5', hint: '~75ms fastest' },
-  { id: 'eleven_turbo_v2_5', label: 'Turbo v2.5', hint: '~100ms best quality' },
+  { id: 'eleven_turbo_v2_5', label: 'Turbo v2.5', hint: 'Best quality' },
+  { id: 'eleven_flash_v2_5', label: 'Flash v2.5',  hint: 'Fastest ~75ms' },
 ]
+const VOICES_SHOWN_DEFAULT = 12
 
 function VoiceTab({ agent, update }) {
-  const [voices,  setVoices]  = useState([])
-  const [loading, setLoading] = useState(false)
-  const [err,     setErr]     = useState('')
-  const [playing, setPlaying] = useState(null)
-  const audioRef = useRef(null)
-  const provider = agent.voiceProvider || 'elevenlabs'
+  const [allVoices, setAllVoices] = useState([])
+  const [loading,   setLoading]   = useState(false)
+  const [err,       setErr]       = useState('')
+  const [playing,   setPlaying]   = useState(null)
+  const [search,    setSearch]    = useState('')
+  const [showAll,   setShowAll]   = useState(false)
+  const audioRef  = useRef(null)
+  const provider  = agent.voiceProvider || 'elevenlabs'
 
   useEffect(() => { load(provider) }, [provider])
+
+  function sortVoices(list) {
+    return [...list].sort((a, b) => {
+      const ca = CATEGORY_ORDER[a.category] ?? 4
+      const cb = CATEGORY_ORDER[b.category] ?? 4
+      if (ca !== cb) return ca - cb
+      return a.name.localeCompare(b.name)
+    })
+  }
 
   function playPreview(voice) {
     if (!voice.previewUrl) return
@@ -645,14 +709,17 @@ function VoiceTab({ agent, update }) {
   }
 
   async function load(prov) {
-    setVoices([]); setErr('')
+    setAllVoices([]); setErr(''); setSearch('')
     if (prov === 'cartesia') {
       const k = getKey('cartesia')
       if (!k) { setErr('Add your Cartesia key in Settings'); return }
       setLoading(true)
       try {
         const list = await listCartesiaVoices(k)
-        setVoices(list.map(v => ({ id: v.id, name: v.name, labels: v.description ? {desc: v.description} : null, previewUrl: null })))
+        setAllVoices(sortVoices(list.map(v => ({
+          id: v.id, name: v.name, category: v.is_public ? 'premade' : 'cloned',
+          tags: v.description || '',  previewUrl: null,
+        }))))
       } catch(e) { setErr(e.message) }
       finally { setLoading(false) }
     } else {
@@ -661,109 +728,147 @@ function VoiceTab({ agent, update }) {
       setLoading(true)
       try {
         const list = await listElevenLabsVoices(k)
-        setVoices(list.map(v => ({ id: v.voice_id, name: v.name, labels: v.labels, previewUrl: v.preview_url })))
+        setAllVoices(sortVoices(list.map(v => ({
+          id:         v.voice_id,
+          name:       v.name,
+          category:   v.category || 'premade',
+          tags:       [v.labels?.use_case, v.labels?.accent, v.labels?.gender].filter(Boolean).join(' · '),
+          previewUrl: v.preview_url,
+        }))))
       } catch(e) { setErr(e.message) }
       finally { setLoading(false) }
     }
   }
 
-  function switchProvider(prov) {
-    update({ voiceProvider: prov, voiceId: '', voiceName: '' })
-  }
+  const filtered = allVoices.filter(v =>
+    !search || v.name.toLowerCase().includes(search.toLowerCase()) || v.tags.toLowerCase().includes(search.toLowerCase())
+  )
+  const displayed = showAll || search ? filtered : filtered.slice(0, VOICES_SHOWN_DEFAULT)
+  const hasMore   = !showAll && !search && filtered.length > VOICES_SHOWN_DEFAULT
 
   return (
     <div className="space-y-4">
 
-      {/* Provider toggle */}
-      <div>
-        <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wide mb-2">Voice Provider</p>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { id: 'elevenlabs', label: 'ElevenLabs', hint: 'Best quality · ~75–100ms' },
-            { id: 'cartesia',   label: 'Cartesia',   hint: 'Fastest · ~50ms · cheaper' },
-          ].map(p => (
-            <button key={p.id} onClick={() => switchProvider(p.id)}
-              className={`px-3 py-2.5 rounded-xl border text-left transition-all
-                ${provider === p.id
-                  ? 'bg-brand-500/15 border-brand-500/30 text-white'
-                  : 'border-white/[0.06] text-zinc-500 hover:border-white/[0.12] hover:text-zinc-300'}`}>
-              <p className="font-semibold text-xs">{p.label}</p>
-              <p className="text-[10px] opacity-70 mt-0.5">{p.hint}</p>
+      {/* Provider cards */}
+      <div className="grid grid-cols-2 gap-2">
+        {[
+          { id: 'elevenlabs', label: 'ElevenLabs', hint: 'Highest quality · most voices' },
+          { id: 'cartesia',   label: 'Cartesia',   hint: 'Fastest · ~50ms latency' },
+        ].map(p => (
+          <button key={p.id} onClick={() => { update({ voiceProvider: p.id, voiceId: '', voiceName: '' }) }}
+            className={`px-3 py-2.5 rounded-xl border text-left transition-all
+              ${provider === p.id
+                ? 'bg-brand-500/15 border-brand-500/30 text-white'
+                : 'border-white/[0.06] text-zinc-500 hover:border-white/[0.12] hover:text-zinc-300'}`}>
+            <p className="font-semibold text-xs">{p.label}</p>
+            <p className="text-[10px] opacity-60 mt-0.5">{p.hint}</p>
+          </button>
+        ))}
+      </div>
+
+      {/* ElevenLabs speed */}
+      {provider === 'elevenlabs' && (
+        <div className="flex gap-2">
+          {TTS_MODELS.map(m => (
+            <button key={m.id} onClick={() => update({ttsModel: m.id})}
+              className={`flex-1 py-2 px-3 rounded-lg border text-xs transition-colors flex justify-between items-center
+                ${(agent.ttsModel || 'eleven_turbo_v2_5') === m.id
+                  ? 'bg-brand-500/20 border-brand-500/40 text-brand-300'
+                  : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'}`}>
+              <span className="font-medium">{m.label}</span>
+              <span className="text-[10px] opacity-60">{m.hint}</span>
             </button>
           ))}
         </div>
-      </div>
-
-      {/* ElevenLabs TTS model speed selector */}
-      {provider === 'elevenlabs' && (
-        <div>
-          <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-wide mb-2">TTS Speed</p>
-          <div className="flex gap-2">
-            {TTS_MODELS.map(m => (
-              <button key={m.id} onClick={() => update({ttsModel: m.id})}
-                className={`flex-1 py-2 px-3 rounded-lg border text-xs transition-colors flex justify-between items-center
-                  ${(agent.ttsModel || 'eleven_turbo_v2_5') === m.id
-                    ? 'bg-brand-500/20 border-brand-500/40 text-brand-300'
-                    : 'border-white/[0.08] text-zinc-500 hover:text-zinc-300'}`}>
-                <span className="font-medium">{m.label}</span>
-                <span className="text-[10px] opacity-60">{m.hint}</span>
-              </button>
-            ))}
-          </div>
-        </div>
       )}
 
-      {/* Voice list */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-zinc-400 font-medium">
-          {loading ? 'Loading voices…' : `${voices.length} ${provider === 'cartesia' ? 'Cartesia' : 'ElevenLabs'} voices`}
-        </p>
-        <button onClick={() => load(provider)} disabled={loading} className="btn-ghost text-xs">
-          <RefreshCw size={11} className={loading ? 'animate-spin' : ''}/>Refresh
+      {/* Search + header */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search size={11} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-600 pointer-events-none"/>
+          <input className="input pl-8 text-xs" placeholder="Search voices…"
+            value={search} onChange={e => { setSearch(e.target.value); setShowAll(false) }}/>
+        </div>
+        <button onClick={() => load(provider)} disabled={loading} className="btn-ghost text-xs shrink-0">
+          <RefreshCw size={11} className={loading ? 'animate-spin' : ''}/>
         </button>
       </div>
       {err && <p className="text-xs text-red-400">{err}</p>}
 
-      {voices.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
-          {voices.map(v => (
-            <div key={v.id}
-              className={`rounded-lg border text-xs transition-colors
-                ${agent.voiceId === v.id
-                  ? 'bg-brand-500/15 border-brand-500/30 text-white'
-                  : 'border-white/[0.06] text-zinc-500 hover:border-white/[0.12]'}`}>
-              <button className="w-full text-left p-2.5" onClick={() => update({voiceId: v.id, voiceName: v.name})}>
-                <p className="font-medium text-inherit">{v.name}</p>
-                {v.labels && <p className="text-zinc-600 mt-0.5 text-[10px]">{Object.values(v.labels).slice(0,2).join(', ')}</p>}
-              </button>
-              {v.previewUrl && (
-                <button onClick={() => playPreview(v)}
-                  className={`w-full flex items-center justify-center gap-1.5 py-1.5 border-t text-[10px] font-medium transition-colors
-                    ${playing === v.id
-                      ? 'border-brand-500/20 text-brand-400 bg-brand-500/10'
-                      : 'border-white/[0.04] text-zinc-600 hover:text-zinc-300'}`}>
-                  {playing === v.id
-                    ? <><Loader2 size={10} className="animate-spin"/>Playing…</>
-                    : <><Play size={10}/>Preview</>}
-                </button>
-              )}
-            </div>
-          ))}
+      {/* Voice grid */}
+      {loading && (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 size={18} className="animate-spin text-zinc-600"/>
         </div>
-      ) : (
-        !loading && (
-          <div className="border border-dashed border-white/[0.08] rounded-xl p-8 text-center">
-            <Mic size={20} className="text-zinc-700 mx-auto mb-2"/>
-            <p className="text-xs text-zinc-600">Add your {provider === 'cartesia' ? 'Cartesia' : 'ElevenLabs'} key in Settings, then click Refresh</p>
+      )}
+
+      {!loading && allVoices.length > 0 && (
+        <>
+          {!search && (
+            <p className="text-[10px] text-zinc-600">
+              Showing {Math.min(VOICES_SHOWN_DEFAULT, filtered.length)} best voices · Pro &amp; Stable first
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-1.5">
+            {displayed.map(v => {
+              const badge = CATEGORY_BADGE[v.category]
+              return (
+                <div key={v.id}
+                  className={`rounded-xl border text-xs transition-all
+                    ${agent.voiceId === v.id
+                      ? 'bg-brand-500/15 border-brand-500/30 text-white shadow-sm shadow-brand-500/10'
+                      : 'border-white/[0.06] text-zinc-400 hover:border-white/[0.14] hover:text-zinc-200'}`}>
+                  <button className="w-full text-left p-2.5 space-y-1"
+                    onClick={() => update({voiceId: v.id, voiceName: v.name})}>
+                    <div className="flex items-start justify-between gap-1">
+                      <p className="font-semibold text-[11px] leading-snug">{v.name}</p>
+                      {badge && (
+                        <span className={`flex-shrink-0 text-[9px] font-semibold px-1.5 py-0.5 rounded border ${badge.color}`}>
+                          {badge.label}
+                        </span>
+                      )}
+                    </div>
+                    {v.tags && <p className="text-[10px] opacity-50 leading-none">{v.tags}</p>}
+                  </button>
+                  {v.previewUrl && (
+                    <button onClick={() => playPreview(v)}
+                      className={`w-full flex items-center justify-center gap-1 py-1.5 border-t text-[10px] font-medium transition-colors
+                        ${playing === v.id
+                          ? 'border-brand-500/20 text-brand-400 bg-brand-500/10'
+                          : 'border-white/[0.04] text-zinc-600 hover:text-zinc-300'}`}>
+                      {playing === v.id
+                        ? <><Loader2 size={9} className="animate-spin"/>Playing…</>
+                        : <><Play size={9}/>Preview</>}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
           </div>
-        )
+
+          {hasMore && (
+            <button onClick={() => setShowAll(true)}
+              className="w-full py-2 text-xs text-zinc-500 hover:text-zinc-300 border border-white/[0.06] hover:border-white/[0.1] rounded-xl transition-colors">
+              Show all {filtered.length} voices
+            </button>
+          )}
+        </>
+      )}
+
+      {!loading && allVoices.length === 0 && !err && (
+        <div className="border border-dashed border-white/[0.08] rounded-xl p-8 text-center">
+          <Mic size={20} className="text-zinc-700 mx-auto mb-2"/>
+          <p className="text-xs text-zinc-600">Add your {provider === 'cartesia' ? 'Cartesia' : 'ElevenLabs'} key in Settings</p>
+        </div>
       )}
 
       {agent.voiceId && (
         <div className="flex items-center gap-2 p-2.5 bg-brand-500/10 border border-brand-500/20 rounded-lg">
           <Check size={12} className="text-brand-400"/>
           <span className="text-xs text-brand-300 font-medium">{agent.voiceName}</span>
-          <span className="text-[10px] text-zinc-600 font-mono ml-auto truncate max-w-[120px]">{agent.voiceId}</span>
+          <span className="text-[10px] text-zinc-600 ml-auto">
+            {allVoices.find(v => v.id === agent.voiceId)?.tags || ''}
+          </span>
         </div>
       )}
     </div>
