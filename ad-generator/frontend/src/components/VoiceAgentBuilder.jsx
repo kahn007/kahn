@@ -9,7 +9,7 @@ import { useAdStore } from '../store/adStore'
 import { getKey } from '../lib/keys'
 import {
   syncVapiAssistant, triggerVapiCall,
-  testAgentConversation, listElevenLabsVoices, listCartesiaVoices,
+  testAgentConversation, listElevenLabsVoices,
   listTwilioNumbers, fetchGHLCalendars, fetchGHLPipelines,
   scrapeWebsiteForServices, generateAgentPromptFromServices,
 } from '../lib/api'
@@ -23,7 +23,7 @@ const DEFAULT_AGENT = () => ({
   language: 'en',
   maxCallMinutes: 10,
   llmModel: 'claude-sonnet-4-6',
-  voiceProvider: 'elevenlabs',
+  voiceProvider: 'elevenlabs', // only option
   voiceId: '',
   voiceName: '',
   firstMessage: '',
@@ -42,11 +42,6 @@ const LLM_MODELS = [
   { id: 'claude-opus-4-6', label: 'Claude Opus 4.6 — Most capable' },
   { id: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6 — Best balance' },
   { id: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 — Fastest' },
-]
-const VOICE_PROVIDERS = [
-  { id: 'elevenlabs', label: 'ElevenLabs', color: 'text-yellow-400' },
-  { id: 'cartesia',   label: 'Cartesia',   color: 'text-violet-400' },
-  { id: 'deepgram',   label: 'Deepgram',   color: 'text-cyan-400'   },
 ]
 const GHL_CAPS = [
   { id: 'contacts', label: 'Contacts', desc: 'Find / create contacts' },
@@ -239,47 +234,18 @@ function VoiceTab({ agent, update }) {
   async function loadVoices() {
     setLoading(true); setErr('')
     try {
-      let list = []
-      if (agent.voiceProvider === 'elevenlabs') {
-        const k = getKey('elevenlabs')
-        if (!k) throw new Error('Add ElevenLabs key in Settings')
-        const d = await listElevenLabsVoices(k)
-        list = (d.voices||[]).map(v=>({id:v.voice_id,name:v.name,labels:v.labels}))
-      } else if (agent.voiceProvider === 'cartesia') {
-        const k = getKey('cartesia')
-        if (!k) throw new Error('Add Cartesia key in Settings')
-        const d = await listCartesiaVoices(k)
-        list = (d||[]).map(v=>({id:v.id,name:v.name}))
-      } else {
-        list = [
-          {id:'aura-asteria-en',name:'Asteria (F)'},{id:'aura-luna-en',name:'Luna (F)'},
-          {id:'aura-stella-en',name:'Stella (F)'}, {id:'aura-athena-en',name:'Athena (F)'},
-          {id:'aura-orion-en',name:'Orion (M)'},   {id:'aura-arcas-en',name:'Arcas (M)'},
-          {id:'aura-perseus-en',name:'Perseus (M)'},{id:'aura-orpheus-en',name:'Orpheus (M)'},
-        ]
-      }
-      setVoices(list)
+      const k = getKey('elevenlabs')
+      if (!k) throw new Error('Add your ElevenLabs key in Settings')
+      const d = await listElevenLabsVoices(k)
+      setVoices((d.voices||[]).map(v=>({id:v.voice_id,name:v.name,labels:v.labels})))
     } catch(e) { setErr(e.message) }
     finally { setLoading(false) }
   }
 
   return (
     <div className="space-y-5">
-      <Field label="Voice Provider">
-        <div className="flex gap-2">
-          {VOICE_PROVIDERS.map(p=>(
-            <button key={p.id} onClick={()=>{update({voiceProvider:p.id,voiceId:'',voiceName:''});setVoices([])}}
-              className={`flex-1 py-2.5 text-xs font-semibold rounded-lg border transition-colors
-                ${agent.voiceProvider===p.id ? 'bg-brand-500/20 border-brand-500/40 text-brand-300'
-                : `border-white/[0.08] ${p.color} hover:border-white/[0.15]`}`}>
-              {p.label}
-            </button>
-          ))}
-        </div>
-      </Field>
-
       <div className="flex items-center justify-between">
-        <p className="text-xs text-zinc-400 font-medium">Voices</p>
+        <p className="text-xs text-zinc-400 font-medium">ElevenLabs Voices</p>
         <button onClick={loadVoices} disabled={loading} className="btn-ghost text-xs">
           {loading ? <Loader2 size={11} className="animate-spin"/> : <RefreshCw size={11}/>}
           {loading ? 'Loading…' : 'Load Voices'}
@@ -288,7 +254,7 @@ function VoiceTab({ agent, update }) {
       {err && <p className="text-xs text-red-400">{err}</p>}
 
       {voices.length > 0 ? (
-        <div className="grid grid-cols-2 gap-2 max-h-72 overflow-y-auto pr-1">
+        <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-1">
           {voices.map(v=>(
             <button key={v.id} onClick={()=>update({voiceId:v.id,voiceName:v.name})}
               className={`text-left p-2.5 rounded-lg border text-xs transition-colors
@@ -300,9 +266,9 @@ function VoiceTab({ agent, update }) {
           ))}
         </div>
       ) : (
-        <div className="border border-dashed border-white/[0.08] rounded-xl p-6 text-center">
+        <div className="border border-dashed border-white/[0.08] rounded-xl p-8 text-center">
           <Mic size={20} className="text-zinc-700 mx-auto mb-2"/>
-          <p className="text-xs text-zinc-600">Click "Load Voices" to browse</p>
+          <p className="text-xs text-zinc-600">Click "Load Voices" to browse your ElevenLabs library</p>
         </div>
       )}
 

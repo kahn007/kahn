@@ -1993,9 +1993,7 @@ export function generateEnvExample(agent) {
 // ── Vapi: sync assistant + trigger call ──────────────────────
 export async function syncVapiAssistant(agent, vapiKey) {
   const voiceMap = {
-    elevenlabs: { provider: '11labs',  voiceId: agent.voiceId },
-    cartesia:   { provider: 'cartesia', voiceId: agent.voiceId },
-    deepgram:   { provider: 'deepgram', voiceId: agent.voiceId || 'aura-asteria-en' },
+    elevenlabs: { provider: '11labs', voiceId: agent.voiceId },
   }
   const body = {
     name: agent.name || 'Voice Agent',
@@ -2005,7 +2003,7 @@ export async function syncVapiAssistant(agent, vapiKey) {
       model: agent.llmModel || 'claude-sonnet-4-6',
       messages: [{ role: 'system', content: agent.systemPrompt || 'You are a helpful voice assistant.' }],
     },
-    voice: voiceMap[agent.voiceProvider] || voiceMap.deepgram,
+    voice: voiceMap.elevenlabs,
     transcriber: { provider: 'deepgram', model: 'nova-2', language: agent.language || 'en' },
     maxDurationSeconds: (agent.maxCallMinutes || 10) * 60,
   }

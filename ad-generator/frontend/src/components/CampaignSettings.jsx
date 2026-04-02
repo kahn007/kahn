@@ -107,51 +107,6 @@ const API_CONFIGS = [
     },
   },
   {
-    id: 'cartesia',
-    name: 'Cartesia',
-    placeholder: 'sk_car_...',
-    helpUrl: 'https://play.cartesia.ai/keys',
-    helpLabel: 'play.cartesia.ai',
-    color: 'text-violet-400',
-    bg: 'bg-violet-500/10 border-violet-500/30',
-    dot: 'bg-violet-500',
-    description: 'Ultra-low-latency TTS for real-time voice agents',
-    testFn: async (key) => {
-      const res = await fetch('https://api.cartesia.ai/voices', { headers: { 'X-API-Key': key, 'Cartesia-Version': '2024-06-10' } })
-      if (!res.ok) throw new Error(`Status ${res.status}`)
-    },
-  },
-  {
-    id: 'hume',
-    name: 'Hume AI',
-    placeholder: 'hume-...',
-    helpUrl: 'https://platform.hume.ai/settings/keys',
-    helpLabel: 'platform.hume.ai',
-    color: 'text-rose-400',
-    bg: 'bg-rose-500/10 border-rose-500/30',
-    dot: 'bg-rose-500',
-    description: 'Empathic Voice Interface — detects and mirrors emotion',
-    testFn: async (key) => {
-      const res = await fetch('https://api.hume.ai/v0/evi/configs', { headers: { 'X-Hume-Api-Key': key } })
-      if (!res.ok) throw new Error(`Status ${res.status}`)
-    },
-  },
-  {
-    id: 'deepgram',
-    name: 'Deepgram',
-    placeholder: '...',
-    helpUrl: 'https://console.deepgram.com/project/keys',
-    helpLabel: 'console.deepgram.com',
-    color: 'text-cyan-400',
-    bg: 'bg-cyan-500/10 border-cyan-500/30',
-    dot: 'bg-cyan-500',
-    description: 'Aura TTS + Nova STT — built-in combo for voice agents',
-    testFn: async (key) => {
-      const res = await fetch('https://api.deepgram.com/v1/projects', { headers: { Authorization: `Token ${key}` } })
-      if (!res.ok) throw new Error(`Status ${res.status}`)
-    },
-  },
-  {
     id: 'twilio_sid',
     name: 'Twilio Account SID',
     placeholder: 'ACxxxxxxxx...',
