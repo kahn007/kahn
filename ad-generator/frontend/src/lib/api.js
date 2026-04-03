@@ -2156,9 +2156,9 @@ function vapiModelProvider(modelId) {
   return 'openrouter'
 }
 
-// Build GHL calendar system prompt addition
+// Build GHL calendar system prompt addition — only injected when BOTH calendar AND webhook are set
 function ghlCalendarPrompt(agent) {
-  if (!agent.ghlCalendarId) return ''
+  if (!agent.ghlCalendarId || !agent.ghlBookingWebhookUrl) return ''
   const tz = agent.agentTimezone || 'America/New_York'
   return `
 
