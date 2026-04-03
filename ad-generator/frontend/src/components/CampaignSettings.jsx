@@ -207,6 +207,22 @@ const API_CONFIGS = [
     testFn: async () => {},
   },
   {
+    id: 'backend_url',
+    name: 'Backend URL',
+    placeholder: 'https://your-app.railway.app',
+    helpUrl: 'https://railway.app',
+    helpLabel: 'railway.app',
+    color: 'text-sky-400',
+    bg: 'bg-sky-500/10 border-sky-500/30',
+    dot: 'bg-sky-500',
+    description: 'Your deployed backend URL — enables automatic GHL calendar booking (no webhook setup needed)',
+    testFn: async (key) => {
+      const url = key.replace(/\/$/, '')
+      const res = await fetch(`${url}/api/health`)
+      if (!res.ok) throw new Error(`Backend ${res.status}`)
+    },
+  },
+  {
     id: 'vapi',
     name: 'Vapi API Key',
     placeholder: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',

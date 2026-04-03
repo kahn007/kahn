@@ -595,24 +595,35 @@ function GHLCalendarPicker({ calendarId, webhookUrl, timezone, onChange }) {
               <p className="text-[10px] text-zinc-600">Click "Preview Slots" to see live availability from your GHL calendar</p>
             )}
 
-            <Field label="Booking Webhook URL"
-              hint="Vapi calls this for both check_calendar and book_appointment. Use Make.com, Zapier, or your own server.">
-              <input className="input font-mono text-xs" placeholder="https://hook.make.com/..."
-                value={webhookUrl} onChange={e => onChange(calendarId, e.target.value)}/>
-            </Field>
-
-            <div className="p-3 bg-emerald-500/5 border border-emerald-500/15 rounded-lg space-y-1.5">
-              <p className="text-[10px] text-emerald-400 font-semibold">How the booking flow works</p>
-              <p className="text-[10px] text-zinc-500 leading-relaxed">
-                The agent automatically checks availability before offering times, then books on confirmation.
-                Vapi sends two tool calls to your webhook:
-              </p>
-              <div className="space-y-1 text-[10px] font-mono">
-                <p className="text-zinc-400"><span className="text-emerald-500">check_calendar</span> → <span className="text-zinc-500">{'{ date, timezone }'}</span></p>
-                <p className="text-zinc-400"><span className="text-emerald-500">book_appointment</span> → <span className="text-zinc-500">{'{ contactName, contactPhone, contactEmail, startTime, timezone, notes }'}</span></p>
-              </div>
-              <p className="text-[10px] text-zinc-600">Calendar ID: <code className="text-emerald-400">{calendarId}</code></p>
-            </div>
+            {(() => {
+              const backendUrl = getKey('backend_url')
+              if (backendUrl) {
+                return (
+                  <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-lg flex items-start gap-2.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1 shrink-0"/>
+                    <div className="space-y-0.5">
+                      <p className="text-[10px] text-emerald-400 font-semibold">Booking auto-configured</p>
+                      <p className="text-[10px] text-zinc-500 leading-relaxed">
+                        Using your backend at <code className="text-emerald-400">{backendUrl.replace(/\/$/, '')}/api/ghl-booking</code>.
+                        GHL credentials are passed securely via headers — no webhook setup needed.
+                      </p>
+                    </div>
+                  </div>
+                )
+              }
+              return (
+                <>
+                  <Field label="Booking Webhook URL"
+                    hint="Vapi calls this for check_calendar and book_appointment. Or add your Backend URL in Settings to skip this.">
+                    <input className="input font-mono text-xs" placeholder="https://hook.make.com/..."
+                      value={webhookUrl} onChange={e => onChange(calendarId, e.target.value)}/>
+                  </Field>
+                  <p className="text-[10px] text-zinc-600">
+                    Tip: add a <strong className="text-zinc-400">Backend URL</strong> in Settings to handle booking automatically — no webhook needed.
+                  </p>
+                </>
+              )
+            })()}
           </>
         )}
       </div>

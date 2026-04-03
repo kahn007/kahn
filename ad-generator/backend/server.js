@@ -6,10 +6,11 @@ const morgan     = require('morgan')
 const compression = require('compression')
 const rateLimit  = require('express-rate-limit')
 
-const researchRoutes  = require('./routes/research')
-const generateRoutes  = require('./routes/generate')
-const facebookRoutes  = require('./routes/facebook')
-const analyticsRoutes = require('./routes/analytics')
+const researchRoutes   = require('./routes/research')
+const generateRoutes   = require('./routes/generate')
+const facebookRoutes   = require('./routes/facebook')
+const analyticsRoutes  = require('./routes/analytics')
+const ghlBookingRoutes = require('./routes/ghlBooking')
 
 const app  = express()
 const PORT = process.env.PORT || 5000
@@ -39,10 +40,11 @@ app.use('/api/generate',  aiLimiter)
 app.use('/api/facebook',  fbLimiter)
 
 // ── Routes ────────────────────────────────────────────────────
-app.use('/api/research',  researchRoutes)
-app.use('/api/generate',  generateRoutes)
-app.use('/api/facebook',  facebookRoutes)
-app.use('/api/analytics', analyticsRoutes)
+app.use('/api/research',     researchRoutes)
+app.use('/api/generate',     generateRoutes)
+app.use('/api/facebook',     facebookRoutes)
+app.use('/api/analytics',    analyticsRoutes)
+app.use('/api/ghl-booking',  ghlBookingRoutes)   // Vapi tool calls → GHL calendar
 
 // ── Health check ──────────────────────────────────────────────
 app.get('/api/health', (_, res) => {

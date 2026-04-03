@@ -2156,9 +2156,32 @@ function vapiModelProvider(modelId) {
   return 'openrouter'
 }
 
-// Build GHL calendar system prompt addition — only injected when BOTH calendar AND webhook are set
+// Returns the webhook server config for Vapi GHL tools.
+// Priority: backend URL (auto) > manual webhook URL > null (no booking)
+function ghlToolServer(agent) {
+  const backendUrl = getKey('backend_url')
+  if (agent.ghlCalendarId && backendUrl) {
+    const ghlToken   = getKey('ghl_token')
+    const locationId = getKey('ghl_location_id')
+    return {
+      url: `${backendUrl.replace(/\/$/, '')}/api/ghl-booking`,
+      headers: {
+        'x-ghl-token':    ghlToken    || '',
+        'x-ghl-location': locationId  || '',
+        'x-ghl-calendar': agent.ghlCalendarId,
+        'x-ghl-timezone': agent.agentTimezone || 'America/New_York',
+      },
+    }
+  }
+  if (agent.ghlCalendarId && agent.ghlBookingWebhookUrl) {
+    return { url: agent.ghlBookingWebhookUrl }
+  }
+  return null
+}
+
+// Build GHL calendar system prompt addition — only injected when booking is configured
 function ghlCalendarPrompt(agent) {
-  if (!agent.ghlCalendarId || !agent.ghlBookingWebhookUrl) return ''
+  if (!ghlToolServer(agent)) return ''
   const tz = agent.agentTimezone || 'America/New_York'
   return `
 
@@ -2214,10 +2237,10 @@ export async function syncVapiAssistant(agent, vapiKey) {
   }
   const systemPrompt = (agent.systemPrompt || 'You are a helpful voice assistant.') + ghlCalendarPrompt(agent)
 
-  // GHL tools — only when calendar + webhook configured
+  // GHL tools — only when calendar + booking server configured
   const tools = []
-  if (agent.ghlCalendarId && agent.ghlBookingWebhookUrl) {
-    // Tool 1: check available slots before offering times
+  const toolServer = ghlToolServer(agent)
+  if (toolServer) {
     tools.push({
       type: 'function',
       async: false,
@@ -2231,9 +2254,8 @@ export async function syncVapiAssistant(agent, vapiKey) {
         },
         required: ['date'],
       },
-      server: { url: agent.ghlBookingWebhookUrl },
+      server: toolServer,
     })
-    // Tool 2: book the appointment after collecting details + confirmation
     tools.push({
       type: 'function',
       async: false,
@@ -2251,7 +2273,7 @@ export async function syncVapiAssistant(agent, vapiKey) {
         },
         required: ['contactName', 'contactPhone', 'startTime'],
       },
-      server: { url: agent.ghlBookingWebhookUrl },
+      server: toolServer,
     })
   }
 
