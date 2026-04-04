@@ -92,6 +92,40 @@ const API_CONFIGS = [
     },
   },
   {
+    id: 'openai',
+    name: 'OpenAI API Key',
+    placeholder: 'sk-...',
+    helpUrl: 'https://platform.openai.com/api-keys',
+    helpLabel: 'platform.openai.com',
+    color: 'text-emerald-400',
+    bg: 'bg-emerald-500/10 border-emerald-500/30',
+    dot: 'bg-emerald-500',
+    description: 'Powers GPT-4o Mini + GPT-4o — most reliable for Vapi voice agents',
+    testFn: async (key) => {
+      const res = await fetch('https://api.openai.com/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      if (!res.ok) throw new Error(`OpenAI ${res.status}`)
+    },
+  },
+  {
+    id: 'xai',
+    name: 'xAI API Key (Grok)',
+    placeholder: 'xai-...',
+    helpUrl: 'https://console.x.ai',
+    helpLabel: 'console.x.ai',
+    color: 'text-zinc-300',
+    bg: 'bg-zinc-500/10 border-zinc-500/30',
+    dot: 'bg-zinc-400',
+    description: 'Powers Grok Beta + Grok 2 — fast, conversational, great for sales',
+    testFn: async (key) => {
+      const res = await fetch('https://api.x.ai/v1/models', {
+        headers: { Authorization: `Bearer ${key}` },
+      })
+      if (!res.ok) throw new Error(`xAI ${res.status}`)
+    },
+  },
+  {
     id: 'openrouter',
     name: 'OpenRouter',
     placeholder: 'sk-or-v1-...',

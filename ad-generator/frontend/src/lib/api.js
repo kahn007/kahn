@@ -2143,17 +2143,28 @@ export function generateEnvExample(agent) {
 
 // ── Vapi: sync assistant + trigger call ──────────────────────
 // Map model ID → Vapi provider string
-// OpenRouter model IDs use 'provider/model' format — detected by the '/' separator
+// Native provider IDs (no slash) — registered directly, most reliable
 function vapiModelProvider(modelId) {
-  if (!modelId) return 'openrouter'
-  if (modelId.includes('/')) return 'openrouter'  // e.g. openai/gpt-4o-mini, x-ai/grok-3
-  // Legacy bare IDs (backwards compat)
-  if (modelId.startsWith('claude')) return 'anthropic'
+  if (!modelId) return 'openai'
+  // Native providers — bare model IDs, no slash
   if (modelId.startsWith('gpt') || modelId.startsWith('o1') || modelId.startsWith('o3')) return 'openai'
+  if (modelId.startsWith('grok')) return 'xai'
+  if (modelId.startsWith('claude')) return 'anthropic'
   if (modelId.startsWith('gemini')) return 'google'
   if (modelId.startsWith('llama') || modelId.startsWith('mixtral') || modelId.startsWith('gemma')) return 'groq'
-  if (modelId.startsWith('grok')) return 'xai'
-  return 'openrouter'
+  // OpenRouter — slash format e.g. openai/gpt-4o-mini, x-ai/grok-3
+  if (modelId.includes('/')) return 'openrouter'
+  return 'openai'
+}
+
+// Get the right API key for a model's provider
+function providerApiKey(modelId) {
+  const p = vapiModelProvider(modelId)
+  if (p === 'openai')     return getKey('openai')
+  if (p === 'xai')        return getKey('xai')
+  if (p === 'anthropic')  return getKey('anthropic')
+  if (p === 'openrouter') return getKey('openrouter')
+  return null
 }
 
 // Returns the webhook server config for Vapi GHL tools.
@@ -2230,10 +2241,11 @@ async function ensureVapiCredential(vapiKey, provider, apiKey) {
 }
 
 export async function syncVapiAssistant(agent, vapiKey) {
-  // Auto-register OpenRouter key with Vapi if needed
-  const openrouterKey = getKey('openrouter')
-  if (vapiModelProvider(agent.llmModel) === 'openrouter' && openrouterKey) {
-    await ensureVapiCredential(vapiKey, 'openrouter', openrouterKey)
+  // Auto-register the provider key with Vapi before syncing
+  const provider = vapiModelProvider(agent.llmModel)
+  const apiKey   = providerApiKey(agent.llmModel)
+  if (apiKey) {
+    await ensureVapiCredential(vapiKey, provider, apiKey)
   }
   const systemPrompt = (agent.systemPrompt || 'You are a helpful voice assistant.') + ghlCalendarPrompt(agent)
 
