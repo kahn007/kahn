@@ -2309,8 +2309,7 @@ export async function syncVapiAssistant(agent, vapiKey) {
       ? {
           provider: 'cartesia',
           voiceId: agent.voiceId || '',
-          model: 'sonic-2024-10-19',  // Cartesia Sonic — ~50ms latency
-          speed: 1.0,
+          model: 'sonic-2024-10-19',
         }
       : {
           provider: '11labs',
