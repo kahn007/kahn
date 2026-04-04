@@ -1,0 +1,275 @@
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+
+export const useAdStore = create(
+  persist(
+    (set, get) => ({
+      // ── Campaign config ──────────────────────────────────────────
+      campaign: {
+        name: 'Brayne AI — Summer 2025',
+        objective: 'CONVERSIONS',
+        adAccountId: '',
+        adSetId: '',
+        pageId: '',
+      },
+
+      // ── Brand context ─────────────────────────────────────────────
+      brandContext: {
+        brandName: 'Brayne AI',
+        website: 'www.brayneai.com',
+        product: '',
+        targetAudience: '',
+        cta: 'Learn More',
+        landingPageUrl: 'https://www.brayneai.com',
+      },
+
+      // ── Research library ──────────────────────────────────────────
+      // Each session: { id, name, product, targetAudience, insights, createdAt }
+      researchSessions: [],
+      activeResearchId: null,   // which session feeds into Generate Copy
+      isResearching: false,
+
+      // ── Ad variations ─────────────────────────────────────────────
+      variations: [],
+      selectedVariations: [],
+      isGenerating: false,
+
+      // ── Upload state ──────────────────────────────────────────────
+      uploadQueue: [],
+      uploadResults: [],
+      isUploading: false,
+
+      // ── Analytics ─────────────────────────────────────────────────
+      analytics: [],
+      isLoadingAnalytics: false,
+
+      // ── Hook library ──────────────────────────────────────────────
+      // Each hook: { id, text, angle, createdAt }
+      hookLibrary: [],
+
+      // ── UTM config ────────────────────────────────────────────────
+      utmConfig: { source: 'facebook', medium: 'paid_social', campaign: '', content: '' },
+
+      // ── Competitor swipe file ─────────────────────────────────────
+      competitorSwipeFile: null,
+
+      // ── Landing page config ───────────────────────────────────────
+      landingPageConfig: {
+        themeId: 'dark_pro',
+        accentOverride: '',
+        logoSrc: '',
+        companyName: '',
+        tagline: '',
+        ctaUrl: '',
+        trustMetric: '',
+      },
+
+      // ── Saved landing pages (history, last 5) ─────────────────────
+      savedPages: [],
+
+      // ── Multi-platform adaptations ────────────────────────────────
+      platformAdaptations: null,
+
+      // ── Email sequences ───────────────────────────────────────────
+      emailSequences: [],
+
+      // ── Brand Voice DNA ───────────────────────────────────────────
+      brandVoice: {
+        archetype: 'creator',
+        tone: 50,
+        energy: 50,
+        alwaysUse: [],
+        neverUse: [],
+        exampleCopy: '',
+        uniqueMechanism: '',
+        differentiators: '',
+      },
+
+      // ── Voice Mining results ──────────────────────────────────────
+      voiceMiningResults: [],
+
+      // ── Hook Lab results ──────────────────────────────────────────
+      hookLabResults: null,
+
+      // ── Ad Score result ───────────────────────────────────────────
+      adScoreResult: null,
+
+      // ── Voice Agents ──────────────────────────────────────────────
+      voiceAgents: [],
+      activeAgentId: null,
+
+      // ── Active tab ────────────────────────────────────────────────
+      activeTab: 'research',
+
+      // ── Actions ───────────────────────────────────────────────────
+      setCampaign: (updates) =>
+        set((s) => ({ campaign: { ...s.campaign, ...updates } })),
+
+      setBrandContext: (updates) =>
+        set((s) => ({ brandContext: { ...s.brandContext, ...updates } })),
+
+      // Research library actions
+      saveResearchSession: (session) =>
+        set((s) => {
+          const exists = s.researchSessions.find((r) => r.id === session.id)
+          const sessions = exists
+            ? s.researchSessions.map((r) => (r.id === session.id ? session : r))
+            : [session, ...s.researchSessions]
+          return { researchSessions: sessions, activeResearchId: session.id }
+        }),
+
+      deleteResearchSession: (id) =>
+        set((s) => {
+          const sessions = s.researchSessions.filter((r) => r.id !== id)
+          const activeId = s.activeResearchId === id
+            ? (sessions[0]?.id || null)
+            : s.activeResearchId
+          return { researchSessions: sessions, activeResearchId: activeId }
+        }),
+
+      setActiveResearchId: (id) => set({ activeResearchId: id }),
+
+      setIsResearching: (v) => set({ isResearching: v }),
+
+      // Convenience: get the active session's insights
+      getActiveInsights: () => {
+        const s = get()
+        const session = s.researchSessions.find((r) => r.id === s.activeResearchId)
+        return session?.insights || null
+      },
+
+      addVariations: (vars) =>
+        set((s) => ({ variations: [...s.variations, ...vars] })),
+
+      setVariations: (variations) => set({ variations }),
+
+      toggleSelectVariation: (id) =>
+        set((s) => ({
+          selectedVariations: s.selectedVariations.includes(id)
+            ? s.selectedVariations.filter((x) => x !== id)
+            : [...s.selectedVariations, id],
+        })),
+
+      selectAll: () =>
+        set((s) => ({ selectedVariations: s.variations.map((v) => v.id) })),
+
+      clearSelection: () => set({ selectedVariations: [] }),
+
+      removeVariation: (id) =>
+        set((s) => ({
+          variations: s.variations.filter((v) => v.id !== id),
+          selectedVariations: s.selectedVariations.filter((x) => x !== id),
+        })),
+
+      updateVariation: (id, updates) =>
+        set((s) => ({
+          variations: s.variations.map((v) => (v.id === id ? { ...v, ...updates } : v)),
+        })),
+
+      setIsGenerating: (v) => set({ isGenerating: v }),
+
+      setUploadResults: (results) => set({ uploadResults: results }),
+      setIsUploading: (v) => set({ isUploading: v }),
+
+      setAnalytics: (analytics) => set({ analytics }),
+      setIsLoadingAnalytics: (v) => set({ isLoadingAnalytics: v }),
+
+      // Hook library actions
+      addHook: (hook) => set((s) => ({ hookLibrary: [hook, ...s.hookLibrary] })),
+      removeHook: (id) => set((s) => ({ hookLibrary: s.hookLibrary.filter((h) => h.id !== id) })),
+
+      // UTM config
+      setUtmConfig: (updates) => set((s) => ({ utmConfig: { ...s.utmConfig, ...updates } })),
+
+      // Competitor swipe file
+      saveSwipeFile: (data) => set({ competitorSwipeFile: data }),
+
+      // Landing page config
+      setLandingPageConfig: (updates) =>
+        set((s) => ({ landingPageConfig: { ...s.landingPageConfig, ...updates } })),
+
+      // Saved pages history
+      savePage: (page) =>
+        set((s) => ({ savedPages: [page, ...s.savedPages.filter((p) => p.id !== page.id)].slice(0, 8) })),
+      deleteSavedPage: (id) =>
+        set((s) => ({ savedPages: s.savedPages.filter((p) => p.id !== id) })),
+
+      setActiveTab: (tab) => set({ activeTab: tab }),
+
+      // Platform adaptations
+      setPlatformAdaptations: (data) => set({ platformAdaptations: data }),
+
+      // Email sequences
+      saveEmailSequence: (seq) =>
+        set((s) => ({ emailSequences: [seq, ...s.emailSequences.filter((e) => e.id !== seq.id)].slice(0, 20) })),
+      deleteEmailSequence: (id) =>
+        set((s) => ({ emailSequences: s.emailSequences.filter((e) => e.id !== id) })),
+
+      // Brand Voice DNA
+      setBrandVoice: (updates) =>
+        set((s) => ({ brandVoice: { ...s.brandVoice, ...updates } })),
+
+      // Voice Mining
+      saveVoiceMining: (result) =>
+        set((s) => ({ voiceMiningResults: [result, ...s.voiceMiningResults].slice(0, 10) })),
+      deleteVoiceMining: (id) =>
+        set((s) => ({ voiceMiningResults: s.voiceMiningResults.filter((r) => r.id !== id) })),
+
+      // Hook Lab
+      setHookLabResults: (results) => set({ hookLabResults: results }),
+
+      // Ad Scorer
+      setAdScoreResult: (result) => set({ adScoreResult: result }),
+
+      // Voice Agents
+      saveVoiceAgent: (agent) =>
+        set((s) => ({
+          voiceAgents: [agent, ...s.voiceAgents.filter((a) => a.id !== agent.id)],
+          activeAgentId: agent.id,
+        })),
+      deleteVoiceAgent: (id) =>
+        set((s) => ({
+          voiceAgents: s.voiceAgents.filter((a) => a.id !== id),
+          activeAgentId: s.activeAgentId === id
+            ? (s.voiceAgents.filter((a) => a.id !== id)[0]?.id || null)
+            : s.activeAgentId,
+        })),
+      setActiveAgentId: (id) => set({ activeAgentId: id }),
+      // Onboarding
+      hasOnboarded: false,
+      setHasOnboarded: (v) => set({ hasOnboarded: v }),
+
+      // Clear all data (reset)
+      clearAll: () => set({
+        variations: [], selectedVariations: [], uploadResults: [],
+        researchSessions: [], activeResearchId: null, competitorSwipeFile: null,
+        hookLibrary: [], savedPages: [], analytics: [],
+      }),
+    }),
+    {
+      name: 'brayne-ai-store',
+      partialize: (s) => ({
+        campaign:             s.campaign,
+        brandContext:         s.brandContext,
+        researchSessions:     s.researchSessions,
+        activeResearchId:     s.activeResearchId,
+        variations:           s.variations,
+        uploadResults:        s.uploadResults,
+        activeTab:            s.activeTab,
+        hookLibrary:          s.hookLibrary,
+        utmConfig:            s.utmConfig,
+        competitorSwipeFile:  s.competitorSwipeFile,
+        landingPageConfig:    s.landingPageConfig,
+        savedPages:           s.savedPages,
+        platformAdaptations:  s.platformAdaptations,
+        emailSequences:       s.emailSequences,
+        brandVoice:           s.brandVoice,
+        voiceMiningResults:   s.voiceMiningResults,
+        hookLabResults:       s.hookLabResults,
+        voiceAgents:          s.voiceAgents,
+        activeAgentId:        s.activeAgentId,
+        hasOnboarded:         s.hasOnboarded,
+      }),
+    }
+  )
+)
