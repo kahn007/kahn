@@ -2287,6 +2287,7 @@ export async function syncVapiAssistant(agent, vapiKey) {
       model: agent.llmModel || 'openai/gpt-4o-mini',
       messages: [{ role: 'system', content: systemPrompt }],
       temperature: 0.7,
+      ...(tools.length > 0 ? { tools } : {}),
     },
 
     // ── Voice ────────────────────────────────────────────────────
@@ -2325,8 +2326,6 @@ export async function syncVapiAssistant(agent, vapiKey) {
     backchannelingEnabled: true,     // agent says "mm-hmm" while listening
     backgroundDenoisingEnabled: true,
 
-    // ── Tools ────────────────────────────────────────────────────
-    ...(tools.length > 0 ? { tools } : {}),
   }
 
   const method = agent.vapiAssistantId ? 'PATCH' : 'POST'
