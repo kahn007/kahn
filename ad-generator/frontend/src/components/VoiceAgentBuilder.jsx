@@ -3,7 +3,8 @@ import {
   Phone, Plus, Trash2, Wand2, Globe, Copy,
   Check, AlertCircle, Loader2, RefreshCw, MessageSquare,
   Play, Mic, Zap, Building2, Search, PhoneCall, X, Calendar, User, Sparkles,
-  ChevronDown, ChevronUp, Clock, Target,
+  ChevronDown, ChevronUp, Clock, Target, PhoneIncoming, PhoneMissed,
+  Tag, FileText, Filter,
 } from 'lucide-react'
 import { useAdStore } from '../store/adStore'
 import { getKey } from '../lib/keys'
@@ -1189,6 +1190,244 @@ function LiveTestTab({ agent }) {
   )
 }
 
+// ── Call Tags ─────────────────────────────────────────────────
+const CALL_TAGS = [
+  { id: 'booked',         label: 'Booked',         color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },
+  { id: 'follow_up',      label: 'Follow Up',      color: 'text-yellow-400  bg-yellow-500/15  border-yellow-500/30'  },
+  { id: 'voicemail',      label: 'Voicemail',      color: 'text-zinc-400    bg-zinc-500/15    border-zinc-500/30'    },
+  { id: 'not_interested', label: 'Not Interested', color: 'text-red-400     bg-red-500/15     border-red-500/30'     },
+  { id: 'callback',       label: 'Callback',       color: 'text-blue-400    bg-blue-500/15    border-blue-500/30'    },
+  { id: 'wrong_number',   label: 'Wrong Number',   color: 'text-orange-400  bg-orange-500/15  border-orange-500/30'  },
+  { id: 'no_answer',      label: 'No Answer',      color: 'text-purple-400  bg-purple-500/15  border-purple-500/30'  },
+]
+
+function tagStyle(id) {
+  return CALL_TAGS.find(t => t.id === id)?.color || 'text-zinc-400 bg-zinc-500/15 border-zinc-500/30'
+}
+
+function tagLabel(id) {
+  return CALL_TAGS.find(t => t.id === id)?.label || id
+}
+
+function getCallTags(agentId) {
+  try { return JSON.parse(localStorage.getItem(`call_tags_${agentId}`) || '{}') } catch { return {} }
+}
+function saveCallTags(agentId, tags) {
+  localStorage.setItem(`call_tags_${agentId}`, JSON.stringify(tags))
+}
+
+function fmtDuration(startedAt, endedAt) {
+  if (!startedAt || !endedAt) return '—'
+  const secs = Math.round((new Date(endedAt) - new Date(startedAt)) / 1000)
+  if (secs < 60) return `${secs}s`
+  return `${Math.floor(secs / 60)}m ${secs % 60}s`
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+function CallLog({ agent }) {
+  const [calls,      setCalls]      = useState([])
+  const [loading,    setLoading]    = useState(false)
+  const [err,        setErr]        = useState('')
+  const [tags,       setTags]       = useState(() => getCallTags(agent.id))
+  const [filterTag,  setFilterTag]  = useState('all')
+  const [expanded,   setExpanded]   = useState(null)  // call id
+
+  const vapiKey = getKey('vapi')
+
+  useEffect(() => { if (agent.vapiAssistantId && vapiKey) fetchCalls() }, [agent.vapiAssistantId])
+
+  async function fetchCalls() {
+    if (!vapiKey || !agent.vapiAssistantId) return
+    setLoading(true); setErr('')
+    try {
+      const res = await fetch(
+        `https://api.vapi.ai/call?assistantId=${agent.vapiAssistantId}&limit=50`,
+        { headers: { Authorization: `Bearer ${vapiKey}` } }
+      )
+      if (!res.ok) throw new Error(`Vapi ${res.status}`)
+      const data = await res.json()
+      setCalls(Array.isArray(data) ? data : (data.results || []))
+    } catch(e) { setErr(e.message) }
+    finally { setLoading(false) }
+  }
+
+  function toggleTag(callId, tagId) {
+    const updated = { ...tags }
+    const current = updated[callId] || []
+    updated[callId] = current.includes(tagId)
+      ? current.filter(t => t !== tagId)
+      : [...current, tagId]
+    setTags(updated)
+    saveCallTags(agent.id, updated)
+  }
+
+  const filtered = filterTag === 'all'
+    ? calls
+    : calls.filter(c => (tags[c.id] || []).includes(filterTag))
+
+  if (!agent.vapiAssistantId) {
+    return (
+      <div className="border border-white/[0.06] rounded-xl p-4 text-center">
+        <PhoneIncoming size={20} className="text-zinc-700 mx-auto mb-2"/>
+        <p className="text-xs text-zinc-600">Sync your agent first — call history will appear here</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="border border-white/[0.06] rounded-xl overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 bg-surface-900/60 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2">
+          <PhoneIncoming size={12} className="text-brand-400"/>
+          <p className="text-xs font-semibold text-white">Call Log</p>
+          {calls.length > 0 && <span className="text-[10px] text-zinc-600">{calls.length} calls</span>}
+        </div>
+        <button onClick={fetchCalls} disabled={loading} className="btn-ghost text-xs">
+          <RefreshCw size={11} className={loading ? 'animate-spin' : ''}/>Refresh
+        </button>
+      </div>
+
+      {/* Tag filter bar */}
+      <div className="flex items-center gap-1.5 px-3 py-2 border-b border-white/[0.04] overflow-x-auto">
+        <Filter size={10} className="text-zinc-600 shrink-0"/>
+        <button onClick={() => setFilterTag('all')}
+          className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border transition-all
+            ${filterTag === 'all' ? 'text-white bg-white/10 border-white/20' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>
+          All
+        </button>
+        {CALL_TAGS.map(t => (
+          <button key={t.id} onClick={() => setFilterTag(filterTag === t.id ? 'all' : t.id)}
+            className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border transition-all
+              ${filterTag === t.id ? t.color : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Call list */}
+      <div className="divide-y divide-white/[0.04] max-h-[480px] overflow-y-auto">
+        {loading && (
+          <div className="flex items-center justify-center gap-2 py-8">
+            <Loader2 size={14} className="animate-spin text-zinc-600"/>
+            <span className="text-xs text-zinc-600">Loading calls…</span>
+          </div>
+        )}
+        {err && <p className="text-xs text-red-400 p-4">{err}</p>}
+        {!loading && !err && filtered.length === 0 && (
+          <p className="text-xs text-zinc-600 text-center py-8">
+            {filterTag === 'all' ? 'No calls yet' : `No calls tagged "${tagLabel(filterTag)}"`}
+          </p>
+        )}
+
+        {filtered.map(call => {
+          const callTags  = tags[call.id] || []
+          const isOpen    = expanded === call.id
+          const phone     = call.customer?.number || call.phoneNumber?.number || '—'
+          const duration  = fmtDuration(call.startedAt, call.endedAt)
+          const date      = fmtDate(call.startedAt)
+          const ended     = call.endedReason || call.status || ''
+
+          return (
+            <div key={call.id}>
+              {/* Row */}
+              <div className="flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.02] cursor-pointer"
+                onClick={() => setExpanded(isOpen ? null : call.id)}>
+                {/* Icon */}
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0
+                  ${ended.includes('voicemail') ? 'bg-zinc-500/10' : ended.includes('customer') ? 'bg-emerald-500/10' : 'bg-brand-500/10'}`}>
+                  {ended.includes('voicemail')
+                    ? <PhoneMissed size={12} className="text-zinc-500"/>
+                    : <Phone size={12} className="text-brand-400"/>}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-mono text-white">{phone}</span>
+                    {callTags.map(t => (
+                      <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${tagStyle(t)}`}>
+                        {tagLabel(t)}
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-zinc-600 mt-0.5">{date} · {duration}</p>
+                </div>
+
+                {/* Chevron */}
+                {isOpen ? <ChevronUp size={12} className="text-zinc-600 shrink-0"/> : <ChevronDown size={12} className="text-zinc-600 shrink-0"/>}
+              </div>
+
+              {/* Expanded detail */}
+              {isOpen && (
+                <div className="px-3 pb-3 space-y-2.5 bg-white/[0.01]">
+                  {/* Tag buttons */}
+                  <div>
+                    <p className="text-[10px] text-zinc-600 mb-1.5 flex items-center gap-1"><Tag size={9}/>Tag this call</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {CALL_TAGS.map(t => (
+                        <button key={t.id} onClick={() => toggleTag(call.id, t.id)}
+                          className={`text-[10px] px-2 py-1 rounded-lg border transition-all font-medium
+                            ${callTags.includes(t.id) ? t.color : 'text-zinc-600 bg-transparent border-white/[0.06] hover:border-white/20'}`}>
+                          {callTags.includes(t.id) ? '✓ ' : ''}{t.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Summary */}
+                  {call.summary && (
+                    <div className="p-2.5 bg-surface-900 rounded-lg border border-white/[0.06]">
+                      <p className="text-[10px] text-zinc-500 font-semibold mb-1">Summary</p>
+                      <p className="text-[10px] text-zinc-400 leading-relaxed">{call.summary}</p>
+                    </div>
+                  )}
+
+                  {/* Transcript */}
+                  {call.transcript && (
+                    <div>
+                      <p className="text-[10px] text-zinc-600 mb-1 flex items-center gap-1"><FileText size={9}/>Transcript</p>
+                      <div className="bg-surface-900 border border-white/[0.06] rounded-lg p-2.5 max-h-48 overflow-y-auto space-y-1.5">
+                        {call.transcript.split('\n').filter(Boolean).map((line, i) => {
+                          const isAgent = line.toLowerCase().startsWith('assistant') || line.toLowerCase().startsWith('ai')
+                          return (
+                            <p key={i} className={`text-[10px] leading-relaxed ${isAgent ? 'text-brand-300' : 'text-zinc-400'}`}>
+                              {line}
+                            </p>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recording */}
+                  {call.recordingUrl && (
+                    <div>
+                      <p className="text-[10px] text-zinc-600 mb-1">Recording</p>
+                      <audio controls src={call.recordingUrl} className="w-full h-8" style={{ filter: 'invert(0.85)' }}/>
+                    </div>
+                  )}
+
+                  {/* Meta */}
+                  <div className="flex gap-3 text-[10px] text-zinc-600">
+                    <span>Duration: <span className="text-zinc-400">{duration}</span></span>
+                    {call.cost && <span>Cost: <span className="text-zinc-400">${call.cost.toFixed(3)}</span></span>}
+                    {ended && <span>Ended: <span className="text-zinc-400">{ended.replace(/-/g,' ')}</span></span>}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Calls Tab ─────────────────────────────────────────────────
 function CallsTab({ agent, update }) {
   const [syncing,    setSyncing]    = useState(false)
@@ -1245,6 +1484,9 @@ function CallsTab({ agent, update }) {
 
   return (
     <div className="space-y-4">
+      {/* Call log with tags */}
+      <CallLog agent={agent}/>
+
       {/* No Vapi key */}
       {!vapiKey && (
         <div className="bg-purple-500/10 border border-purple-500/25 rounded-xl p-4 flex items-start gap-3">
