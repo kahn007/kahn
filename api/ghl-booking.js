@@ -61,8 +61,17 @@ export default async function handler(req, res) {
         }
 
         const data  = await slotsRes.json()
-        const raw   = data.availableSlots || data.slots || (Array.isArray(data) ? data : [])
-        const slots = raw.slice(0, 8)
+        const slotsData = data.availableSlots || data.slots || {}
+        let slotTimes = []
+        if (typeof slotsData === 'object' && !Array.isArray(slotsData)) {
+          Object.values(slotsData).forEach(dayData => {
+            if (Array.isArray(dayData)) slotTimes.push(...dayData)
+            else if (dayData?.slots) slotTimes.push(...dayData.slots)
+          })
+        } else if (Array.isArray(slotsData)) {
+          slotTimes = slotsData
+        }
+        const slots = slotTimes.slice(0, 8)
 
         if (slots.length === 0) {
           return { toolCallId: tc.id, result: `No available slots on ${date}. Please ask the caller to choose a different date.` }
