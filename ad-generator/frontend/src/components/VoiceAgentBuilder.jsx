@@ -438,14 +438,14 @@ function SetupTab({ agent, update }) {
 
 // ── Model Picker ──────────────────────────────────────────────
 // Native provider models — registered directly with Vapi, no OpenRouter needed
-// Key: openai → GPT models | xai → Grok | openrouter → everything else
+// Key: openai → GPT | xai → Grok | openrouter → Gemini/Llama/etc
 const CURATED_MODELS = [
-  { id: 'gpt-4o-mini',          name: 'GPT-4o Mini',      provider: 'OpenAI',     tag: 'Recommended',  tagColor: 'text-green-400  bg-green-500/10  border-green-500/20',  key: 'openai'     },
-  { id: 'gpt-4o',               name: 'GPT-4o',           provider: 'OpenAI',     tag: 'Premium',      tagColor: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20', key: 'openai'     },
-  { id: 'grok-beta',            name: 'Grok Beta',        provider: 'xAI',        tag: 'Fast',         tagColor: 'text-zinc-300   bg-zinc-500/10   border-zinc-500/20',   key: 'xai'        },
-  { id: 'grok-2',               name: 'Grok 2',           provider: 'xAI',        tag: 'Capable',      tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20', key: 'xai'        },
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: 'OpenRouter', tag: 'Best Value', tagColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20', key: 'openrouter' },
-  { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', provider: 'OpenRouter', tag: 'Open Source', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20', key: 'openrouter' },
+  { id: 'gpt-4o-mini',             name: 'GPT-4o Mini',        provider: 'OpenAI', tag: 'Recommended',   tagColor: 'text-green-400  bg-green-500/10  border-green-500/20',  key: 'openai'     },
+  { id: 'gpt-4o',                  name: 'GPT-4o',             provider: 'OpenAI', tag: 'Premium',       tagColor: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20', key: 'openai'     },
+  { id: 'grok-3-mini-fast-beta',   name: 'Grok 3 Mini Fast',   provider: 'xAI',    tag: 'No Thinking ⚡', tagColor: 'text-red-400    bg-red-500/10    border-red-500/20',    key: 'xai'        },
+  { id: 'grok-3-fast-beta',        name: 'Grok 3 Fast',        provider: 'xAI',    tag: 'No Thinking',   tagColor: 'text-zinc-300   bg-zinc-500/10   border-zinc-500/20',   key: 'xai'        },
+  { id: 'grok-beta',               name: 'Grok Beta',          provider: 'xAI',    tag: 'Stable',        tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20', key: 'xai'        },
+  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: 'OpenRouter', tag: 'Best Value', tagColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20',  key: 'openrouter' },
 ]
 
 function ModelPicker({ value, onChange }) {
