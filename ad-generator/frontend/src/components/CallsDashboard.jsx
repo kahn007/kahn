@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react'
 import {
   Phone, PhoneIncoming, PhoneMissed, RefreshCw, Loader2,
   Tag, FileText, Filter, ChevronDown, ChevronUp, AlertCircle,
+  TrendingUp, Clock, DollarSign, CheckCircle, PhoneCall,
+  ArrowRight, Zap, Users,
 } from 'lucide-react'
 import { useAdStore } from '../store/adStore'
 import { getKey } from '../lib/keys'
+import { triggerVapiCall } from '../lib/api'
 
 const CALL_TAGS = [
   { id: 'booked',         label: 'Booked',         color: 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30' },
@@ -96,6 +99,132 @@ function fmtDate(iso) {
   return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
 }
 
+// ── Stat card ─────────────────────────────────────────────────
+function Stat({ icon: Icon, label, value, sub, color = 'text-white' }) {
+  return (
+    <div className="border border-white/[0.06] rounded-xl p-4 space-y-1 bg-surface-900/30">
+      <div className="flex items-center gap-1.5">
+        <Icon size={11} className="text-zinc-600"/>
+        <p className="text-[10px] text-zinc-600 font-medium uppercase tracking-wide">{label}</p>
+      </div>
+      <p className={`text-xl font-bold leading-none ${color}`}>{value}</p>
+      {sub && <p className="text-[10px] text-zinc-600">{sub}</p>}
+    </div>
+  )
+}
+
+// ── Call row (shared by Log + Pipeline) ───────────────────────
+function CallRow({ call, effectiveTags, isAutoOnly, toggleTag, onCallAgain, callingId }) {
+  const [open, setOpen] = useState(false)
+  const callTags = effectiveTags(call.id)
+  const phone    = call.customer?.number || call.phoneNumber?.number || 'Unknown'
+  const duration = fmtDuration(call.startedAt, call.endedAt)
+  const date     = fmtDate(call.startedAt)
+  const ended    = call.endedReason || call.status || ''
+  const isCalling = callingId === call.id
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02]">
+        {/* Icon */}
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 cursor-pointer
+          ${ended.includes('voicemail') ? 'bg-zinc-500/10' : ended.includes('customer') ? 'bg-emerald-500/10' : 'bg-brand-500/10'}`}
+          onClick={() => setOpen(o => !o)}>
+          {ended.includes('voicemail')
+            ? <PhoneMissed size={14} className="text-zinc-500"/>
+            : <Phone size={14} className="text-brand-400"/>}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setOpen(o => !o)}>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-mono text-white">{phone}</span>
+            {callTags.map(t => (
+              <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${tagStyle(t)}`}>
+                {tagLabel(t)}
+              </span>
+            ))}
+            {isAutoOnly(call.id) && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full border text-zinc-600 border-zinc-700/50 bg-zinc-800/30">auto</span>
+            )}
+          </div>
+          <p className="text-xs text-zinc-600 mt-0.5 truncate">
+            {date} · {duration}
+            {call.summary && <span className="ml-2 text-zinc-700">— {call.summary.slice(0, 60)}…</span>}
+          </p>
+        </div>
+
+        {/* Call again */}
+        {onCallAgain && (
+          <button onClick={() => onCallAgain(phone, call.id)}
+            disabled={isCalling}
+            className="shrink-0 flex items-center gap-1 text-[10px] px-2.5 py-1.5 rounded-lg border border-green-500/25 bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-all disabled:opacity-50">
+            {isCalling ? <Loader2 size={10} className="animate-spin"/> : <PhoneCall size={10}/>}
+            {isCalling ? 'Calling…' : 'Call Again'}
+          </button>
+        )}
+
+        <div className="cursor-pointer" onClick={() => setOpen(o => !o)}>
+          {open ? <ChevronUp size={13} className="text-zinc-600"/> : <ChevronDown size={13} className="text-zinc-600"/>}
+        </div>
+      </div>
+
+      {open && (
+        <div className="px-4 pb-4 space-y-3 bg-white/[0.01] border-t border-white/[0.04]">
+          {/* Tags */}
+          <div className="pt-3">
+            <p className="text-[10px] text-zinc-600 mb-2 flex items-center gap-1">
+              <Tag size={9}/>Tag this call
+              {isAutoOnly(call.id) && <span className="text-zinc-700 ml-1">— auto-tagged, click to override</span>}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {CALL_TAGS.map(t => (
+                <button key={t.id} onClick={() => toggleTag(call.id, t.id)}
+                  className={`text-xs px-3 py-1.5 rounded-lg border transition-all font-medium
+                    ${callTags.includes(t.id) ? t.color : 'text-zinc-500 bg-transparent border-white/[0.08] hover:border-white/20'}`}>
+                  {callTags.includes(t.id) ? '✓ ' : ''}{t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {call.summary && (
+            <div className="p-3 bg-surface-900 rounded-xl border border-white/[0.06]">
+              <p className="text-[10px] text-zinc-500 font-semibold mb-1.5">AI Summary</p>
+              <p className="text-sm text-zinc-300 leading-relaxed">{call.summary}</p>
+            </div>
+          )}
+
+          {call.transcript && (
+            <div>
+              <p className="text-[10px] text-zinc-600 mb-1.5 flex items-center gap-1"><FileText size={9}/>Transcript</p>
+              <div className="bg-surface-900 border border-white/[0.06] rounded-xl p-3 max-h-64 overflow-y-auto space-y-2">
+                {call.transcript.split('\n').filter(Boolean).map((line, i) => {
+                  const isAgt = line.toLowerCase().startsWith('assistant') || line.toLowerCase().startsWith('ai')
+                  return <p key={i} className={`text-xs leading-relaxed ${isAgt ? 'text-brand-300' : 'text-zinc-400'}`}>{line}</p>
+                })}
+              </div>
+            </div>
+          )}
+
+          {call.recordingUrl && (
+            <div>
+              <p className="text-[10px] text-zinc-600 mb-1.5">Recording</p>
+              <audio controls src={call.recordingUrl} className="w-full h-9" style={{ filter: 'invert(0.85)' }}/>
+            </div>
+          )}
+
+          <div className="flex gap-4 text-xs text-zinc-600">
+            <span>Duration: <span className="text-zinc-400">{duration}</span></span>
+            {call.cost != null && <span>Cost: <span className="text-zinc-400">${call.cost.toFixed(3)}</span></span>}
+            {ended && <span>Ended: <span className="text-zinc-400">{ended.replace(/-/g,' ')}</span></span>}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function CallsDashboard() {
   const { voiceAgents } = useAdStore()
   const vapiKey = getKey('vapi')
@@ -104,22 +233,22 @@ export default function CallsDashboard() {
   const [calls,      setCalls]      = useState([])
   const [loading,    setLoading]    = useState(false)
   const [err,        setErr]        = useState('')
-  const [tags,       setTags]       = useState({})       // { callId: string[] } — manual overrides
-  const [autoTags,   setAutoTags]   = useState({})       // { callId: string[] } — computed on load
+  const [tags,       setTags]       = useState({})
+  const [autoTags,   setAutoTags]   = useState({})
   const [filterTag,  setFilterTag]  = useState('all')
-  const [expanded,   setExpanded]   = useState(null)
+  const [view,       setView]       = useState('log')    // 'log' | 'pipeline'
+  const [callingId,  setCallingId]  = useState(null)
 
   const agent = voiceAgents.find(a => a.id === selectedId)
 
-  // Effective tags = manual tags if set, otherwise auto-tags
   function effectiveTags(callId) {
     return tags[callId] !== undefined ? tags[callId] : (autoTags[callId] || [])
   }
+  function isAutoOnly(callId) {
+    return tags[callId] === undefined && (autoTags[callId] || []).length > 0
+  }
 
-  useEffect(() => {
-    if (selectedId) setTags(getCallTags(selectedId))
-  }, [selectedId])
-
+  useEffect(() => { if (selectedId) setTags(getCallTags(selectedId)) }, [selectedId])
   useEffect(() => {
     setCalls([]); setAutoTags({}); setErr('')
     if (agent?.vapiAssistantId && vapiKey) fetchCalls()
@@ -129,15 +258,12 @@ export default function CallsDashboard() {
     if (!vapiKey || !agent?.vapiAssistantId) return
     setLoading(true); setErr('')
     try {
-      const res = await fetch(
-        `https://api.vapi.ai/call?assistantId=${agent.vapiAssistantId}&limit=100`,
-        { headers: { Authorization: `Bearer ${vapiKey}` } }
-      )
+      const res  = await fetch(`https://api.vapi.ai/call?assistantId=${agent.vapiAssistantId}&limit=100`,
+        { headers: { Authorization: `Bearer ${vapiKey}` } })
       if (!res.ok) throw new Error(`Vapi ${res.status}`)
-      const data  = await res.json()
-      const list  = Array.isArray(data) ? data : (data.results || [])
+      const data = await res.json()
+      const list = Array.isArray(data) ? data : (data.results || [])
       setCalls(list)
-      // Auto-tag every call
       const computed = {}
       list.forEach(c => { computed[c.id] = autoTag(c) })
       setAutoTags(computed)
@@ -146,25 +272,54 @@ export default function CallsDashboard() {
   }
 
   function toggleTag(callId, tagId) {
-    // Start from effective tags so we don't lose auto-tags on first manual edit
     const base    = effectiveTags(callId)
     const updated = { ...tags }
-    updated[callId] = base.includes(tagId)
-      ? base.filter(t => t !== tagId)
-      : [...base, tagId]
+    updated[callId] = base.includes(tagId) ? base.filter(t => t !== tagId) : [...base, tagId]
     setTags(updated)
     saveCallTags(selectedId, updated)
   }
 
-  const filtered = filterTag === 'all'
-    ? calls
-    : calls.filter(c => effectiveTags(c.id).includes(filterTag))
+  async function callAgain(phone, callId) {
+    if (!agent?.vapiAssistantId) return
+    const sid   = getKey('twilio_sid')
+    const token = getKey('twilio_token')
+    const from  = agent.twilioPhoneNumber
+    if (!sid || !token || !from) { alert('Add Twilio credentials + phone number in Settings first'); return }
+    setCallingId(callId)
+    try {
+      await triggerVapiCall({ vapiKey, assistantId: agent.vapiAssistantId, toPhone: phone, fromPhone: from, twilioAccountSid: sid, twilioAuthToken: token })
+    } catch(e) { alert(e.message) }
+    finally { setCallingId(null) }
+  }
 
-  // Tag summary counts using effective tags
+  // ── Analytics ───────────────────────────────────────────────
+  const answered    = calls.filter(c => c.transcript || c.summary)
+  const booked      = calls.filter(c => effectiveTags(c.id).includes('booked'))
+  const totalCost   = calls.reduce((s, c) => s + (c.cost || 0), 0)
+  const avgDurSecs  = answered.length
+    ? Math.round(answered.reduce((s, c) => {
+        if (!c.startedAt || !c.endedAt) return s
+        return s + Math.round((new Date(c.endedAt) - new Date(c.startedAt)) / 1000)
+      }, 0) / answered.length)
+    : 0
+  const avgDur = avgDurSecs >= 60 ? `${Math.floor(avgDurSecs/60)}m ${avgDurSecs%60}s` : `${avgDurSecs}s`
+  const answerRate  = calls.length ? Math.round(answered.length / calls.length * 100) : 0
+  const bookingRate = answered.length ? Math.round(booked.length / answered.length * 100) : 0
+
+  // ── Pipeline leads ─────────────────────────────────────────
+  const pipelineLeads = calls
+    .filter(c => {
+      const t = effectiveTags(c.id)
+      return t.includes('follow_up') || t.includes('callback')
+    })
+    .sort((a, b) => new Date(b.startedAt || 0) - new Date(a.startedAt || 0))
+
   const tagCounts = CALL_TAGS.reduce((acc, t) => {
     acc[t.id] = calls.filter(c => effectiveTags(c.id).includes(t.id)).length
     return acc
   }, {})
+
+  const filtered = filterTag === 'all' ? calls : calls.filter(c => effectiveTags(c.id).includes(filterTag))
 
   if (!vapiKey) return (
     <div className="flex items-center justify-center h-64">
@@ -187,27 +342,12 @@ export default function CallsDashboard() {
   return (
     <div className="space-y-5">
 
-      {/* Agent picker + stats row */}
+      {/* Top bar */}
       <div className="flex items-center gap-3 flex-wrap">
-        <select
-          className="input max-w-xs"
-          value={selectedId}
-          onChange={e => { setSelectedId(e.target.value); setFilterTag('all'); setExpanded(null) }}>
-          {voiceAgents.map(a => (
-            <option key={a.id} value={a.id}>{a.name || 'Unnamed Agent'}</option>
-          ))}
+        <select className="input max-w-xs" value={selectedId}
+          onChange={e => { setSelectedId(e.target.value); setFilterTag('all') }}>
+          {voiceAgents.map(a => <option key={a.id} value={a.id}>{a.name || 'Unnamed Agent'}</option>)}
         </select>
-
-        {calls.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            {CALL_TAGS.filter(t => tagCounts[t.id] > 0).map(t => (
-              <span key={t.id} className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${t.color}`}>
-                {tagCounts[t.id]} {t.label}
-              </span>
-            ))}
-          </div>
-        )}
-
         <div className="ml-auto flex items-center gap-2">
           {calls.length > 0 && <span className="text-xs text-zinc-600">{calls.length} calls</span>}
           <button onClick={fetchCalls} disabled={loading} className="btn-ghost text-xs">
@@ -216,7 +356,17 @@ export default function CallsDashboard() {
         </div>
       </div>
 
-      {/* No assistant synced */}
+      {/* Analytics grid */}
+      {calls.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <Stat icon={Phone}       label="Total Calls"   value={calls.length}     sub={`${answered.length} answered`}/>
+          <Stat icon={TrendingUp}  label="Answer Rate"   value={`${answerRate}%`} sub="calls with transcript" color={answerRate >= 50 ? 'text-emerald-400' : 'text-white'}/>
+          <Stat icon={CheckCircle} label="Booking Rate"  value={`${bookingRate}%`} sub={`${booked.length} booked`} color={bookingRate > 0 ? 'text-emerald-400' : 'text-white'}/>
+          <Stat icon={Clock}       label="Avg Duration"  value={avgDur}           sub="answered calls"/>
+          <Stat icon={DollarSign}  label="Total Cost"    value={`$${totalCost.toFixed(2)}`} sub={calls.length ? `$${(totalCost/calls.length).toFixed(3)}/call` : ''}/>
+        </div>
+      )}
+
       {!agent?.vapiAssistantId && (
         <div className="border border-white/[0.06] rounded-xl p-8 text-center">
           <PhoneIncoming size={24} className="text-zinc-700 mx-auto mb-3"/>
@@ -228,149 +378,88 @@ export default function CallsDashboard() {
       {agent?.vapiAssistantId && (
         <div className="border border-white/[0.06] rounded-xl overflow-hidden">
 
-          {/* Tag filter bar */}
-          <div className="flex items-center gap-1.5 px-3 py-2.5 border-b border-white/[0.04] overflow-x-auto bg-surface-900/40">
-            <Filter size={10} className="text-zinc-600 shrink-0"/>
-            <button onClick={() => setFilterTag('all')}
-              className={`shrink-0 text-[10px] px-2.5 py-1 rounded-full border transition-all
-                ${filterTag === 'all' ? 'text-white bg-white/10 border-white/20' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>
-              All {calls.length > 0 && `(${calls.length})`}
-            </button>
-            {CALL_TAGS.map(t => (
-              <button key={t.id} onClick={() => setFilterTag(filterTag === t.id ? 'all' : t.id)}
-                className={`shrink-0 text-[10px] px-2.5 py-1 rounded-full border transition-all
-                  ${filterTag === t.id ? t.color : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>
-                {t.label} {tagCounts[t.id] > 0 && `(${tagCounts[t.id]})`}
+          {/* View tabs */}
+          <div className="flex items-center border-b border-white/[0.06] bg-surface-900/40">
+            {[
+              { id: 'log',      label: 'Call Log',  icon: FileText },
+              { id: 'pipeline', label: `Pipeline`,  icon: Users,   badge: pipelineLeads.length },
+            ].map(({ id, label, icon: Icon, badge }) => (
+              <button key={id} onClick={() => setView(id)}
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 transition-all
+                  ${view === id ? 'border-brand-500 text-brand-300' : 'border-transparent text-zinc-500 hover:text-zinc-300'}`}>
+                <Icon size={11}/>{label}
+                {badge > 0 && (
+                  <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 font-bold">
+                    {badge}
+                  </span>
+                )}
               </button>
             ))}
           </div>
 
-          {/* List */}
-          <div className="divide-y divide-white/[0.04]">
-            {loading && (
-              <div className="flex items-center justify-center gap-2 py-12">
-                <Loader2 size={16} className="animate-spin text-zinc-600"/>
-                <span className="text-sm text-zinc-600">Loading calls…</span>
+          {/* ── Call Log view ──────────────────────────────── */}
+          {view === 'log' && (
+            <>
+              {/* Filter bar */}
+              <div className="flex items-center gap-1.5 px-3 py-2 border-b border-white/[0.04] overflow-x-auto">
+                <Filter size={10} className="text-zinc-600 shrink-0"/>
+                <button onClick={() => setFilterTag('all')}
+                  className={`shrink-0 text-[10px] px-2.5 py-1 rounded-full border transition-all
+                    ${filterTag === 'all' ? 'text-white bg-white/10 border-white/20' : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>
+                  All {calls.length > 0 && `(${calls.length})`}
+                </button>
+                {CALL_TAGS.map(t => (
+                  <button key={t.id} onClick={() => setFilterTag(filterTag === t.id ? 'all' : t.id)}
+                    className={`shrink-0 text-[10px] px-2.5 py-1 rounded-full border transition-all
+                      ${filterTag === t.id ? t.color : 'text-zinc-600 border-transparent hover:text-zinc-400'}`}>
+                    {t.label}{tagCounts[t.id] > 0 && ` (${tagCounts[t.id]})`}
+                  </button>
+                ))}
               </div>
-            )}
-            {err && <p className="text-sm text-red-400 p-6">{err}</p>}
-            {!loading && !err && filtered.length === 0 && (
-              <div className="py-12 text-center">
-                <Phone size={20} className="text-zinc-700 mx-auto mb-2"/>
-                <p className="text-sm text-zinc-600">
-                  {filterTag === 'all' ? 'No calls yet' : `No calls tagged "${tagLabel(filterTag)}"`}
-                </p>
-              </div>
-            )}
 
-            {filtered.map(call => {
-              const callTags   = effectiveTags(call.id)
-              const isAutoOnly = tags[call.id] === undefined && callTags.length > 0
-              const isOpen     = expanded === call.id
-              const phone      = call.customer?.number || call.phoneNumber?.number || 'Unknown'
-              const duration   = fmtDuration(call.startedAt, call.endedAt)
-              const date       = fmtDate(call.startedAt)
-              const ended      = call.endedReason || call.status || ''
-
-              return (
-                <div key={call.id}>
-                  <div className="flex items-center gap-3 px-4 py-3 hover:bg-white/[0.02] cursor-pointer"
-                    onClick={() => setExpanded(isOpen ? null : call.id)}>
-
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0
-                      ${ended.includes('voicemail') ? 'bg-zinc-500/10' : ended.includes('customer') ? 'bg-emerald-500/10' : 'bg-brand-500/10'}`}>
-                      {ended.includes('voicemail')
-                        ? <PhoneMissed size={14} className="text-zinc-500"/>
-                        : <Phone size={14} className="text-brand-400"/>}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-mono text-white">{phone}</span>
-                        {callTags.map(t => (
-                          <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${tagStyle(t)}`}>
-                            {tagLabel(t)}
-                          </span>
-                        ))}
-                        {isAutoOnly && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full border text-zinc-600 border-zinc-700/50 bg-zinc-800/30">
-                            auto
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-zinc-600 mt-0.5">{date} · {duration}</p>
-                    </div>
-
-                    {isOpen
-                      ? <ChevronUp size={13} className="text-zinc-600 shrink-0"/>
-                      : <ChevronDown size={13} className="text-zinc-600 shrink-0"/>}
+              <div className="divide-y divide-white/[0.04]">
+                {loading && <div className="flex items-center justify-center gap-2 py-12"><Loader2 size={16} className="animate-spin text-zinc-600"/><span className="text-sm text-zinc-600">Loading…</span></div>}
+                {err && <p className="text-sm text-red-400 p-6">{err}</p>}
+                {!loading && !err && filtered.length === 0 && (
+                  <div className="py-12 text-center">
+                    <Phone size={20} className="text-zinc-700 mx-auto mb-2"/>
+                    <p className="text-sm text-zinc-600">{filterTag === 'all' ? 'No calls yet' : `No calls tagged "${tagLabel(filterTag)}"`}</p>
                   </div>
+                )}
+                {filtered.map(call => (
+                  <CallRow key={call.id} call={call}
+                    effectiveTags={effectiveTags} isAutoOnly={isAutoOnly}
+                    toggleTag={toggleTag} onCallAgain={callAgain} callingId={callingId}/>
+                ))}
+              </div>
+            </>
+          )}
 
-                  {isOpen && (
-                    <div className="px-4 pb-4 space-y-3 bg-white/[0.01] border-t border-white/[0.04]">
-
-                      {/* Tags */}
-                      <div className="pt-3">
-                        <p className="text-[10px] text-zinc-600 mb-2 flex items-center gap-1">
-                          <Tag size={9}/>Tag this call
-                          {isAutoOnly && <span className="text-zinc-700 ml-1">— auto-tagged, click to override</span>}
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                          {CALL_TAGS.map(t => (
-                            <button key={t.id} onClick={() => toggleTag(call.id, t.id)}
-                              className={`text-xs px-3 py-1.5 rounded-lg border transition-all font-medium
-                                ${callTags.includes(t.id) ? t.color : 'text-zinc-500 bg-transparent border-white/[0.08] hover:border-white/20'}`}>
-                              {callTags.includes(t.id) ? '✓ ' : ''}{t.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Summary */}
-                      {call.summary && (
-                        <div className="p-3 bg-surface-900 rounded-xl border border-white/[0.06]">
-                          <p className="text-[10px] text-zinc-500 font-semibold mb-1.5">AI Summary</p>
-                          <p className="text-sm text-zinc-300 leading-relaxed">{call.summary}</p>
-                        </div>
-                      )}
-
-                      {/* Transcript */}
-                      {call.transcript && (
-                        <div>
-                          <p className="text-[10px] text-zinc-600 mb-1.5 flex items-center gap-1"><FileText size={9}/>Transcript</p>
-                          <div className="bg-surface-900 border border-white/[0.06] rounded-xl p-3 max-h-64 overflow-y-auto space-y-2">
-                            {call.transcript.split('\n').filter(Boolean).map((line, i) => {
-                              const isAgent = line.toLowerCase().startsWith('assistant') || line.toLowerCase().startsWith('ai')
-                              return (
-                                <p key={i} className={`text-xs leading-relaxed ${isAgent ? 'text-brand-300' : 'text-zinc-400'}`}>
-                                  {line}
-                                </p>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Recording */}
-                      {call.recordingUrl && (
-                        <div>
-                          <p className="text-[10px] text-zinc-600 mb-1.5">Recording</p>
-                          <audio controls src={call.recordingUrl} className="w-full h-9" style={{ filter: 'invert(0.85)' }}/>
-                        </div>
-                      )}
-
-                      {/* Meta */}
-                      <div className="flex gap-4 text-xs text-zinc-600">
-                        <span>Duration: <span className="text-zinc-400">{duration}</span></span>
-                        {call.cost != null && <span>Cost: <span className="text-zinc-400">${call.cost.toFixed(3)}</span></span>}
-                        {ended && <span>Ended: <span className="text-zinc-400">{ended.replace(/-/g,' ')}</span></span>}
-                      </div>
-                    </div>
-                  )}
+          {/* ── Pipeline view ──────────────────────────────── */}
+          {view === 'pipeline' && (
+            <div className="divide-y divide-white/[0.04]">
+              {pipelineLeads.length === 0 && (
+                <div className="py-12 text-center">
+                  <Users size={20} className="text-zinc-700 mx-auto mb-2"/>
+                  <p className="text-sm text-zinc-600">No follow-up leads yet</p>
+                  <p className="text-xs text-zinc-700 mt-1">Calls tagged Follow Up or Callback appear here</p>
                 </div>
-              )
-            })}
-          </div>
+              )}
+              {pipelineLeads.map(call => (
+                <CallRow key={call.id} call={call}
+                  effectiveTags={effectiveTags} isAutoOnly={isAutoOnly}
+                  toggleTag={toggleTag} onCallAgain={callAgain} callingId={callingId}/>
+              ))}
+              {pipelineLeads.length > 0 && (
+                <div className="px-4 py-3 bg-yellow-500/5">
+                  <p className="text-xs text-yellow-600">
+                    {pipelineLeads.length} lead{pipelineLeads.length !== 1 ? 's' : ''} need follow-up — click <strong>Call Again</strong> to have the agent call them back instantly.
+                    Mark as Booked or Not Interested once done.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
