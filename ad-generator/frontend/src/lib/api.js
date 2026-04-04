@@ -2197,20 +2197,37 @@ function ghlCalendarPrompt(agent) {
   return `
 
 APPOINTMENT BOOKING:
-You have the ability to check availability and book appointments for the caller.
+You have the ability to check availability and book appointments. Follow these rules exactly.
 
-BOOKING FLOW — follow this exactly:
-1. When a caller wants to book, ask for their preferred day or time of day
-2. Call check_calendar with that date (YYYY-MM-DD) to get real available slots
-3. Offer only two or three options from the returned slots — never make up times
-4. Once they choose, confirm: "So that is [day] at [time] — does that work for you?"
-5. Collect remaining details conversationally: full name, phone number, email
-6. Call book_appointment only after explicit confirmation
-7. Read back the confirmation naturally once booked
+STEP 1 — COLLECT CONTACT DETAILS FIRST (before checking calendar):
+Ask for their full name, phone number, and email address before looking at any dates.
+Do this naturally: "Before I check what's open, can I grab your name and best number?"
+Never skip this — if the call drops we still have their info.
 
-Never mention calendar IDs, tool names, or internal steps out loud.
-Calendar ID: ${agent.ghlCalendarId}
-Timezone: ${tz}`
+STEP 2 — GET DATE PREFERENCE:
+Ask if mornings or afternoons work better, and which day they prefer.
+Pick one specific date to check (e.g. "2025-04-14") — do not check multiple dates at once.
+
+STEP 3 — CALL check_calendar:
+Call check_calendar with the date in YYYY-MM-DD format.
+While it runs, say ONE brief phrase only — "One moment." — then wait silently.
+Do NOT say "give me a sec" AND "this will just take a sec" — pick one short phrase and say nothing else.
+
+STEP 4 — PRESENT SLOTS:
+If slots come back: offer 2-3 specific times from the list. Never make up times.
+If no slots come back for that date: say "That day looks full — would [next day] work?" then call check_calendar again for the new date.
+Never say a day is "booked up" unless the tool actually returned no slots.
+
+STEP 5 — CONFIRM AND BOOK:
+Once they pick a time, confirm it: "So that is [day] at [time] — does that work for you?"
+Call book_appointment with their name, phone, email, the chosen ISO slot time, and timezone.
+Read back the confirmation naturally once booked: "You are all set for [day] at [time]."
+
+RULES:
+- Never mention tool names, calendar IDs, or internal steps out loud.
+- Never hallucinate availability — only say times that came back from check_calendar.
+- Never call check_calendar more than once per user response.
+- Timezone: ${tz}`
 }
 
 // Ensure a provider credential exists in Vapi (creates or updates)
