@@ -26,6 +26,42 @@ function saveCallTags(agentId, tags) {
   localStorage.setItem(`call_tags_${agentId}`, JSON.stringify(tags))
 }
 
+// Auto-tag a call based on Vapi's endedReason + transcript + summary
+function autoTag(call) {
+  const tags  = []
+  const ended = (call.endedReason || '').toLowerCase()
+  const text  = ((call.transcript || '') + ' ' + (call.summary || '')).toLowerCase()
+
+  // Vapi-reported reasons
+  if (ended.includes('voicemail'))                       tags.push('voicemail')
+  if (ended === 'no-answer' || ended === 'no_answer')    tags.push('no_answer')
+
+  // Booked / appointment confirmed
+  if (/booked|appointment.{0,20}confirm|scheduled|you.re all set|i.ve got you down|see you (on|at)|you.re in/.test(text))
+    tags.push('booked')
+
+  // Not interested
+  if (/not interested|no thank|don.t (want|need)|not for me|remove me|stop calling|take me off|unsubscribe/.test(text))
+    tags.push('not_interested')
+
+  // Callback requested
+  if (/call.{0,10}(me )?back|try.{0,10}again|better time|reach me later|catch (me|you) later|call tomorrow/.test(text))
+    tags.push('callback')
+
+  // Wrong number
+  if (/wrong number|wrong person|not the right|don.t know (who|why)|looking for someone/.test(text))
+    tags.push('wrong_number')
+
+  // Short call with no transcript → likely no answer
+  const durationSecs = call.startedAt && call.endedAt
+    ? Math.round((new Date(call.endedAt) - new Date(call.startedAt)) / 1000)
+    : null
+  if (!tags.length && durationSecs !== null && durationSecs < 15 && !call.transcript)
+    tags.push('no_answer')
+
+  return [...new Set(tags)]
+}
+
 function fmtDuration(startedAt, endedAt) {
   if (!startedAt || !endedAt) return '—'
   const secs = Math.round((new Date(endedAt) - new Date(startedAt)) / 1000)
@@ -46,18 +82,24 @@ export default function CallsDashboard() {
   const [calls,      setCalls]      = useState([])
   const [loading,    setLoading]    = useState(false)
   const [err,        setErr]        = useState('')
-  const [tags,       setTags]       = useState({})
+  const [tags,       setTags]       = useState({})       // { callId: string[] } — manual overrides
+  const [autoTags,   setAutoTags]   = useState({})       // { callId: string[] } — computed on load
   const [filterTag,  setFilterTag]  = useState('all')
   const [expanded,   setExpanded]   = useState(null)
 
   const agent = voiceAgents.find(a => a.id === selectedId)
+
+  // Effective tags = manual tags if set, otherwise auto-tags
+  function effectiveTags(callId) {
+    return tags[callId] !== undefined ? tags[callId] : (autoTags[callId] || [])
+  }
 
   useEffect(() => {
     if (selectedId) setTags(getCallTags(selectedId))
   }, [selectedId])
 
   useEffect(() => {
-    setCalls([]); setErr('')
+    setCalls([]); setAutoTags({}); setErr('')
     if (agent?.vapiAssistantId && vapiKey) fetchCalls()
   }, [selectedId])
 
@@ -70,29 +112,35 @@ export default function CallsDashboard() {
         { headers: { Authorization: `Bearer ${vapiKey}` } }
       )
       if (!res.ok) throw new Error(`Vapi ${res.status}`)
-      const data = await res.json()
-      setCalls(Array.isArray(data) ? data : (data.results || []))
+      const data  = await res.json()
+      const list  = Array.isArray(data) ? data : (data.results || [])
+      setCalls(list)
+      // Auto-tag every call
+      const computed = {}
+      list.forEach(c => { computed[c.id] = autoTag(c) })
+      setAutoTags(computed)
     } catch(e) { setErr(e.message) }
     finally { setLoading(false) }
   }
 
   function toggleTag(callId, tagId) {
+    // Start from effective tags so we don't lose auto-tags on first manual edit
+    const base    = effectiveTags(callId)
     const updated = { ...tags }
-    const current = updated[callId] || []
-    updated[callId] = current.includes(tagId)
-      ? current.filter(t => t !== tagId)
-      : [...current, tagId]
+    updated[callId] = base.includes(tagId)
+      ? base.filter(t => t !== tagId)
+      : [...base, tagId]
     setTags(updated)
     saveCallTags(selectedId, updated)
   }
 
   const filtered = filterTag === 'all'
     ? calls
-    : calls.filter(c => (tags[c.id] || []).includes(filterTag))
+    : calls.filter(c => effectiveTags(c.id).includes(filterTag))
 
-  // Tag summary counts
+  // Tag summary counts using effective tags
   const tagCounts = CALL_TAGS.reduce((acc, t) => {
-    acc[t.id] = calls.filter(c => (tags[c.id] || []).includes(t.id)).length
+    acc[t.id] = calls.filter(c => effectiveTags(c.id).includes(t.id)).length
     return acc
   }, {})
 
@@ -194,12 +242,13 @@ export default function CallsDashboard() {
             )}
 
             {filtered.map(call => {
-              const callTags = tags[call.id] || []
-              const isOpen   = expanded === call.id
-              const phone    = call.customer?.number || call.phoneNumber?.number || 'Unknown'
-              const duration = fmtDuration(call.startedAt, call.endedAt)
-              const date     = fmtDate(call.startedAt)
-              const ended    = call.endedReason || call.status || ''
+              const callTags   = effectiveTags(call.id)
+              const isAutoOnly = tags[call.id] === undefined && callTags.length > 0
+              const isOpen     = expanded === call.id
+              const phone      = call.customer?.number || call.phoneNumber?.number || 'Unknown'
+              const duration   = fmtDuration(call.startedAt, call.endedAt)
+              const date       = fmtDate(call.startedAt)
+              const ended      = call.endedReason || call.status || ''
 
               return (
                 <div key={call.id}>
@@ -221,6 +270,11 @@ export default function CallsDashboard() {
                             {tagLabel(t)}
                           </span>
                         ))}
+                        {isAutoOnly && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full border text-zinc-600 border-zinc-700/50 bg-zinc-800/30">
+                            auto
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-zinc-600 mt-0.5">{date} · {duration}</p>
                     </div>
@@ -235,7 +289,10 @@ export default function CallsDashboard() {
 
                       {/* Tags */}
                       <div className="pt-3">
-                        <p className="text-[10px] text-zinc-600 mb-2 flex items-center gap-1"><Tag size={9}/>Tag this call</p>
+                        <p className="text-[10px] text-zinc-600 mb-2 flex items-center gap-1">
+                          <Tag size={9}/>Tag this call
+                          {isAutoOnly && <span className="text-zinc-700 ml-1">— auto-tagged, click to override</span>}
+                        </p>
                         <div className="flex flex-wrap gap-2">
                           {CALL_TAGS.map(t => (
                             <button key={t.id} onClick={() => toggleTag(call.id, t.id)}
