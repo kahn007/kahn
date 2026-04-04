@@ -3,7 +3,7 @@ import {
   Zap, Search, Wand2, LayoutGrid, Upload, BarChart3,
   Settings, Globe, ExternalLink, ChevronRight, X,
   Key, Sparkles, ArrowRight, Layers, Mail,
-  Mic2, Anchor, Target, Fingerprint, Phone,
+  Mic2, Anchor, Target, Fingerprint, Phone, PhoneCall,
 } from 'lucide-react'
 import { useAdStore } from './store/adStore'
 import { getKey } from './lib/keys'
@@ -21,6 +21,7 @@ import VoiceMining from './components/VoiceMining'
 import HookLab from './components/HookLab'
 import AdScorer from './components/AdScorer'
 import VoiceAgentBuilder from './components/VoiceAgentBuilder'
+import CallsDashboard from './components/CallsDashboard'
 
 const NAV_GROUPS = [
   {
@@ -52,6 +53,7 @@ const NAV_GROUPS = [
     label: 'Automate',
     items: [
       { id: 'voice_agents', label: 'Voice Agents',   icon: Phone,      hint: 'GHL + Twilio AI phone agents' },
+      { id: 'calls',        label: 'Calls',          icon: PhoneCall,  hint: 'Call history, tags & transcripts' },
     ],
   },
   {
@@ -285,6 +287,7 @@ export default function App() {
           {activeTab === 'scorer'       && <AdScorer />}
           {activeTab === 'brand_voice'  && <BrandVoice />}
           {activeTab === 'voice_agents' && <VoiceAgentBuilder />}
+          {activeTab === 'calls'        && <CallsDashboard />}
           {activeTab === 'upload'       && <FacebookUploader />}
           {activeTab === 'dashboard'    && <TrackingDashboard />}
           {activeTab === 'settings'     && <CampaignSettings />}
