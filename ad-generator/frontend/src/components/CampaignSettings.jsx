@@ -119,10 +119,8 @@ const API_CONFIGS = [
     dot: 'bg-zinc-400',
     description: 'Powers Grok Beta + Grok 2 — fast, conversational, great for sales',
     testFn: async (key) => {
-      const res = await fetch('https://api.x.ai/v1/models', {
-        headers: { Authorization: `Bearer ${key}` },
-      })
-      if (!res.ok) throw new Error(`xAI ${res.status}`)
+      // xAI blocks browser requests — validate format only
+      if (!key.startsWith('xai-')) throw new Error('xAI keys start with "xai-"')
     },
   },
   {
