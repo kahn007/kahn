@@ -28,38 +28,60 @@ function saveCallTags(agentId, tags) {
 
 // Auto-tag a call based on Vapi's endedReason + transcript + summary
 function autoTag(call) {
-  const tags  = []
-  const ended = (call.endedReason || '').toLowerCase()
-  const text  = ((call.transcript || '') + ' ' + (call.summary || '')).toLowerCase()
+  const ended      = (call.endedReason || call.status || '').toLowerCase()
+  const transcript = (call.transcript || '').toLowerCase()
+  const summary    = (call.summary    || '').toLowerCase()
+  const text       = transcript + ' ' + summary
 
-  // Vapi-reported reasons
-  if (ended.includes('voicemail'))                       tags.push('voicemail')
-  if (ended === 'no-answer' || ended === 'no_answer')    tags.push('no_answer')
-
-  // Booked / appointment confirmed
-  if (/booked|appointment.{0,20}confirm|scheduled|you.re all set|i.ve got you down|see you (on|at)|you.re in/.test(text))
-    tags.push('booked')
-
-  // Not interested
-  if (/not interested|no thank|don.t (want|need)|not for me|remove me|stop calling|take me off|unsubscribe/.test(text))
-    tags.push('not_interested')
-
-  // Callback requested
-  if (/call.{0,10}(me )?back|try.{0,10}again|better time|reach me later|catch (me|you) later|call tomorrow/.test(text))
-    tags.push('callback')
-
-  // Wrong number
-  if (/wrong number|wrong person|not the right|don.t know (who|why)|looking for someone/.test(text))
-    tags.push('wrong_number')
-
-  // Short call with no transcript → likely no answer
   const durationSecs = call.startedAt && call.endedAt
     ? Math.round((new Date(call.endedAt) - new Date(call.startedAt)) / 1000)
-    : null
-  if (!tags.length && durationSecs !== null && durationSecs < 15 && !call.transcript)
-    tags.push('no_answer')
+    : 0
 
-  return [...new Set(tags)]
+  // ── Pipeline / system errors ─────────────────────────────────
+  // Vapi couldn't start the call (bad credentials, config error, etc.)
+  if (ended.includes('pipeline') || ended.includes('error') || ended.includes('failed'))
+    return ['no_answer']
+
+  // ── Voicemail ────────────────────────────────────────────────
+  if (ended.includes('voicemail') || /voicemail|leave a message|after the (beep|tone)/.test(text))
+    return ['voicemail']
+
+  // ── No transcript at all → no answer / didn't connect ───────
+  if (!transcript && !summary)
+    return ['no_answer']
+
+  // ── Booked — STRICT: explicit confirmation only ──────────────
+  // Must have a clear "appointment confirmed / you're all set / see you [day]"
+  // NOT triggered by "I want to book" or "just book appointment"
+  if (/(appointment|call).{0,40}(confirmed|booked|scheduled|set up)|you.re (all set|booked in|scheduled|confirmed)|i.ve (booked|scheduled|got you|put you).{0,30}(in|down|for)|see you (on |at )?(monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}(st|nd|rd|th)?)/.test(text))
+    return ['booked']
+
+  // ── Not interested ───────────────────────────────────────────
+  if (/not interested|no thank|don.t (want|need)|not for me|remove me|stop calling|take me off|not looking/.test(text))
+    return ['not_interested']
+
+  // ── Wrong number ─────────────────────────────────────────────
+  if (/wrong number|wrong person|not the right (number|person)|don.t know (who|why you)/.test(text))
+    return ['wrong_number']
+
+  // ── Callback ─────────────────────────────────────────────────
+  if (/call.{0,10}(me )?back|try.{0,5}again|better time|reach me later|call (me )?(tomorrow|later|tonight)/.test(text))
+    return ['callback']
+
+  // ── Engaged but didn't complete booking → Follow Up ─────────
+  // Had a real conversation (30s+) and showed interest
+  if (durationSecs >= 30 && /interested|sounds good|tell me more|how does|love it|that.s (great|brilliant|perfect|good)|want to|sign me up|let.s do|definitely|absolutely|for sure/.test(text))
+    return ['follow_up']
+
+  // ── Short real call with no clear outcome ────────────────────
+  if (durationSecs < 20)
+    return ['no_answer']
+
+  // ── Had a conversation but no clear signal → Follow Up ───────
+  if (transcript)
+    return ['follow_up']
+
+  return ['no_answer']
 }
 
 function fmtDuration(startedAt, endedAt) {
