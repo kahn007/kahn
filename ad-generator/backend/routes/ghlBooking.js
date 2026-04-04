@@ -16,8 +16,15 @@ router.post('/', async (req, res) => {
   const calendarId = req.headers['x-ghl-calendar']
   const agentTz    = req.headers['x-ghl-timezone'] || 'America/New_York'
 
+  // Always return 200 — Vapi crashes the call on non-200 from tool webhooks
   if (!ghlToken || !locationId || !calendarId) {
-    return res.status(400).json({ error: 'Missing GHL credentials in headers' })
+    const toolCalls = req.body?.message?.toolCallList || []
+    return res.status(200).json({
+      results: toolCalls.map(tc => ({
+        toolCallId: tc.id,
+        result: 'I apologise, the booking system is not configured yet. Please ask them to call back or take their details manually.',
+      }))
+    })
   }
 
   const ghlHeaders = {
