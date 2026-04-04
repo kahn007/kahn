@@ -23,7 +23,7 @@ const DEFAULT_AGENT = () => ({
   callDirection: 'inbound',
   language: 'en',
   maxCallMinutes: 10,
-  llmModel: 'gpt-4o-mini',
+  llmModel: 'gpt-4o-mini',   // native OpenAI — most reliable with Vapi
   voiceId: '',
   voiceName: '',
   voiceProvider: 'elevenlabs',
@@ -437,13 +437,15 @@ function SetupTab({ agent, update }) {
 }
 
 // ── Model Picker ──────────────────────────────────────────────
+// Native provider models — registered directly with Vapi, no OpenRouter needed
+// Key: openai → GPT models | xai → Grok | openrouter → everything else
 const CURATED_MODELS = [
-  { id: 'x-ai/grok-3-mini-fast',       name: 'Grok 3 Mini Fast', provider: 'xAI',    tag: 'Fastest',       tagColor: 'text-red-400 bg-red-500/10 border-red-500/20' },
-  { id: 'openai/gpt-4o-mini',          name: 'GPT-4o Mini',      provider: 'OpenAI', tag: 'Recommended',   tagColor: 'text-green-400 bg-green-500/10 border-green-500/20' },
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: 'Google', tag: 'Best Value',    tagColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
-  { id: 'x-ai/grok-3',                 name: 'Grok 3',           provider: 'xAI',    tag: 'Most Capable',  tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
-  { id: 'openai/gpt-4o',               name: 'GPT-4o',           provider: 'OpenAI', tag: 'Premium',       tagColor: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
-  { id: 'x-ai/grok-3-mini',            name: 'Grok 3 Mini',      provider: 'xAI',    tag: 'Fast',          tagColor: 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20' },
+  { id: 'gpt-4o-mini',          name: 'GPT-4o Mini',      provider: 'OpenAI',     tag: 'Recommended',  tagColor: 'text-green-400  bg-green-500/10  border-green-500/20',  key: 'openai'     },
+  { id: 'gpt-4o',               name: 'GPT-4o',           provider: 'OpenAI',     tag: 'Premium',      tagColor: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20', key: 'openai'     },
+  { id: 'grok-beta',            name: 'Grok Beta',        provider: 'xAI',        tag: 'Fast',         tagColor: 'text-zinc-300   bg-zinc-500/10   border-zinc-500/20',   key: 'xai'        },
+  { id: 'grok-2',               name: 'Grok 2',           provider: 'xAI',        tag: 'Capable',      tagColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20', key: 'xai'        },
+  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: 'OpenRouter', tag: 'Best Value', tagColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20', key: 'openrouter' },
+  { id: 'meta-llama/llama-3.3-70b-instruct', name: 'Llama 3.3 70B', provider: 'OpenRouter', tag: 'Open Source', tagColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20', key: 'openrouter' },
 ]
 
 function ModelPicker({ value, onChange }) {
@@ -456,19 +458,23 @@ function ModelPicker({ value, onChange }) {
     <div className="space-y-2">
       <label className="block text-xs font-medium text-zinc-400">AI Model</label>
       <div className="grid grid-cols-3 gap-1.5">
-        {CURATED_MODELS.map(m => (
-          <button key={m.id} onClick={() => onChange(m.id)}
-            className={`text-left px-2.5 py-2 rounded-lg border transition-all
-              ${value === m.id
-                ? 'bg-brand-500/15 border-brand-500/30 text-white'
-                : 'border-white/[0.06] text-zinc-500 hover:border-white/[0.12] hover:text-zinc-300'}`}>
-            <p className="font-semibold text-[11px] leading-none truncate">{m.name}</p>
-            <p className="text-[9px] text-zinc-600 mt-0.5">{m.provider}</p>
-            <span className={`inline-block mt-1 px-1.5 py-0.5 rounded border text-[9px] font-medium ${m.tagColor}`}>
-              {m.tag}
-            </span>
-          </button>
-        ))}
+        {CURATED_MODELS.map(m => {
+          const hasKey = !!getKey(m.key)
+          return (
+            <button key={m.id} onClick={() => onChange(m.id)}
+              className={`text-left px-2.5 py-2 rounded-lg border transition-all relative
+                ${value === m.id
+                  ? 'bg-brand-500/15 border-brand-500/30 text-white'
+                  : 'border-white/[0.06] text-zinc-500 hover:border-white/[0.12] hover:text-zinc-300'}`}>
+              <p className="font-semibold text-[11px] leading-none truncate">{m.name}</p>
+              <p className="text-[9px] text-zinc-600 mt-0.5">{m.provider}</p>
+              <div className="flex items-center gap-1 mt-1 flex-wrap">
+                <span className={`px-1.5 py-0.5 rounded border text-[9px] font-medium ${m.tagColor}`}>{m.tag}</span>
+                {!hasKey && <span className="text-[8px] text-amber-500/70">needs key</span>}
+              </div>
+            </button>
+          )
+        })}
       </div>
       <button onClick={() => setShowAll(v => !v)}
         className="text-[10px] text-zinc-600 hover:text-zinc-400 flex items-center gap-1 transition-colors">
