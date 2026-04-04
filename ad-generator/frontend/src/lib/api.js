@@ -2237,41 +2237,43 @@ export async function syncVapiAssistant(agent, vapiKey) {
   }
   const systemPrompt = (agent.systemPrompt || 'You are a helpful voice assistant.') + ghlCalendarPrompt(agent)
 
-  // GHL tools — only when calendar + booking server configured
+  // GHL tools — Vapi format: { type, function: { name, description, parameters }, server }
   const tools = []
   const toolServer = ghlToolServer(agent)
   if (toolServer) {
     tools.push({
       type: 'function',
-      async: false,
-      name: 'check_calendar',
-      description: 'Check available appointment slots for a given date. Always call this BEFORE offering times to the caller.',
-      parameters: {
-        type: 'object',
-        properties: {
-          date:     { type: 'string', description: 'Date to check in YYYY-MM-DD format, e.g. 2025-06-15' },
-          timezone: { type: 'string', description: 'IANA timezone, e.g. America/New_York. Use the agent timezone if not specified by caller.' },
+      function: {
+        name: 'check_calendar',
+        description: 'Check available appointment slots for a given date. Always call this BEFORE offering times to the caller.',
+        parameters: {
+          type: 'object',
+          properties: {
+            date:     { type: 'string', description: 'Date to check in YYYY-MM-DD format, e.g. 2025-06-15' },
+            timezone: { type: 'string', description: 'IANA timezone, e.g. America/New_York' },
+          },
+          required: ['date'],
         },
-        required: ['date'],
       },
       server: toolServer,
     })
     tools.push({
       type: 'function',
-      async: false,
-      name: 'book_appointment',
-      description: 'Book an appointment in GoHighLevel. Only call this after the caller has explicitly confirmed the time slot and you have their name, phone, and email.',
-      parameters: {
-        type: 'object',
-        properties: {
-          contactName:  { type: 'string', description: 'Full name of the contact' },
-          contactPhone: { type: 'string', description: 'Phone number including country code' },
-          contactEmail: { type: 'string', description: 'Email address' },
-          startTime:    { type: 'string', description: 'Appointment start time in ISO 8601, e.g. 2025-06-15T14:00:00-05:00' },
-          timezone:     { type: 'string', description: 'IANA timezone, e.g. America/Chicago' },
-          notes:        { type: 'string', description: 'Any relevant notes from the conversation' },
+      function: {
+        name: 'book_appointment',
+        description: 'Book an appointment in GoHighLevel. Only call after caller confirmed time and you have their name, phone, and email.',
+        parameters: {
+          type: 'object',
+          properties: {
+            contactName:  { type: 'string', description: 'Full name of the contact' },
+            contactPhone: { type: 'string', description: 'Phone number including country code' },
+            contactEmail: { type: 'string', description: 'Email address' },
+            startTime:    { type: 'string', description: 'Appointment start time in ISO 8601, e.g. 2025-06-15T14:00:00-05:00' },
+            timezone:     { type: 'string', description: 'IANA timezone, e.g. America/Chicago' },
+            notes:        { type: 'string', description: 'Any relevant notes from the conversation' },
+          },
+          required: ['contactName', 'contactPhone', 'startTime'],
         },
-        required: ['contactName', 'contactPhone', 'startTime'],
       },
       server: toolServer,
     })
