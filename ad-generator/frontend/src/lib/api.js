@@ -2194,7 +2194,15 @@ function ghlToolServer(agent) {
 function ghlCalendarPrompt(agent) {
   if (!ghlToolServer(agent)) return ''
   const tz = agent.agentTimezone || 'America/New_York'
+  const today = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    timeZone: tz,
+  })
   return `
+
+TODAY'S DATE: ${today}
+Use this to calculate real upcoming dates when the caller says "Monday", "next week", etc.
+Never reference any date that has already passed.
 
 APPOINTMENT BOOKING:
 You have the ability to check availability and book appointments. Follow these rules exactly.
@@ -2206,28 +2214,32 @@ Never skip this — if the call drops we still have their info.
 
 STEP 2 — GET DATE PREFERENCE:
 Ask if mornings or afternoons work better, and which day they prefer.
-Pick one specific date to check (e.g. "2025-04-14") — do not check multiple dates at once.
+Convert their answer to a real upcoming YYYY-MM-DD date based on TODAY's date above.
+Pick ONE specific date to check — do not check multiple dates at once.
 
 STEP 3 — CALL check_calendar:
 Call check_calendar with the date in YYYY-MM-DD format.
-While it runs, say ONE brief phrase only — "One moment." — then wait silently.
-Do NOT say "give me a sec" AND "this will just take a sec" — pick one short phrase and say nothing else.
+While it runs, say ONLY "One moment." — nothing else. Wait silently for the result.
 
 STEP 4 — PRESENT SLOTS:
-If slots come back: offer 2-3 specific times from the list. Never make up times.
-If no slots come back for that date: say "That day looks full — would [next day] work?" then call check_calendar again for the new date.
-Never say a day is "booked up" unless the tool actually returned no slots.
+The tool returns times in this format: "09:00 AM [2025-04-14T09:00:00-05:00]"
+The part in brackets is the ISO time — use it exactly when booking.
+Offer 2-3 of the display times to the caller. Never make up times.
+If no slots come back: say "That day looks full — would [next day] work?" then check again.
+Never say a day is "booked up" unless the tool returned no slots.
 
 STEP 5 — CONFIRM AND BOOK:
-Once they pick a time, confirm it: "So that is [day] at [time] — does that work for you?"
-Call book_appointment with their name, phone, email, the chosen ISO slot time, and timezone.
-Read back the confirmation naturally once booked: "You are all set for [day] at [time]."
+Once they pick a time, confirm: "So that is [day] at [time] — does that work for you?"
+Call book_appointment with:
+  - contactName, contactPhone, contactEmail from Step 1
+  - startTime = the ISO string from the brackets (e.g. 2025-04-14T09:00:00-05:00)
+  - timezone = ${tz}
+Read back the confirmation: "You are all set for [day] at [time]."
 
 RULES:
 - Never mention tool names, calendar IDs, or internal steps out loud.
-- Never hallucinate availability — only say times that came back from check_calendar.
-- Never call check_calendar more than once per user response.
-- Timezone: ${tz}`
+- Never hallucinate times — only offer times that came back from check_calendar.
+- Never call check_calendar more than once per user response.`
 }
 
 // Ensure a provider credential exists in Vapi (creates or updates)
@@ -2326,7 +2338,7 @@ export async function syncVapiAssistant(agent, vapiKey) {
       ? {
           provider: 'cartesia',
           voiceId: agent.voiceId || '',
-          model: 'sonic-2024-10-19',
+          model: 'sonic-2',           // latest Cartesia model — faster + better quality
         }
       : {
           provider: '11labs',
@@ -2334,7 +2346,8 @@ export async function syncVapiAssistant(agent, vapiKey) {
           model: agent.ttsModel || 'eleven_turbo_v2_5',
           stability: 0.5,
           similarityBoost: 0.75,
-          optimizeStreamingLatency: 4,  // 0-4, 4 = max speed
+          speed: 1.1,                 // slightly faster delivery
+          optimizeStreamingLatency: 4, // 0-4, 4 = max speed
           enableSsmlParsing: false,
         },
 
@@ -2344,7 +2357,7 @@ export async function syncVapiAssistant(agent, vapiKey) {
       model: 'nova-3',
       language: agent.language || 'en',
       smartFormat: true,
-      endpointing: 300,              // ms of silence to trigger end of speech
+      endpointing: 200,              // ms of silence before end of speech (lower = faster response)
     },
 
     // ── Latency + behaviour ──────────────────────────────────────

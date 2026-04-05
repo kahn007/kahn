@@ -83,12 +83,13 @@ router.post('/', async (req, res) => {
 
         const formatted = slots.map(s => {
           const iso = s.startTime || s.time || s
-          return new Date(iso).toLocaleTimeString('en-US', {
+          const display = new Date(iso).toLocaleTimeString('en-US', {
             hour: '2-digit', minute: '2-digit', hour12: true, timeZone: tz,
           })
-        }).join(', ')
+          return `${display} [${iso}]`
+        }).join('\n')
 
-        return { toolCallId: tc.id, result: `Available slots on ${date}: ${formatted}` }
+        return { toolCallId: tc.id, result: `Available slots on ${date}:\n${formatted}` }
       }
 
       // ── book_appointment ────────────────────────────────────────────────

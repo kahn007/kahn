@@ -77,14 +77,16 @@ export default async function handler(req, res) {
           return { toolCallId: tc.id, result: `No available slots on ${date}. Please ask the caller to choose a different date.` }
         }
 
+        // Return both display time AND ISO string so agent passes correct value to book_appointment
         const formatted = slots.map(s => {
           const iso = s.startTime || s.time || s
-          return new Date(iso).toLocaleTimeString('en-US', {
+          const display = new Date(iso).toLocaleTimeString('en-US', {
             hour: '2-digit', minute: '2-digit', hour12: true, timeZone: tz,
           })
-        }).join(', ')
+          return `${display} [${iso}]`
+        }).join('\n')
 
-        return { toolCallId: tc.id, result: `Available slots on ${date}: ${formatted}` }
+        return { toolCallId: tc.id, result: `Available slots on ${date}:\n${formatted}` }
       }
 
       // ── book_appointment ────────────────────────────────────────
