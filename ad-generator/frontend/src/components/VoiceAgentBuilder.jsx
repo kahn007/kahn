@@ -24,9 +24,9 @@ const DEFAULT_AGENT = () => ({
   language: 'en',
   maxCallMinutes: 10,
   llmModel: 'gpt-4o-mini',   // native OpenAI — most reliable with Vapi
-  voiceId: '',
-  voiceName: '',
-  voiceProvider: 'elevenlabs',
+  voiceId: 'bf0a246a-8642-498a-9950-80c35e9994b5',
+  voiceName: 'Kate Modal',
+  voiceProvider: 'cartesia',
   ttsModel: 'eleven_turbo_v2_5',
   firstMessage: '',
   systemPrompt: '',
@@ -693,6 +693,15 @@ const TTS_MODELS = [
 ]
 const VOICES_SHOWN_DEFAULT = 12
 
+// Pinned Cartesia voices — shown immediately without needing to browse
+const CARTESIA_PINNED = [
+  { id: 'bf0a246a-8642-498a-9950-80c35e9994b5', name: 'Kate Modal',    tags: 'American · Female · Natural' },
+  { id: '3b554273-4299-48b9-9aaf-eefd438e3941', name: 'Kore',          tags: 'American · Female · Warm' },
+  { id: '79a125e8-cd45-4c13-8a67-188112f4dd22', name: 'British Lady',  tags: 'British · Female · Polished' },
+  { id: 'a0e99841-438c-4a64-b679-ae501e7d6091', name: 'Barbershop Man',tags: 'American · Male · Smooth' },
+  { id: '5619d38c-cf51-4d8e-9575-48f61a280413', name: 'Classy British Man', tags: 'British · Male · Confident' },
+]
+
 function VoiceTab({ agent, update }) {
   const [allVoices, setAllVoices] = useState([])
   const [loading,   setLoading]   = useState(false)
@@ -873,10 +882,49 @@ function VoiceTab({ agent, update }) {
         </>
       )}
 
-      {!loading && allVoices.length === 0 && !err && (
+      {!loading && allVoices.length === 0 && !err && provider === 'cartesia' && (
+        <div className="space-y-3">
+          <p className="text-[10px] text-zinc-500 uppercase tracking-wide font-semibold">Featured voices</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            {CARTESIA_PINNED.map(v => (
+              <button key={v.id}
+                onClick={() => update({ voiceId: v.id, voiceName: v.name })}
+                className={`rounded-xl border text-xs text-left p-2.5 space-y-1 transition-all
+                  ${agent.voiceId === v.id
+                    ? 'bg-brand-500/15 border-brand-500/30 text-white shadow-sm shadow-brand-500/10'
+                    : 'border-white/[0.06] text-zinc-400 hover:border-white/[0.14] hover:text-zinc-200'}`}>
+                <p className="font-semibold text-[11px] leading-snug">{v.name}</p>
+                <p className="text-[10px] opacity-50 leading-none">{v.tags}</p>
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-zinc-600">
+            Add your Cartesia key in Settings to browse all voices
+          </p>
+        </div>
+      )}
+
+      {!loading && allVoices.length === 0 && !err && provider === 'elevenlabs' && (
         <div className="border border-dashed border-white/[0.08] rounded-xl p-8 text-center">
           <Mic size={20} className="text-zinc-700 mx-auto mb-2"/>
-          <p className="text-xs text-zinc-600">Add your {provider === 'cartesia' ? 'Cartesia' : 'ElevenLabs'} key in Settings</p>
+          <p className="text-xs text-zinc-600">Add your ElevenLabs key in Settings</p>
+        </div>
+      )}
+
+      {/* Manual voice ID entry */}
+      {provider === 'cartesia' && (
+        <div className="space-y-1.5">
+          <p className="text-[10px] text-zinc-600 uppercase tracking-wide font-semibold">Or paste a voice ID</p>
+          <input
+            className="input text-xs"
+            placeholder="e.g. bf0a246a-8642-498a-9950-80c35e9994b5"
+            defaultValue={agent.voiceId || ''}
+            onBlur={e => {
+              const v = e.target.value.trim()
+              if (v) update({ voiceId: v, voiceName: agent.voiceName || 'Custom Voice' })
+            }}
+          />
+          <p className="text-[10px] text-zinc-700">Find IDs at play.cartesia.ai</p>
         </div>
       )}
 
